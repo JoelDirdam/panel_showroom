@@ -1,0 +1,14 @@
+{
+  "name": "panel-bubbles",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Panel administrativo showroom - monorepo",
+  "scripts": {
+    "dev:api": "npm run dev --prefix apps/api",
+    "dev:web": "npm run dev --prefix apps/web",
+    "build:api": "npm run build --prefix apps/api",
+    "build:web": "npm run build --prefix apps/web",
+    "db:up": "docker compose up -d",
+    "db:seed": "npm run db:seed --prefix apps/api"
+  }
+}

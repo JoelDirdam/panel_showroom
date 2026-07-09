@@ -1,0 +1,141 @@
+import { Router } from 'express'
+import { z } from 'zod'
+import { Prisma } from '@prisma/client'
+import { prisma } from '../lib/prisma.js'
+import { getParam } from '../lib/params.js'
+import { authenticate, authorize, brandFilter } from '../middleware/auth.js'
+
+const router = Router()
+
+const productSchema = z.object({
+  brandId: z.string().optional(),
+  name: z.string().min(1),
+  sku: z.string().min(1),
+  description: z.string().optional().nullable(),
+  price: z.number().nonnegative().optional().nullable(),
+  imageUrl: z.string().url().optional().nullable(),
+  quantity: z.number().int().nonnegative().optional(),
+  minStock: z.number().int().nonnegative().optional(),
+})
+
+router.use(authenticate)
+
+router.get('/', async (req, res) => {
+  const filter = brandFilter(req.user!)
+  const products = await prisma.product.findMany({
+    where: filter,
+    orderBy: { updatedAt: 'desc' },
+    include: {
+      brand: { select: { id: true, name: true } },
+      stock: true,
+    },
+  })
+  return res.json(products)
+})
+
+router.get('/:id', async (req, res) => {
+  const id = getParam(req.params.id)
+  const filter = brandFilter(req.user!)
+  const product = await prisma.product.findFirst({
+    where: { id, ...filter },
+    include: {
+      brand: { select: { id: true, name: true } },
+      stock: true,
+    },
+  })
+  if (!product) return res.status(404).json({ error: 'Producto no encontrado' })
+  return res.json(product)
+})
+
+router.post('/', async (req, res) => {
+  const parsed = productSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
+  }
+
+  const brandId =
+    req.user!.role === 'BRAND'
+      ? req.user!.brandId!
+      : parsed.data.brandId
+
+  if (!brandId) {
+    return res.status(400).json({ error: 'brandId es requerido' })
+  }
+
+  const { quantity = 0, minStock = 5, ...productData } = parsed.data
+
+  try {
+    const product = await prisma.product.create({
+      data: {
+        ...productData,
+        brandId,
+        price: productData.price != null ? new Prisma.Decimal(productData.price) : null,
+        stock: {
+          create: { quantity, minStock },
+        },
+      },
+      include: { brand: true, stock: true },
+    })
+    return res.status(201).json(product)
+  } catch {
+    return res.status(409).json({ error: 'SKU duplicado para esta marca' })
+  }
+})
+
+router.patch('/:id', async (req, res) => {
+  const id = getParam(req.params.id)
+  const parsed = productSchema.partial().safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Datos inválidos' })
+  }
+
+  const filter = brandFilter(req.user!)
+  const existing = await prisma.product.findFirst({
+    where: { id, ...filter },
+  })
+  if (!existing) return res.status(404).json({ error: 'Producto no encontrado' })
+
+  const { quantity, minStock, brandId: _brandId, ...productData } = parsed.data
+
+  const product = await prisma.product.update({
+    where: { id },
+    data: {
+      ...productData,
+      price:
+        productData.price != null
+          ? new Prisma.Decimal(productData.price)
+          : productData.price === null
+            ? null
+            : undefined,
+      stock:
+        quantity !== undefined || minStock !== undefined
+          ? {
+              upsert: {
+                create: { quantity: quantity ?? 0, minStock: minStock ?? 5 },
+                update: {
+                  ...(quantity !== undefined ? { quantity } : {}),
+                  ...(minStock !== undefined ? { minStock } : {}),
+                },
+              },
+            }
+          : undefined,
+    },
+    include: { brand: true, stock: true },
+  })
+
+  return res.json(product)
+})
+
+router.delete('/:id', async (req, res) => {
+  const id = getParam(req.params.id)
+  const filter = brandFilter(req.user!)
+  const existing = await prisma.product.findFirst({
+    where: { id, ...filter },
+  })
+  if (!existing) return res.status(404).json({ error: 'Producto no encontrado' })
+
+  await prisma.product.delete({ where: { id } })
+  return res.status(204).send()
+})
+
+export default router
