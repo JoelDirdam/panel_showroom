@@ -32,9 +32,9 @@
             >
               <td class="py-3 pr-4 font-medium text-gray-800 dark:text-white">{{ product.name }}</td>
               <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ product.sku }}</td>
-              <td v-if="auth.isAdmin" class="py-3 pr-4">{{ product.brand.name }}</td>
-              <td class="py-3 pr-4">{{ product.price ? `$${product.price}` : '—' }}</td>
-              <td class="py-3 pr-4">{{ product.stock?.quantity ?? 0 }}</td>
+              <td v-if="auth.isAdmin" class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ product.brand.name }}</td>
+              <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ product.price ? `$${product.price}` : '—' }}</td>
+              <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ product.stock?.quantity ?? 0 }}</td>
               <td class="py-3">
                 <button class="text-brand-500 hover:underline" @click="openEdit(product)">Editar</button>
               </td>
@@ -52,32 +52,32 @@
         <form class="space-y-4" @submit.prevent="save">
           <div v-if="auth.isAdmin && !editing">
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">ID Marca</label>
-            <input v-model="form.brandId" required class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+            <input v-model="form.brandId" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
           </div>
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nombre</label>
-            <input v-model="form.name" required class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+            <input v-model="form.name" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
           </div>
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">SKU</label>
-            <input v-model="form.sku" required :disabled="!!editing" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 disabled:opacity-60" />
+            <input v-model="form.sku" required :disabled="!!editing" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white disabled:opacity-60" />
           </div>
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Descripción</label>
-            <textarea v-model="form.description" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+            <textarea v-model="form.description" rows="2" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
           </div>
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Precio</label>
-              <input v-model.number="form.price" type="number" step="0.01" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+              <input v-model.number="form.price" type="number" step="0.01" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
             </div>
             <div>
               <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Stock</label>
-              <input v-model.number="form.quantity" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+              <input v-model.number="form.quantity" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
             </div>
             <div>
               <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Mínimo</label>
-              <input v-model.number="form.minStock" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+              <input v-model.number="form.minStock" type="number" min="0" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
             </div>
           </div>
           <div class="flex justify-end gap-2">

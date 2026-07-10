@@ -56,15 +56,15 @@
         <form class="space-y-4" @submit.prevent="save">
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nombre</label>
-            <input v-model="form.name" required class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+            <input v-model="form.name" required class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
           </div>
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Slug</label>
-            <input v-model="form.slug" required pattern="[a-z0-9-]+" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+            <input v-model="form.slug" required pattern="[a-z0-9-]+" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
           </div>
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Email contacto</label>
-            <input v-model="form.contactEmail" type="email" class="w-full rounded-lg border border-gray-300 px-3 py-2 dark:border-gray-700 dark:bg-gray-800" />
+            <input v-model="form.contactEmail" type="email" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
           </div>
           <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <input v-model="form.active" type="checkbox" />

@@ -1,0 +1,7 @@
+{
+  "planSteps": [
+    { "type": "action", "description": "Navigate to /login" },
+    { "type": "action", "description": "Log in with the configured admin credentials" },
+    { "type": "assertion", "description": "The URL is the dashboard at / and the page heading shows 'Dashboard Showroom'" }
+  ]
+}

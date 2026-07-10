@@ -24,13 +24,13 @@
             >
               <td class="py-3 pr-4 font-medium text-gray-800 dark:text-white">{{ item.product.name }}</td>
               <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ item.product.sku }}</td>
-              <td v-if="auth.isAdmin" class="py-3 pr-4">{{ item.product.brand.name }}</td>
+              <td v-if="auth.isAdmin" class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ item.product.brand.name }}</td>
               <td class="py-3 pr-4">
                 <input
                   v-model.number="edits[item.product.id].quantity"
                   type="number"
                   min="0"
-                  class="w-20 rounded border border-gray-300 px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
+                  class="w-20 rounded border border-gray-300 px-2 py-1 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 />
               </td>
               <td class="py-3 pr-4">
@@ -38,7 +38,7 @@
                   v-model.number="edits[item.product.id].minStock"
                   type="number"
                   min="0"
-                  class="w-20 rounded border border-gray-300 px-2 py-1 dark:border-gray-700 dark:bg-gray-800"
+                  class="w-20 rounded border border-gray-300 px-2 py-1 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 />
               </td>
               <td class="py-3 pr-4">

@@ -1,0 +1,10 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Login — admin accede al dashboard",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to /login" },
+    { "type": "action", "description": "Log in with the configured admin credentials" },
+    { "type": "assertion", "description": "The URL is the dashboard at / and the page heading shows 'Dashboard Showroom'" }
+  ]
+}

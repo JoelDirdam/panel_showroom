@@ -3,8 +3,9 @@
     <div class="flex min-h-screen items-center justify-center bg-gray-50 p-6 dark:bg-gray-900">
       <div class="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div class="mb-8 text-center">
-          <img src="/images/logo/logo.svg" alt="Panel Bubbles" class="mx-auto mb-4 h-10 dark:hidden" />
-          <img src="/images/logo/logo-dark.svg" alt="Panel Bubbles" class="mx-auto mb-4 hidden h-10 dark:block" />
+          <!-- Logo: deshabilitado hasta definir branding -->
+          <!-- <img src="/images/logo/logo.svg" alt="Panel Bubbles" class="mx-auto mb-4 h-10 dark:hidden" /> -->
+          <!-- <img src="/images/logo/logo-dark.svg" alt="Panel Bubbles" class="mx-auto mb-4 hidden h-10 dark:block" /> -->
           <h1 class="text-xl font-semibold text-gray-800 dark:text-white">Panel Showroom</h1>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Inicia sesión para gestionar tu inventario</p>
         </div>
