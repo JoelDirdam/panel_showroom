@@ -1,0 +1,16 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Productos — entrada de stock incrementa inventario",
+  "description": "Tras iniciar sesión como admin, el usuario abre Productos, registra una entrada de stock para un producto existente y ve el inventario actualizado en el detalle.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the login page" },
+    { "type": "action", "description": "Sign in with the admin email and password configured for this project" },
+    { "type": "action", "description": "Open the Productos section from the sidebar navigation" },
+    { "type": "action", "description": "Open the action to add a stock entry (entrada de stock)" },
+    { "type": "action", "description": "Select an existing product, set quantity to 1, and submit the stock entry form" },
+    { "type": "action", "description": "Open the product detail or list row for the product that received the entry" },
+    { "type": "assertion", "description": "Verify the product stock quantity shown in the products detail or list is greater than before the entry, or the entradas de stock table includes a new row with quantity 1" }
+  ]
+}
