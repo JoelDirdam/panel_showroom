@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
-import { authenticate, authorize, brandFilter } from '../middleware/auth.js'
+import { authenticate, brandFilter } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -11,6 +11,7 @@ const productSchema = z.object({
   brandId: z.string().optional(),
   name: z.string().min(1),
   sku: z.string().min(1),
+  barcode: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   price: z.number().nonnegative().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
@@ -20,10 +21,59 @@ const productSchema = z.object({
 
 router.use(authenticate)
 
+function parseOptionalNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
 router.get('/', async (req, res) => {
   const filter = brandFilter(req.user!)
+  const name = typeof req.query.name === 'string' ? req.query.name.trim() : ''
+  const barcode = typeof req.query.barcode === 'string' ? req.query.barcode.trim() : ''
+  const priceMin = parseOptionalNumber(req.query.priceMin)
+  const priceMax = parseOptionalNumber(req.query.priceMax)
+  const stockMin = parseOptionalNumber(req.query.stockMin)
+  const stockMax = parseOptionalNumber(req.query.stockMax)
+  const sinStock =
+    req.query.sinStock === 'true' || req.query.sinStock === '1' || req.query.sinStock === '__YES__'
+
+  const stockFilter: Prisma.StockWhereInput = {}
+  if (sinStock) {
+    stockFilter.quantity = 0
+  } else {
+    if (stockMin !== undefined || stockMax !== undefined) {
+      stockFilter.quantity = {
+        ...(stockMin !== undefined ? { gte: stockMin } : {}),
+        ...(stockMax !== undefined ? { lte: stockMax } : {}),
+      }
+    }
+  }
+
+  const where: Prisma.ProductWhereInput = {
+    ...filter,
+    ...(name ? { name: { contains: name, mode: 'insensitive' } } : {}),
+    ...(barcode
+      ? {
+          OR: [
+            { barcode: { contains: barcode, mode: 'insensitive' } },
+            { sku: { contains: barcode, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+    ...(priceMin !== undefined || priceMax !== undefined
+      ? {
+          price: {
+            ...(priceMin !== undefined ? { gte: priceMin } : {}),
+            ...(priceMax !== undefined ? { lte: priceMax } : {}),
+          },
+        }
+      : {}),
+    ...(Object.keys(stockFilter).length > 0 ? { stock: stockFilter } : {}),
+  }
+
   const products = await prisma.product.findMany({
-    where: filter,
+    where,
     orderBy: { updatedAt: 'desc' },
     include: {
       brand: { select: { id: true, name: true } },
@@ -41,6 +91,13 @@ router.get('/:id', async (req, res) => {
     include: {
       brand: { select: { id: true, name: true } },
       stock: true,
+      stockEntries: {
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: {
+          createdBy: { select: { id: true, name: true } },
+        },
+      },
     },
   })
   if (!product) return res.status(404).json({ error: 'Producto no encontrado' })
@@ -69,6 +126,7 @@ router.post('/', async (req, res) => {
       data: {
         ...productData,
         brandId,
+        barcode: productData.barcode || null,
         price: productData.price != null ? new Prisma.Decimal(productData.price) : null,
         stock: {
           create: { quantity, minStock },
@@ -95,12 +153,16 @@ router.patch('/:id', async (req, res) => {
   })
   if (!existing) return res.status(404).json({ error: 'Producto no encontrado' })
 
-  const { quantity, minStock, brandId: _brandId, ...productData } = parsed.data
+  const { quantity, minStock, brandId: _brandId, sku: _sku, ...productData } = parsed.data
 
   const product = await prisma.product.update({
     where: { id },
     data: {
       ...productData,
+      barcode:
+        productData.barcode !== undefined
+          ? productData.barcode || null
+          : undefined,
       price:
         productData.price != null
           ? new Prisma.Decimal(productData.price)
@@ -120,7 +182,17 @@ router.patch('/:id', async (req, res) => {
             }
           : undefined,
     },
-    include: { brand: true, stock: true },
+    include: {
+      brand: true,
+      stock: true,
+      stockEntries: {
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: {
+          createdBy: { select: { id: true, name: true } },
+        },
+      },
+    },
   })
 
   return res.json(product)

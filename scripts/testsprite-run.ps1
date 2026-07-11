@@ -7,7 +7,7 @@ $ErrorActionPreference = "Stop"
 
 $feProject = "75b47e1d-971e-436a-abc5-5295b9262c38"
 $beProject = "1498a4f6-1f44-4f0f-8a99-bd5dc64fc1e6"
-$apiUrl = "https://api-production-3c0c.up.railway.app"
+$apiUrl = "https://api-panelshowroom-3c0c.up.railway.app"
 
 function Show-Tests {
     Write-Host "`n=== Frontend ($feProject) ===" -ForegroundColor Cyan

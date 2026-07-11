@@ -55,12 +55,24 @@ export interface Product {
   id: string
   name: string
   sku: string
+  barcode: string | null
   description: string | null
   price: string | null
   imageUrl: string | null
   brandId: string
   brand: { id: string; name: string }
   stock: { id: string; quantity: number; minStock: number } | null
+  stockEntries?: StockEntry[]
+}
+
+export interface StockEntry {
+  id: string
+  productId: string
+  quantity: number
+  note: string | null
+  createdById: string | null
+  createdAt: string
+  createdBy?: { id: string; name: string } | null
 }
 
 export interface StockItem {

@@ -4,8 +4,10 @@
       class="flex items-center text-gray-700 dark:text-gray-400"
       @click.prevent="toggleDropdown"
     >
-      <span class="mr-3 overflow-hidden rounded-full h-11 w-11">
-        <img src="/images/user/owner.jpg" alt="User" />
+      <span
+        class="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+      >
+        <UserCircleIcon class="h-7 w-7" />
       </span>
 
       <span class="block mr-1 font-medium text-theme-sm">{{ auth.user?.name || 'Usuario' }}</span>
@@ -44,7 +46,7 @@
 </template>
 
 <script setup>
-import { ChevronDownIcon, LogoutIcon } from '@/icons'
+import { ChevronDownIcon, LogoutIcon, UserCircleIcon } from '@/icons'
 import { useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'

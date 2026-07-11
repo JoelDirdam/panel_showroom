@@ -1,4 +1,5 @@
 import BoxCubeIcon from "./BoxCubeIcon.vue";
+import BoxesIcon from "./BoxesIcon.vue";
 import GridIcon from "./GridIcon.vue";
 import CalenderIcon from "./CalenderIcon.vue";
 import TaskIcon from "./TaskIcon.vue";
@@ -63,9 +64,10 @@ export {
   Message2Line,
   PaperclipIcon,
   BoxIcon,
+  BoxCubeIcon,
+  BoxesIcon,
   ChevronRightIcon,
   GridIcon,
-  BoxCubeIcon,
   CalenderIcon,
   UserCircleIcon,
   TaskIcon,

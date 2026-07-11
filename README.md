@@ -7,7 +7,7 @@ Panel administrativo para que las marcas gestionen sus productos y stock en el s
 - **Frontend**: Vue 3 + TailAdmin + Pinia + Axios (`apps/web`)
 - **Backend**: Node.js + Express + Prisma + PostgreSQL (`apps/api`)
 - **Deploy**: Railway CLI
-- **Repo**: https://github.com/JoelDirdam/panel_bubbles.git
+- **Repo**: https://github.com/JoelDirdam/panel_showroom.git
 
 ## Requisitos
 
@@ -116,7 +116,7 @@ railway up --path-as-root
 ### Auto-deploy desde GitHub (opcional)
 
 En Railway Dashboard → cada servicio → Settings:
-- Conectar repo `JoelDirdam/panel_bubbles`
+- Conectar repo `JoelDirdam/panel_showroom`
 - Root directory: `apps/api` o `apps/web`
 
 ## Estructura

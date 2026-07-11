@@ -1,7 +1,7 @@
 import os
 import requests
 
-BASE = os.environ.get("TARGET_URL") or "https://api-production-3c0c.up.railway.app"
+BASE = os.environ.get("TARGET_URL") or "https://api-panelshowroom-3c0c.up.railway.app"
 
 bad = requests.post(
     f"{BASE}/api/auth/login",

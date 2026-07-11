@@ -15,7 +15,7 @@
       <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
           <thead>
-            <tr class="border-b border-gray-200 text-left text-gray-500 dark:border-gray-800">
+            <tr class="border-b border-gray-200 text-left text-gray-500 dark:border-gray-800 dark:text-gray-400">
               <th class="py-3 pr-4">Nombre</th>
               <th class="py-3 pr-4">Slug</th>
               <th class="py-3 pr-4">Email</th>
@@ -33,9 +33,9 @@
               <td class="py-3 pr-4 font-medium text-gray-800 dark:text-white">{{ brand.name }}</td>
               <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ brand.slug }}</td>
               <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ brand.contactEmail || '—' }}</td>
-              <td class="py-3 pr-4">{{ brand._count?.products ?? 0 }}</td>
+              <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ brand._count?.products ?? 0 }}</td>
               <td class="py-3 pr-4">
-                <span :class="brand.active ? 'text-success-500' : 'text-gray-400'">
+                <span :class="brand.active ? 'text-success-500' : 'text-gray-400 dark:text-gray-500'">
                   {{ brand.active ? 'Activa' : 'Inactiva' }}
                 </span>
               </td>

@@ -205,7 +205,7 @@ import { useAuthStore } from "@/stores/auth";
 import {
   GridIcon,
   BoxIcon,
-  BoxCubeIcon,
+  BoxesIcon,
   TableIcon,
   ChevronDownIcon,
   HorizontalDots,
@@ -236,7 +236,7 @@ const menuGroups = computed(() => [
           ]
         : []),
       {
-        icon: BoxCubeIcon,
+        icon: BoxesIcon,
         name: "Productos",
         path: "/products",
       },
