@@ -15,12 +15,12 @@
             />
           </div>
           <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">SKU / Cod. Barras</label>
+            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">SKU</label>
             <input
-              v-model="filters.barcode"
+              v-model="filters.sku"
               type="text"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              placeholder="SKU o código de barras"
+              placeholder="Buscar por SKU"
             />
           </div>
           <div>
@@ -180,13 +180,6 @@
             />
           </div>
           <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cod. Barras</label>
-            <input
-              v-model="detailForm.barcode"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-          <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Precio</label>
             <input
               v-model.number="detailForm.price"
@@ -308,13 +301,6 @@
             <input
               v-model="createForm.sku"
               required
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cod. Barras</label>
-            <input
-              v-model="createForm.barcode"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
@@ -446,7 +432,7 @@ const showStockModal = ref(false)
 
 const filters = reactive({
   name: '',
-  barcode: '',
+  sku: '',
   priceMin: null as number | null,
   priceMax: null as number | null,
   stockMin: null as number | null,
@@ -458,7 +444,6 @@ const createForm = reactive({
   brandId: '',
   name: '',
   sku: '',
-  barcode: '',
   description: '',
   price: null as number | null,
   quantity: 0,
@@ -468,7 +453,6 @@ const createForm = reactive({
 const detailForm = reactive({
   name: '',
   sku: '',
-  barcode: '',
   description: '',
   price: null as number | null,
   minStock: 5,
@@ -483,7 +467,7 @@ const stockForm = reactive({
 function buildFilterParams() {
   const params: Record<string, string | number | boolean> = {}
   if (filters.name.trim()) params.name = filters.name.trim()
-  if (filters.barcode.trim()) params.barcode = filters.barcode.trim()
+  if (filters.sku.trim()) params.sku = filters.sku.trim()
   if (typeof filters.priceMin === 'number' && !Number.isNaN(filters.priceMin)) {
     params.priceMin = filters.priceMin
   }
@@ -521,7 +505,7 @@ function applyFilters() {
 
 function clearFilters() {
   filters.name = ''
-  filters.barcode = ''
+  filters.sku = ''
   filters.priceMin = null
   filters.priceMax = null
   filters.stockMin = null
@@ -545,7 +529,6 @@ async function openCreate() {
   }
   createForm.name = ''
   createForm.sku = ''
-  createForm.barcode = ''
   createForm.description = ''
   createForm.price = null
   createForm.quantity = 0
@@ -566,7 +549,6 @@ async function openViewEdit(product: Product) {
   detail.value = data
   detailForm.name = data.name
   detailForm.sku = data.sku
-  detailForm.barcode = data.barcode || ''
   detailForm.description = data.description || ''
   detailForm.price = data.price ? Number(data.price) : null
   detailForm.minStock = data.stock?.minStock ?? 5
@@ -581,7 +563,6 @@ async function saveCreate() {
     brandId: createForm.brandId || undefined,
     name: createForm.name,
     sku: createForm.sku,
-    barcode: createForm.barcode || null,
     description: createForm.description || null,
     price: createForm.price,
     quantity: createForm.quantity,
@@ -595,7 +576,6 @@ async function saveDetail() {
   if (!detail.value) return
   const { data } = await api.patch<Product>(`/products/${detail.value.id}`, {
     name: detailForm.name,
-    barcode: detailForm.barcode || null,
     description: detailForm.description || null,
     price: detailForm.price,
     minStock: detailForm.minStock,

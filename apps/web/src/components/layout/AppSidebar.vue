@@ -207,6 +207,7 @@ import {
   BoxIcon,
   BoxesIcon,
   TableIcon,
+  ListIcon,
   ChevronDownIcon,
   HorizontalDots,
 } from "../../icons";
@@ -244,6 +245,11 @@ const menuGroups = computed(() => [
         icon: TableIcon,
         name: "Stock",
         path: "/stock",
+      },
+      {
+        icon: ListIcon,
+        name: "Ventas/Tickets",
+        path: "/sales",
       },
     ],
   },

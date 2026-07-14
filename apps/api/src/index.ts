@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.js'
 import brandsRoutes from './routes/brands.js'
 import productsRoutes from './routes/products.js'
 import stockRoutes from './routes/stock.js'
+import salesRoutes from './routes/sales.js'
 import dashboardRoutes from './routes/dashboard.js'
 
 const app = express()
@@ -56,6 +57,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/brands', brandsRoutes)
 app.use('/api/products', productsRoutes)
 app.use('/api/stock', stockRoutes)
+app.use('/api/sales', salesRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 
 app.listen(PORT, '0.0.0.0', () => {

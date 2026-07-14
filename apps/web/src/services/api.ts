@@ -55,7 +55,6 @@ export interface Product {
   id: string
   name: string
   sku: string
-  barcode: string | null
   description: string | null
   price: string | null
   imageUrl: string | null
@@ -80,4 +79,50 @@ export interface StockItem {
   quantity: number
   minStock: number
   product: Product
+}
+
+export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'OTRO'
+
+export interface SaleLine {
+  id: string
+  saleId: string
+  productId: string
+  quantity: number
+  unitPrice: string
+  subtotal: string
+  discount: string
+  commission: string
+  total: string
+  inSettlement: boolean
+  paid: boolean
+  product: {
+    id: string
+    name: string
+    sku: string
+    brandId: string
+    brand: { id: string; name: string }
+  }
+}
+
+export interface Sale {
+  id: string
+  ticketNumber: number
+  paymentMethod: PaymentMethod
+  soldAt: string
+  createdById: string | null
+  createdAt: string
+  createdBy?: { id: string; name: string } | null
+  lines: SaleLine[]
+}
+
+export interface CreateSalePayload {
+  paymentMethod: PaymentMethod
+  soldAt?: string
+  lines: Array<{
+    productId: string
+    quantity: number
+    discount?: number
+    commission?: number
+    unitPrice?: number
+  }>
 }

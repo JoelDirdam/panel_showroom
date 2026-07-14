@@ -11,7 +11,6 @@ const productSchema = z.object({
   brandId: z.string().optional(),
   name: z.string().min(1),
   sku: z.string().min(1),
-  barcode: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   price: z.number().nonnegative().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
@@ -30,7 +29,7 @@ function parseOptionalNumber(value: unknown): number | undefined {
 router.get('/', async (req, res) => {
   const filter = brandFilter(req.user!)
   const name = typeof req.query.name === 'string' ? req.query.name.trim() : ''
-  const barcode = typeof req.query.barcode === 'string' ? req.query.barcode.trim() : ''
+  const sku = typeof req.query.sku === 'string' ? req.query.sku.trim() : ''
   const priceMin = parseOptionalNumber(req.query.priceMin)
   const priceMax = parseOptionalNumber(req.query.priceMax)
   const stockMin = parseOptionalNumber(req.query.stockMin)
@@ -53,14 +52,7 @@ router.get('/', async (req, res) => {
   const where: Prisma.ProductWhereInput = {
     ...filter,
     ...(name ? { name: { contains: name, mode: 'insensitive' } } : {}),
-    ...(barcode
-      ? {
-          OR: [
-            { barcode: { contains: barcode, mode: 'insensitive' } },
-            { sku: { contains: barcode, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+    ...(sku ? { sku: { contains: sku, mode: 'insensitive' } } : {}),
     ...(priceMin !== undefined || priceMax !== undefined
       ? {
           price: {
@@ -126,7 +118,6 @@ router.post('/', async (req, res) => {
       data: {
         ...productData,
         brandId,
-        barcode: productData.barcode || null,
         price: productData.price != null ? new Prisma.Decimal(productData.price) : null,
         stock: {
           create: { quantity, minStock },
@@ -159,10 +150,6 @@ router.patch('/:id', async (req, res) => {
     where: { id },
     data: {
       ...productData,
-      barcode:
-        productData.barcode !== undefined
-          ? productData.barcode || null
-          : undefined,
       price:
         productData.price != null
           ? new Prisma.Decimal(productData.price)

@@ -38,6 +38,12 @@ const router = createRouter({
       meta: { title: 'Stock' },
     },
     {
+      path: '/sales',
+      name: 'Sales',
+      component: () => import('../views/showroom/Sales.vue'),
+      meta: { title: 'Ventas/Tickets' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
