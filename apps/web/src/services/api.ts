@@ -20,7 +20,9 @@ export interface User {
   email: string
   name: string
   role: 'ADMIN' | 'BRAND'
+  tenantId?: string
   brandId: string | null
+  mustChangePassword?: boolean
   brand?: { id: string; name: string } | null
 }
 
@@ -47,8 +49,11 @@ export interface Brand {
   name: string
   slug: string
   contactEmail: string | null
+  whatsapp: string | null
   active: boolean
+  isHouseBrand: boolean
   _count?: { products: number; users: number }
+  temporaryPassword?: string
 }
 
 export interface Product {
@@ -59,7 +64,7 @@ export interface Product {
   price: string | null
   imageUrl: string | null
   brandId: string
-  brand: { id: string; name: string }
+  brand: { id: string; name: string; isHouseBrand?: boolean }
   stock: { id: string; quantity: number; minStock: number } | null
   stockEntries?: StockEntry[]
 }
@@ -79,6 +84,78 @@ export interface StockItem {
   quantity: number
   minStock: number
   product: Product
+}
+
+export type ProductRequestType = 'CREATE_PRODUCT' | 'RESTOCK'
+export type ProductRequestStatus = 'PENDING' | 'ACCEPTED'
+
+export interface ProductRequest {
+  id: string
+  type: ProductRequestType
+  status: ProductRequestStatus
+  brandId: string
+  brand: { id: string; name: string; whatsapp: string | null }
+  productId: string | null
+  product: { id: string; name: string; sku: string } | null
+  name: string | null
+  sku: string | null
+  description: string | null
+  price: string | null
+  imageUrl: string | null
+  quantity: number
+  minStock: number
+  notes: string | null
+  acceptedAt: string | null
+  createdAt: string
+}
+
+export type ScheduleType = 'STOCK_DELIVERY' | 'CUT_PICKUP'
+
+export interface AgendaSettings {
+  stockDeliveryEnabled: boolean
+  cutPickupEnabled: boolean
+  timezone?: string
+}
+
+/** ISO weekday: 1=Lun … 7=Dom */
+export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7
+
+export interface WeeklyScheduleRule {
+  id: string
+  type: ScheduleType
+  weekday: number
+  startTime: string
+  endTime: string
+  intervalMinutes: number
+  active: boolean
+}
+
+export interface WeeklyRuleDayInput {
+  weekday: Weekday
+  startTime: string
+  endTime: string
+}
+
+export interface Appointment {
+  id: string
+  brandId: string
+  brand: { id: string; name: string; whatsapp?: string | null }
+  slotId: string
+  slot: ScheduleSlot
+  notes: string | null
+  createdAt: string
+}
+
+export interface ScheduleSlot {
+  id: string
+  type: ScheduleType
+  startAt: string
+  endAt: string
+  active: boolean
+  ruleId?: string | null
+  booked?: boolean
+  appointment?: Appointment | null
+  ownAppointment?: Appointment | null
 }
 
 export type PaymentMethod = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'OTRO'

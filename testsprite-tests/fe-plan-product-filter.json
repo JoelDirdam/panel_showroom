@@ -1,0 +1,17 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Productos — filtro por nombre reduce el catálogo",
+  "description": "Como admin, el usuario aplica el filtro por nombre en Productos y el catálogo muestra solo coincidencias; al limpiar filtros vuelve a ver más productos.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the login page" },
+    { "type": "action", "description": "Sign in with the admin email and password configured for this project" },
+    { "type": "action", "description": "Open the Productos section from the sidebar navigation" },
+    { "type": "action", "description": "In the Filtrar Productos Nombre field, enter Vela" },
+    { "type": "action", "description": "Click Aplicar Filtros" },
+    { "type": "assertion", "description": "Verify the catalog table shows the product Vela aromática lavanda and does not show Jabón artesanal" },
+    { "type": "action", "description": "Click Limpiar filtros" },
+    { "type": "assertion", "description": "Verify the catalog table shows both Vela aromática lavanda and Jabón artesanal in separate rows" }
+  ]
+}

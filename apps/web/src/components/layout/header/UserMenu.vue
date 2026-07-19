@@ -33,8 +33,16 @@
 
       <button
         type="button"
-        @click="signOut"
         class="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+        @click="startTutorial"
+      >
+        Ver tutorial
+      </button>
+
+      <button
+        type="button"
+        @click="signOut"
+        class="flex items-center gap-3 px-3 py-2 mt-1 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
       >
         <LogoutIcon
           class="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
@@ -50,6 +58,7 @@ import { ChevronDownIcon, LogoutIcon, UserCircleIcon } from '@/icons'
 import { useRouter } from 'vue-router'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { replayTour } from '@/tours/useTour'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -62,6 +71,11 @@ const toggleDropdown = () => {
 
 const closeDropdown = () => {
   dropdownOpen.value = false
+}
+
+const startTutorial = () => {
+  closeDropdown()
+  void replayTour()
 }
 
 const signOut = () => {

@@ -1,0 +1,67 @@
+[
+  {
+    "name": "Login admin",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Página Agenda muestra configuración semanal",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Checkbox en header muestra el cuerpo de la card",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Admin guarda regla semanal",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Calendario muestra disponibles",
+    "pass": true,
+    "detail": "2 disp."
+  },
+  {
+    "name": "Login marca",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Marca ve día con disponibles",
+    "pass": true,
+    "detail": "20 2 disp."
+  },
+  {
+    "name": "Rectángulos de horas disponibles",
+    "pass": true,
+    "detail": "2 botones"
+  },
+  {
+    "name": "Marca reserva cita",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Cita aparece en Mis citas",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Admin modifica regla semanal",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Admin ve reserva conservada tras cambiar regla",
+    "pass": true,
+    "detail": "4 reserv."
+  },
+  {
+    "name": "Admin ve horario reservado en modal",
+    "pass": true,
+    "detail": ""
+  }
+]

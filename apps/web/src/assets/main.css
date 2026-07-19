@@ -759,6 +759,27 @@ span.flatpickr-weekday,
   @apply flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs hover:bg-gray-50 hover:text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] dark:hover:text-gray-200 lg:inline-flex lg:w-auto;
 }
 
+/* Tutorial (driver.js) above sidebar/modals (z-99999) */
+.driver-overlay,
+#driver-dummy-element {
+  z-index: 100000 !important;
+}
+
+.driver-popover {
+  z-index: 100001 !important;
+  max-width: 320px;
+}
+
+.driver-popover-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.driver-popover-description {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
 .dark input:not([type='checkbox']):not([type='radio']),
 .dark textarea,
 .dark select {

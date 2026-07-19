@@ -1,0 +1,101 @@
+{
+  "passed": 19,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Login admin",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Página Ventas/Tickets carga",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna ID",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Producto",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Cantidad",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna SUBT",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Descuento",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Comisión",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Total",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Fecha",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Método de pago",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna En corte",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Columna Pagado",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Botón Registrar venta",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Modal registrar venta",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Producto seleccionado en línea 1",
+      "pass": true,
+      "detail": "Producto Otra Marca (Otra Marca Demo) — stock 19"
+    },
+    {
+      "name": "Segunda línea de producto agregada",
+      "pass": true,
+      "detail": "Jabón artesanal (Bubbles Demo) — stock 47"
+    },
+    {
+      "name": "Venta guardada desde UI",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "BRAND sin botón Registrar venta",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

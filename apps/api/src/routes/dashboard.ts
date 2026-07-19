@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
-import { authenticate, brandFilter } from '../middleware/auth.js'
+import { authenticate, brandFilter, tenantFilter } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -25,7 +25,9 @@ router.get('/', async (req, res) => {
 
   const [totalProducts, totalBrands, totalStockUnits] = await Promise.all([
     prisma.product.count({ where: filter }),
-    isAdmin ? prisma.brand.count({ where: { active: true } }) : Promise.resolve(1),
+    isAdmin
+      ? prisma.brand.count({ where: { ...tenantFilter(req.user!), active: true } })
+      : Promise.resolve(1),
     prisma.stock.aggregate({
       where: { product: filter },
       _sum: { quantity: true },

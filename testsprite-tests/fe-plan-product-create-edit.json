@@ -1,0 +1,20 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Productos — crear producto y editar su nombre",
+  "description": "Como admin, el usuario crea un producto nuevo en el catálogo y después edita su nombre; el listado refleja el nombre actualizado.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the login page" },
+    { "type": "action", "description": "Sign in with the admin email and password configured for this project" },
+    { "type": "action", "description": "Open the Productos section from the sidebar navigation" },
+    { "type": "action", "description": "Open the Agregar productos action to create a new product" },
+    { "type": "action", "description": "Fill the create product form with a unique SKU starting with TS-CREATE, a distinctive product name containing TS Create, a brand if required, and a valid price" },
+    { "type": "action", "description": "Submit the create product form" },
+    { "type": "action", "description": "Locate the newly created product in the catalog table by its SKU or name" },
+    { "type": "action", "description": "Open the Ver / Editar action for that product" },
+    { "type": "action", "description": "Change the product name to a new distinctive value containing TS Edited" },
+    { "type": "action", "description": "Save the product edit form" },
+    { "type": "assertion", "description": "Verify the catalog list or product detail shows the edited name containing TS Edited for that product, not the original create name" }
+  ]
+}

@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:ensure-house-brands": "tsx prisma/ensure-house-brands.ts",
+    "db:create-admin": "tsx prisma/create-admin.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

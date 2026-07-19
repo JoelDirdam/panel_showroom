@@ -7,6 +7,8 @@ import productsRoutes from './routes/products.js'
 import stockRoutes from './routes/stock.js'
 import salesRoutes from './routes/sales.js'
 import dashboardRoutes from './routes/dashboard.js'
+import productRequestsRoutes from './routes/productRequests.js'
+import agendaRoutes from './routes/agenda.js'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
@@ -59,6 +61,8 @@ app.use('/api/products', productsRoutes)
 app.use('/api/stock', stockRoutes)
 app.use('/api/sales', salesRoutes)
 app.use('/api/dashboard', dashboardRoutes)
+app.use('/api/product-requests', productRequestsRoutes)
+app.use('/api/agenda', agendaRoutes)
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on port ${PORT}`)

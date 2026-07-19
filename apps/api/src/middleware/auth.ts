@@ -1,12 +1,13 @@
 import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
-import type { Role } from '@prisma/client'
+import type { Prisma, Role } from '@prisma/client'
 
 export interface AuthUser {
   id: string
   email: string
   name: string
   role: Role
+  tenantId: string
   brandId: string | null
 }
 
@@ -27,6 +28,7 @@ export function signToken(user: AuthUser): string {
       email: user.email,
       name: user.name,
       role: user.role,
+      tenantId: user.tenantId,
       brandId: user.brandId,
     },
     JWT_SECRET,
@@ -62,6 +64,22 @@ export function authorize(...roles: Role[]) {
   }
 }
 
-export function brandFilter(user: AuthUser) {
-  return user.role === 'BRAND' && user.brandId ? { brandId: user.brandId } : {}
+export function tenantFilter(user: AuthUser): { tenantId: string } {
+  return { tenantId: user.tenantId }
+}
+
+export function brandFilter(user: AuthUser): Prisma.ProductWhereInput {
+  const tenantScope = { brand: { tenantId: user.tenantId } }
+  if (user.role === 'BRAND' && user.brandId) {
+    return { brandId: user.brandId, ...tenantScope }
+  }
+  return tenantScope
+}
+
+export function brandWhereFilter(user: AuthUser): Prisma.BrandWhereInput {
+  const filter: Prisma.BrandWhereInput = tenantFilter(user)
+  if (user.role === 'BRAND' && user.brandId) {
+    filter.id = user.brandId
+  }
+  return filter
 }

@@ -1,5 +1,6 @@
 <template>
   <aside
+    data-tour="app-sidebar"
     :class="[
       'fixed mt-16 flex flex-col lg:mt-0 top-0 px-5 left-0 bg-white dark:bg-gray-900 dark:border-gray-800 text-gray-900 h-screen transition-all duration-300 ease-in-out z-99999 border-r border-gray-200',
       {
@@ -97,8 +98,9 @@
                 <router-link
                   v-else-if="item.path"
                   :to="item.path"
+                  :data-tour="item.tourKey"
                   :class="[
-                    'menu-item group',
+                    'menu-item group relative',
                     {
                       'menu-item-active': isActive(item.path),
                       'menu-item-inactive': !isActive(item.path),
@@ -119,6 +121,17 @@
                     class="menu-item-text"
                     >{{ item.name }}</span
                   >
+                  <span
+                    v-if="item.badge && (isExpanded || isHovered || isMobileOpen)"
+                    class="ml-auto inline-flex min-w-5 items-center justify-center rounded-full bg-error-500 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-white"
+                  >
+                    {{ item.badge }}
+                  </span>
+                  <span
+                    v-else-if="item.badge"
+                    class="absolute right-2 top-1.5 size-2 rounded-full bg-error-500"
+                    aria-hidden="true"
+                  />
                 </router-link>
                 <transition
                   @enter="startTransition"
@@ -198,23 +211,24 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useProductRequestsStore } from "@/stores/productRequests";
 
 import {
-  GridIcon,
-  BoxIcon,
-  BoxesIcon,
-  TableIcon,
-  ListIcon,
-  ChevronDownIcon,
-  HorizontalDots,
-} from "../../icons";
+  LayoutDashboard,
+  Box,
+  Package,
+  CalendarDays,
+  Goal,
+} from "lucide-vue-next";
+import { BoxesIcon, ChevronDownIcon, HorizontalDots, BookOpenPesoIcon } from "../../icons";
 import { useSidebar } from "@/composables/useSidebar";
 
 const route = useRoute();
 const auth = useAuthStore();
+const productRequests = useProductRequestsStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
@@ -223,16 +237,18 @@ const menuGroups = computed(() => [
     title: "Showroom",
     items: [
       {
-        icon: GridIcon,
+        icon: LayoutDashboard,
         name: "Dashboard",
         path: "/",
+        tourKey: "sidebar-dashboard",
       },
       ...(auth.isAdmin
         ? [
             {
-              icon: BoxIcon,
+              icon: Box,
               name: "Marcas",
               path: "/brands",
+              tourKey: "sidebar-brands",
             },
           ]
         : []),
@@ -240,16 +256,37 @@ const menuGroups = computed(() => [
         icon: BoxesIcon,
         name: "Productos",
         path: "/products",
+        tourKey: "sidebar-products",
       },
       {
-        icon: TableIcon,
+        icon: Package,
         name: "Stock",
         path: "/stock",
+        tourKey: "sidebar-stock",
       },
       {
-        icon: ListIcon,
+        icon: Goal,
+        name: auth.isAdmin ? "Solicitudes" : "Solicitar productos",
+        path: "/product-requests",
+        tourKey: "sidebar-requests",
+        badge:
+          productRequests.pendingCount > 0
+            ? productRequests.pendingCount > 99
+              ? "99+"
+              : String(productRequests.pendingCount)
+            : undefined,
+      },
+      {
+        icon: CalendarDays,
+        name: "Agenda",
+        path: "/agenda",
+        tourKey: "sidebar-agenda",
+      },
+      {
+        icon: BookOpenPesoIcon,
         name: "Ventas/Tickets",
         path: "/sales",
+        tourKey: "sidebar-sales",
       },
     ],
   },
@@ -293,4 +330,25 @@ const startTransition = (el) => {
 const endTransition = (el) => {
   el.style.height = "";
 };
+
+onMounted(() => {
+  if (auth.isAuthenticated) productRequests.fetchPendingCount();
+});
+
+watch(
+  () => auth.isAuthenticated,
+  (ok) => {
+    if (ok) productRequests.fetchPendingCount();
+    else productRequests.clear();
+  }
+);
+
+watch(
+  () => route.path,
+  (path) => {
+    if (path === "/product-requests" && auth.isAuthenticated) {
+      productRequests.fetchPendingCount();
+    }
+  }
+);
 </script>

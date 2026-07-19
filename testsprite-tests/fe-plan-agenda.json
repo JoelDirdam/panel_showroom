@@ -1,0 +1,24 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Agenda — admin configura horario semanal recurrente",
+  "description": "Tras iniciar sesión como admin, el usuario abre Agenda, configura días semanales con rango e intervalo para Llevar stock, guarda la regla y ve disponibilidad generada en el calendario mensual.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the homepage" },
+    { "type": "action", "description": "Sign in with the configured admin credentials if the login page is shown" },
+    { "type": "action", "description": "Open Agenda from the sidebar" },
+    {
+      "type": "assertion",
+      "description": "Verify the Agenda page shows a weekly availability configuration card for Llevar stock with weekday buttons"
+    },
+    { "type": "action", "description": "Select Monday Wednesday and Saturday in the Llevar stock weekly rule" },
+    { "type": "action", "description": "Set the shared time range from 12:00 to 14:00" },
+    { "type": "action", "description": "Select the division option Cada 30 min" },
+    { "type": "action", "description": "Save the weekly schedule" },
+    {
+      "type": "assertion",
+      "description": "Verify the month calendar shows available-slot badges on upcoming days that match the weekly rule, laid out in a grid of weekday columns"
+    }
+  ]
+}

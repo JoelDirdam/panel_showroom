@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
-import { authenticate, brandFilter } from '../middleware/auth.js'
+import { authenticate, authorize, brandFilter, tenantFilter } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -68,7 +68,7 @@ router.get('/', async (req, res) => {
     where,
     orderBy: { updatedAt: 'desc' },
     include: {
-      brand: { select: { id: true, name: true } },
+      brand: { select: { id: true, name: true, isHouseBrand: true } },
       stock: true,
     },
   })
@@ -81,7 +81,7 @@ router.get('/:id', async (req, res) => {
   const product = await prisma.product.findFirst({
     where: { id, ...filter },
     include: {
-      brand: { select: { id: true, name: true } },
+      brand: { select: { id: true, name: true, isHouseBrand: true } },
       stock: true,
       stockEntries: {
         orderBy: { createdAt: 'desc' },
@@ -96,7 +96,7 @@ router.get('/:id', async (req, res) => {
   return res.json(product)
 })
 
-router.post('/', async (req, res) => {
+router.post('/', authorize('ADMIN'), async (req, res) => {
   const parsed = productSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -109,6 +109,13 @@ router.post('/', async (req, res) => {
 
   if (!brandId) {
     return res.status(400).json({ error: 'brandId es requerido' })
+  }
+
+  const brand = await prisma.brand.findFirst({
+    where: { id: brandId, ...tenantFilter(req.user!) },
+  })
+  if (!brand) {
+    return res.status(404).json({ error: 'Marca no encontrada' })
   }
 
   const { quantity = 0, minStock = 5, ...productData } = parsed.data
@@ -131,7 +138,7 @@ router.post('/', async (req, res) => {
   }
 })
 
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', authorize('ADMIN'), async (req, res) => {
   const id = getParam(req.params.id)
   const parsed = productSchema.partial().safeParse(req.body)
   if (!parsed.success) {
@@ -185,7 +192,7 @@ router.patch('/:id', async (req, res) => {
   return res.json(product)
 })
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authorize('ADMIN'), async (req, res) => {
   const id = getParam(req.params.id)
   const filter = brandFilter(req.user!)
   const existing = await prisma.product.findFirst({

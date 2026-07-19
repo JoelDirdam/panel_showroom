@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
-import { authenticate, brandFilter } from '../middleware/auth.js'
+import { authenticate, authorize, brandFilter } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -55,7 +55,7 @@ router.get('/:productId/entries', async (req, res) => {
   return res.json(entries)
 })
 
-router.post('/:productId/entries', async (req, res) => {
+router.post('/:productId/entries', authorize('ADMIN'), async (req, res) => {
   const productId = getParam(req.params.productId)
   const parsed = stockEntrySchema.safeParse(req.body)
   if (!parsed.success) {
@@ -109,7 +109,7 @@ router.post('/:productId/entries', async (req, res) => {
   return res.status(201).json(result)
 })
 
-router.patch('/:productId', async (req, res) => {
+router.patch('/:productId', authorize('ADMIN'), async (req, res) => {
   const productId = getParam(req.params.productId)
   const parsed = stockUpdateSchema.safeParse(req.body)
   if (!parsed.success) {

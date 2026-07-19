@@ -1,0 +1,26 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Tutorial — admin ve el tour del sidebar y puede saltarlo",
+  "description": "Tras iniciar sesión como admin en el dashboard, aparece el tutorial guiado destacando el menú lateral; el usuario puede cerrarlo o saltarlo y reabrirlo desde Ver tutorial en el menú de usuario.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the homepage" },
+    { "type": "action", "description": "Clear site localStorage for the panel tour flags if accessible, then reload" },
+    { "type": "action", "description": "Sign in with the configured admin credentials if the login page is shown" },
+    {
+      "type": "assertion",
+      "description": "Verify a guided tutorial overlay or popover appears on the Dashboard explaining the sidebar menu"
+    },
+    { "type": "action", "description": "Advance the tutorial at least once with Siguiente or close/skip it with the close control" },
+    {
+      "type": "assertion",
+      "description": "Verify the tutorial can be dismissed so the dashboard content is usable again"
+    },
+    { "type": "action", "description": "Open the user menu in the header and click Ver tutorial" },
+    {
+      "type": "assertion",
+      "description": "Verify the guided tutorial overlay or popover appears again on the Dashboard"
+    }
+  ]
+}

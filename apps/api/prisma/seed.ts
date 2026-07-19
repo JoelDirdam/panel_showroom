@@ -1,43 +1,60 @@
 import bcrypt from 'bcryptjs'
 import { PrismaClient, Role } from '@prisma/client'
+import { ensureHouseBrand } from '../src/lib/houseBrand.js'
 
 const prisma = new PrismaClient()
 
 async function main() {
   const password = process.env.SEED_PASSWORD || 'Showroom2026!'
 
-  const brand = await prisma.brand.upsert({
-    where: { slug: 'bubbles-demo' },
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: 'showroom-demo' },
     update: {},
     create: {
+      name: 'Showroom Demo',
+      slug: 'showroom-demo',
+      active: true,
+    },
+  })
+
+  await ensureHouseBrand(prisma, tenant, 'admin@showroom.com')
+
+  const brand = await prisma.brand.upsert({
+    where: { tenantId_slug: { tenantId: tenant.id, slug: 'bubbles-demo' } },
+    update: {},
+    create: {
+      tenantId: tenant.id,
       name: 'Bubbles Demo',
       slug: 'bubbles-demo',
       contactEmail: 'demo@bubbles.com',
       active: true,
+      isHouseBrand: false,
     },
   })
 
   const adminHash = await bcrypt.hash(password, 10)
   await prisma.user.upsert({
     where: { email: 'admin@showroom.com' },
-    update: { password: adminHash },
+    update: { password: adminHash, tenantId: tenant.id },
     create: {
       email: 'admin@showroom.com',
       password: adminHash,
       name: 'Administrador Showroom',
       role: Role.ADMIN,
+      tenantId: tenant.id,
     },
   })
 
   const brandHash = await bcrypt.hash(password, 10)
   await prisma.user.upsert({
     where: { email: 'marca@bubbles.com' },
-    update: { password: brandHash },
+    update: { password: brandHash, tenantId: tenant.id, brandId: brand.id },
     create: {
       email: 'marca@bubbles.com',
       password: brandHash,
       name: 'Usuario Marca Demo',
       role: Role.BRAND,
+      tenantId: tenant.id,
       brandId: brand.id,
     },
   })

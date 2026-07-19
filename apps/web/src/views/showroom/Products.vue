@@ -92,20 +92,31 @@
       </form>
     </component-card>
 
-    <component-card title="Catálogo de productos">
+    <component-card title="Catálogo de productos" data-tour="products-catalog">
       <div class="mb-4 flex flex-wrap justify-end gap-2">
-        <button
-          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
-          @click="openAddStock"
-        >
-          Agregar Stock
-        </button>
-        <button
+        <template v-if="auth.isAdmin">
+          <button
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5"
+            @click="openAddStock"
+          >
+            Agregar Stock
+          </button>
+          <button
+            data-tour="products-create"
+            class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+            @click="openCreate"
+          >
+            Agregar productos
+          </button>
+        </template>
+        <router-link
+          v-else
+          data-tour="products-request-link"
+          to="/product-requests"
           class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
-          @click="openCreate"
         >
-          Agregar productos
-        </button>
+          Solicitar producto o restock
+        </router-link>
       </div>
 
       <div class="overflow-x-auto">
@@ -130,7 +141,7 @@
               <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ product.sku }}</td>
               <td class="py-3 pr-4 font-medium text-gray-800 dark:text-white">{{ product.name }}</td>
               <td v-if="auth.isAdmin" class="py-3 pr-4 text-gray-600 dark:text-gray-300">
-                {{ product.brand.name }}
+                {{ brandLabel(product.brand) }}
               </td>
               <td class="py-3 pr-4 text-gray-800 dark:text-white">
                 {{ product.stock?.minStock ?? 0 }}
@@ -143,7 +154,7 @@
               </td>
               <td class="py-3">
                 <button class="text-brand-500 hover:underline" @click="openViewEdit(product)">
-                  Ver/Editar
+                  {{ auth.isAdmin ? 'Ver/Editar' : 'Ver' }}
                 </button>
               </td>
             </tr>
@@ -160,117 +171,130 @@
       </div>
     </component-card>
 
-    <component-card v-if="detail" title="Ver/Editar producto" class-name="mt-6">
-      <form class="space-y-4" @submit.prevent="saveDetail">
-        <div class="grid gap-4 sm:grid-cols-2">
+    <!-- Modal: Ver/Editar producto -->
+    <div
+      v-if="detail"
+      class="fixed inset-0 z-99999 flex items-start justify-center overflow-y-auto bg-black/50 p-4"
+      @click.self="closeDetail"
+    >
+      <div class="mt-10 w-full max-w-3xl rounded-2xl bg-white p-6 dark:bg-gray-900">
+        <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Ver/Editar producto</h3>
+        <form class="space-y-4" @submit.prevent="saveDetail">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nombre</label>
+              <input
+                v-model="detailForm.name"
+                required
+                :disabled="!auth.isAdmin"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">SKU</label>
+              <input
+                v-model="detailForm.sku"
+                disabled
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Precio</label>
+              <input
+                v-model.number="detailForm.price"
+                type="number"
+                :disabled="!auth.isAdmin"
+                step="0.01"
+                min="0"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Stock (mínimo)</label>
+              <input
+                v-model.number="detailForm.minStock"
+                type="number"
+                :disabled="!auth.isAdmin"
+                min="0"
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cantidad actual</label>
+              <input
+                :value="detail.stock?.quantity ?? 0"
+                disabled
+                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+          </div>
           <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nombre</label>
-            <input
-              v-model="detailForm.name"
-              required
+            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Descripción</label>
+            <textarea
+              v-model="detailForm.description"
+              rows="2"
+              :disabled="!auth.isAdmin"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">SKU</label>
-            <input
-              v-model="detailForm.sku"
-              disabled
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
+          <div class="flex justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-lg px-4 py-2 text-sm text-gray-600 dark:text-gray-400"
+              @click="closeDetail"
+            >
+              Cerrar
+            </button>
+            <button v-if="auth.isAdmin" type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">
+              Guardar cambios
+            </button>
           </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Precio</label>
-            <input
-              v-model.number="detailForm.price"
-              type="number"
-              step="0.01"
-              min="0"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Stock (mínimo)</label>
-            <input
-              v-model.number="detailForm.minStock"
-              type="number"
-              min="0"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cantidad actual</label>
-            <input
-              :value="detail.stock?.quantity ?? 0"
-              disabled
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-        </div>
-        <div>
-          <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Descripción</label>
-          <textarea
-            v-model="detailForm.description"
-            rows="2"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-        </div>
-        <div class="flex justify-end gap-2">
-          <button
-            type="button"
-            class="rounded-lg px-4 py-2 text-sm text-gray-600 dark:text-gray-400"
-            @click="closeDetail"
-          >
-            Cerrar
-          </button>
-          <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">
-            Guardar cambios
-          </button>
-        </div>
-      </form>
+        </form>
 
-      <div class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
-        <h4 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white">Entradas de stock</h4>
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead>
-              <tr class="border-b border-gray-200 text-left text-gray-500 dark:border-gray-800">
-                <th class="py-2 pr-4">Fecha</th>
-                <th class="py-2 pr-4">Cantidad</th>
-                <th class="py-2 pr-4">Nota</th>
-                <th class="py-2">Usuario</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="entry in detail.stockEntries || []"
-                :key="entry.id"
-                class="border-b border-gray-100 dark:border-gray-800"
-              >
-                <td class="py-2 pr-4 text-gray-600 dark:text-gray-300">
-                  {{ formatDate(entry.createdAt) }}
-                </td>
-                <td class="py-2 pr-4 text-gray-800 dark:text-white">+{{ entry.quantity }}</td>
-                <td class="py-2 pr-4 text-gray-600 dark:text-gray-300">{{ entry.note || '—' }}</td>
-                <td class="py-2 text-gray-600 dark:text-gray-300">
-                  {{ entry.createdBy?.name || '—' }}
-                </td>
-              </tr>
-              <tr v-if="!(detail.stockEntries && detail.stockEntries.length)">
-                <td colspan="4" class="py-4 text-center text-gray-500 dark:text-gray-400">
-                  Sin entradas de stock registradas
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="mt-6 border-t border-gray-200 pt-4 dark:border-gray-800">
+          <h4 class="mb-3 text-sm font-semibold text-gray-800 dark:text-white">Entradas de stock</h4>
+          <div class="max-h-60 overflow-x-auto overflow-y-auto">
+            <table class="min-w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-200 text-left text-gray-500 dark:border-gray-800">
+                  <th class="py-2 pr-4">Fecha</th>
+                  <th class="py-2 pr-4">Cantidad</th>
+                  <th class="py-2 pr-4">Nota</th>
+                  <th class="py-2">Usuario</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="entry in detail.stockEntries || []"
+                  :key="entry.id"
+                  class="border-b border-gray-100 dark:border-gray-800"
+                >
+                  <td class="py-2 pr-4 text-gray-600 dark:text-gray-300">
+                    {{ formatDate(entry.createdAt) }}
+                  </td>
+                  <td class="py-2 pr-4 text-gray-800 dark:text-white">+{{ entry.quantity }}</td>
+                  <td class="py-2 pr-4 text-gray-600 dark:text-gray-300">{{ entry.note || '—' }}</td>
+                  <td class="py-2 text-gray-600 dark:text-gray-300">
+                    {{ entry.createdBy?.name || '—' }}
+                  </td>
+                </tr>
+                <tr v-if="!(detail.stockEntries && detail.stockEntries.length)">
+                  <td colspan="4" class="py-4 text-center text-gray-500 dark:text-gray-400">
+                    Sin entradas de stock registradas
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </component-card>
+    </div>
 
     <!-- Modal: Agregar productos -->
     <div
       v-if="showCreateModal"
       class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4"
+      @click.self="showCreateModal = false"
     >
       <div class="w-full max-w-lg rounded-2xl bg-white p-6 dark:bg-gray-900">
         <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Agregar productos</h3>
@@ -284,7 +308,7 @@
             >
               <option value="" disabled>Selecciona una marca</option>
               <option v-for="brand in brands" :key="brand.id" :value="brand.id">
-                {{ brand.name }}
+                {{ brandLabel(brand) }}
               </option>
             </select>
           </div>
@@ -362,6 +386,7 @@
     <div
       v-if="showStockModal"
       class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4"
+      @click.self="showStockModal = false"
     >
       <div class="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-gray-900">
         <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Agregar Stock</h3>
@@ -429,6 +454,10 @@ const brands = ref<Brand[]>([])
 const detail = ref<Product | null>(null)
 const showCreateModal = ref(false)
 const showStockModal = ref(false)
+
+function brandLabel(brand: { name: string; isHouseBrand?: boolean }) {
+  return brand.isHouseBrand ? `Propio — ${brand.name}` : brand.name
+}
 
 const filters = reactive({
   name: '',

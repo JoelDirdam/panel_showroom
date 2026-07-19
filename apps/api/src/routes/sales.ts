@@ -3,7 +3,7 @@ import { PaymentMethod, Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
-import { authenticate, authorize } from '../middleware/auth.js'
+import { authenticate, authorize, tenantFilter } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -79,8 +79,11 @@ router.use(authenticate)
 
 router.get('/', async (req, res) => {
   const user = req.user!
-  const where: Prisma.SaleWhereInput =
-    user.role === 'BRAND' && user.brandId ? filterSalesForBrand(user.brandId) : {}
+  const where: Prisma.SaleWhereInput = tenantFilter(user)
+
+  if (user.role === 'BRAND' && user.brandId) {
+    Object.assign(where, filterSalesForBrand(user.brandId))
+  }
 
   const paid = req.query.paid
   const inSettlement = req.query.inSettlement
@@ -114,6 +117,7 @@ router.get('/:id', async (req, res) => {
   const sale = await prisma.sale.findFirst({
     where: {
       id,
+      ...tenantFilter(user),
       ...(user.role === 'BRAND' && user.brandId ? filterSalesForBrand(user.brandId) : {}),
     },
     include: saleInclude,
@@ -141,7 +145,10 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
   try {
     const sale = await prisma.$transaction(async (tx) => {
       const products = await tx.product.findMany({
-        where: { id: { in: productIds } },
+        where: {
+          id: { in: productIds },
+          brand: { tenantId: req.user!.tenantId },
+        },
         include: { stock: true },
       })
 
@@ -193,6 +200,7 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
         data: {
           paymentMethod,
           soldAt: soldAt ? new Date(soldAt) : undefined,
+          tenantId: req.user!.tenantId,
           createdById: req.user!.id,
           lines: { create: lineData },
         },
@@ -243,8 +251,11 @@ router.patch('/lines/:lineId', authorize('ADMIN'), async (req, res) => {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
   }
 
-  const existing = await prisma.saleLine.findUnique({
-    where: { id: lineId },
+  const existing = await prisma.saleLine.findFirst({
+    where: {
+      id: lineId,
+      sale: tenantFilter(req.user!),
+    },
   })
   if (!existing) {
     return res.status(404).json({ error: 'Línea de venta no encontrada' })

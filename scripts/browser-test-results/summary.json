@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Login admin",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Página Productos carga con card Filtrar Productos",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Columna SKU",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Columna Nombre",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Columna Stock",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Columna Cantidad actual",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Columna Precio",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Botón Agregar productos",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Botón Agregar Stock",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Botón Aplicar Filtros",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Filtro por nombre aplicado",
+    "pass": true,
+    "detail": "1 filas"
+  },
+  {
+    "name": "Card Ver/Editar con entradas de stock",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Guardar cambios en Ver/Editar",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Agregar Stock desde modal",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Modal Agregar productos",
+    "pass": true,
+    "detail": ""
+  },
+  {
+    "name": "Login marca y productos",
+    "pass": true,
+    "detail": "3 filas"
+  }
+]

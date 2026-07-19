@@ -1,6 +1,6 @@
 import BoxCubeIcon from "./BoxCubeIcon.vue";
 import BoxesIcon from "./BoxesIcon.vue";
-import GridIcon from "./GridIcon.vue";
+import BookOpenPesoIcon from "./BookOpenPesoIcon.vue";
 import CalenderIcon from "./CalenderIcon.vue";
 import TaskIcon from "./TaskIcon.vue";
 import ChatIcon from "./ChatIcon.vue";
@@ -18,8 +18,6 @@ import InfoIcon from "./InfoIcon.vue";
 import WarningIcon from "./WarningIcon.vue";
 import PlusIcon from "./PlusIcon.vue";
 import TrashIconLg from "./TrashIconLg.vue";
-import ListIcon from "./ListIcon.vue";
-import TableIcon from "./TableIcon.vue";
 import LogoutIcon from "./LogoutIcon.vue";
 import InfoCircleIcon from "./InfoCircleIcon.vue";
 import FolderIcon from "./FolderIcon.vue";
@@ -42,7 +40,6 @@ import FlagIcon from "./FlagIcon.vue";
 import StaredIcon from "./StaredIcon.vue";
 import RefreshIcon from "./RefreshIcon.vue";
 import SupportIcon from "./SupportIcon.vue";
-import LayoutDashboardIcon from "./LayoutDashboardIcon.vue";
 import UserGroupIcon from "./UserGroupIcon.vue";
 import BellIcon from "./BellIcon.vue";
 import BarChartIcon from "./BarChartIcon.vue";
@@ -50,7 +47,7 @@ import BarChartIcon from "./BarChartIcon.vue";
 export {
   BellIcon,
   BarChartIcon,
-  LayoutDashboardIcon,
+  BookOpenPesoIcon,
   UserGroupIcon,
   FolderIcon,
   TrashIconLg,
@@ -67,7 +64,6 @@ export {
   BoxCubeIcon,
   BoxesIcon,
   ChevronRightIcon,
-  GridIcon,
   CalenderIcon,
   UserCircleIcon,
   TaskIcon,
@@ -80,8 +76,6 @@ export {
   Calendar2Line,
   PlugInIcon,
   PageIcon,
-  TableIcon,
-  ListIcon,
   LogoutIcon,
   InfoCircleIcon,
   SettingsIcon,

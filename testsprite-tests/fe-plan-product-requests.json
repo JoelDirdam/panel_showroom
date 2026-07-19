@@ -1,0 +1,16 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Solicitudes — admin ve bandeja con seleccionar todos y aceptar",
+  "description": "Tras iniciar sesión como admin, el usuario abre Solicitudes y ve la bandeja de pendientes con la acción Seleccionar todos y el botón para aceptar seleccionados.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the homepage" },
+    { "type": "action", "description": "Sign in with the configured admin credentials if the login page is shown" },
+    { "type": "action", "description": "Open Solicitudes from the sidebar" },
+    {
+      "type": "assertion",
+      "description": "Verify the Solicitudes page shows the pending requests board with a Seleccionar todos checkbox and an Aceptar seleccionados button in the main content area"
+    }
+  ]
+}

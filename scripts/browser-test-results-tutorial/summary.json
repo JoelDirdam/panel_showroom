@@ -1,0 +1,36 @@
+{
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Login admin",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Tour autoarranque visible",
+      "pass": true,
+      "detail": "Bienvenido al panel"
+    },
+    {
+      "name": "Tour avanza con Siguiente",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Tour cerrado",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Replay desde Ver tutorial",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Tour marca autoarranque",
+      "pass": true,
+      "detail": "Bienvenida al panel"
+    }
+  ]
+}

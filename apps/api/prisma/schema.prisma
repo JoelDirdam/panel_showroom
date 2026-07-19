@@ -19,30 +19,79 @@ enum PaymentMethod {
   OTRO
 }
 
+enum ProductRequestType {
+  CREATE_PRODUCT
+  RESTOCK
+}
+
+enum ProductRequestStatus {
+  PENDING
+  ACCEPTED
+}
+
+enum ScheduleType {
+  STOCK_DELIVERY
+  CUT_PICKUP
+}
+
+model Tenant {
+  id              String            @id @default(cuid())
+  name            String
+  slug            String            @unique
+  active          Boolean           @default(true)
+  users           User[]
+  brands          Brand[]
+  sales           Sale[]
+  productRequests ProductRequest[]
+  agendaSettings  AgendaSettings?
+  weeklyRules     WeeklyScheduleRule[]
+  scheduleSlots   ScheduleSlot[]
+  appointments    Appointment[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
-  password     String
-  name         String
-  role         Role
-  brandId      String?
-  brand        Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  stockEntries StockEntry[]
-  sales        Sale[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                 String       @id @default(cuid())
+  email              String       @unique
+  password           String
+  name               String
+  role               Role
+  mustChangePassword Boolean      @default(false)
+  tenantId           String
+  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brandId            String?
+  brand              Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  stockEntries       StockEntry[]
+  sales              Sale[]
+  requestedProducts  ProductRequest[] @relation("ProductRequestCreatedBy")
+  acceptedProducts   ProductRequest[] @relation("ProductRequestAcceptedBy")
+  appointments       Appointment[]
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([tenantId])
 }
 
 model Brand {
   id           String    @id @default(cuid())
+  tenantId     String
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name         String
-  slug         String    @unique
+  slug         String
   contactEmail String?
+  whatsapp    String?
   active       Boolean   @default(true)
+  isHouseBrand Boolean   @default(false)
   products     Product[]
   users        User[]
+  productRequests ProductRequest[]
+  appointments Appointment[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
 }
 
 model Product {
@@ -57,6 +106,7 @@ model Product {
   stock        Stock?
   stockEntries StockEntry[]
   saleLines    SaleLine[]
+  productRequests ProductRequest[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -87,6 +137,8 @@ model StockEntry {
 
 model Sale {
   id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   ticketNumber  Int           @unique @default(autoincrement())
   paymentMethod PaymentMethod
   soldAt        DateTime      @default(now())
@@ -96,7 +148,7 @@ model Sale {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  @@index([soldAt])
+  @@index([tenantId, soldAt])
 }
 
 model SaleLine {
@@ -116,4 +168,101 @@ model SaleLine {
 
   @@index([productId])
   @@index([saleId])
+}
+
+model ProductRequest {
+  id            String               @id @default(cuid())
+  tenantId      String
+  tenant        Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brandId       String
+  brand         Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  requestedById String
+  requestedBy   User                 @relation("ProductRequestCreatedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  type          ProductRequestType
+  status        ProductRequestStatus @default(PENDING)
+  productId     String?
+  product       Product?             @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name          String?
+  sku           String?
+  description   String?
+  price         Decimal?             @db.Decimal(10, 2)
+  imageUrl      String?
+  quantity      Int
+  minStock      Int                  @default(5)
+  notes         String?
+  acceptedById  String?
+  acceptedBy    User?                @relation("ProductRequestAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
+  acceptedAt    DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([tenantId, status, createdAt])
+  @@index([brandId, status])
+}
+
+model AgendaSettings {
+  id                   String   @id @default(cuid())
+  tenantId             String   @unique
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stockDeliveryEnabled Boolean  @default(true)
+  cutPickupEnabled     Boolean  @default(true)
+  timezone             String   @default("America/Mexico_City")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+/// One weekly recurrence row per action + weekday (1=Mon … 7=Sun).
+model WeeklyScheduleRule {
+  id              String       @id @default(cuid())
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type            ScheduleType
+  weekday         Int
+  startTime       String
+  endTime         String
+  intervalMinutes Int
+  active          Boolean      @default(true)
+  slots           ScheduleSlot[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([tenantId, type, weekday])
+  @@index([tenantId, type])
+}
+
+model ScheduleSlot {
+  id          String              @id @default(cuid())
+  tenantId    String
+  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type        ScheduleType
+  startAt     DateTime
+  endAt       DateTime
+  active      Boolean             @default(true)
+  ruleId      String?
+  rule        WeeklyScheduleRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  appointment Appointment?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([tenantId, type, startAt, endAt])
+  @@index([tenantId, type, startAt])
+  @@index([ruleId])
+}
+
+model Appointment {
+  id         String       @id @default(cuid())
+  tenantId   String
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  brandId    String
+  brand      Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  slotId     String       @unique
+  slot       ScheduleSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  bookedById String
+  bookedBy   User         @relation(fields: [bookedById], references: [id], onDelete: Restrict)
+  notes      String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([tenantId, createdAt])
+  @@index([brandId, createdAt])
 }
