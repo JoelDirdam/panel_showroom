@@ -1,0 +1,18 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Preferencias — cambio de comisión de terminal primaria persiste tras guardar",
+  "description": "Un admin abre Preferencias, la sección 'Preferencias del negocio' carga con los valores actuales, cambia el porcentaje de comisión de la terminal primaria a un valor nuevo, lo guarda, y al recargar la página el nuevo valor sigue presente.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the login page" },
+    { "type": "action", "description": "Sign in with the admin email and password configured for this project" },
+    { "type": "action", "description": "Open Preferencias from the sidebar navigation" },
+    { "type": "assertion", "description": "Verify the Preferencias page shows an 'Resumen de la cuenta' section with the signed-in admin's email and a 'Preferencias del negocio' section with a Terminal primaria commission field" },
+    { "type": "action", "description": "Clear the Terminal primaria commission field and type the value 7.5" },
+    { "type": "action", "description": "Click 'Guardar preferencias'" },
+    { "type": "assertion", "description": "Verify a success confirmation message appears in the Preferencias del negocio section after saving" },
+    { "type": "action", "description": "Reload the Preferencias page" },
+    { "type": "assertion", "description": "Verify the Terminal primaria commission field in the Preferencias del negocio section still shows the value 7.5 after the reload" }
+  ]
+}
