@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import type { Prisma, Role } from '@prisma/client'
+import { prisma } from '../lib/prisma.js'
 
 export interface AuthUser {
   id: string
@@ -36,20 +37,23 @@ export function signToken(user: AuthUser): string {
   )
 }
 
-export function authenticate(req: Request, res: Response, next: NextFunction) {
+function verifyToken(req: Request): AuthUser | null {
   const header = req.headers.authorization
-  if (!header?.startsWith('Bearer ')) {
+  if (!header?.startsWith('Bearer ')) return null
+  try {
+    return jwt.verify(header.slice(7), JWT_SECRET) as AuthUser
+  } catch {
+    return null
+  }
+}
+
+export function authenticate(req: Request, res: Response, next: NextFunction) {
+  const payload = verifyToken(req)
+  if (!payload) {
     return res.status(401).json({ error: 'No autorizado' })
   }
-
-  try {
-    const token = header.slice(7)
-    const payload = jwt.verify(token, JWT_SECRET) as AuthUser
-    req.user = payload
-    next()
-  } catch {
-    return res.status(401).json({ error: 'Token inválido o expirado' })
-  }
+  req.user = payload
+  next()
 }
 
 export function authorize(...roles: Role[]) {
@@ -82,4 +86,72 @@ export function brandWhereFilter(user: AuthUser): Prisma.BrandWhereInput {
     filter.id = user.brandId
   }
   return filter
+}
+
+/**
+ * Rutas que deben quedar exentas de los guards de términos/onboarding porque
+ * son precisamente las que permiten completar esos pasos (o son públicas).
+ */
+const GUARD_ALLOWLIST_PREFIXES = ['/api/auth', '/api/terms', '/api/onboarding', '/uploads', '/health']
+
+function isAllowlisted(req: Request): boolean {
+  const p = req.path
+  return GUARD_ALLOWLIST_PREFIXES.some((prefix) => p === prefix || p.startsWith(`${prefix}/`))
+}
+
+/**
+ * Bloquea el acceso a rutas protegidas si el usuario autenticado no ha aceptado
+ * la versión vigente de TermsDocument. No rechaza si no hay token: se delega
+ * en `authenticate` (montado en cada router) para exigir el 401 correspondiente.
+ */
+export async function requireTerms(req: Request, res: Response, next: NextFunction) {
+  if (isAllowlisted(req)) return next()
+
+  const user = req.user ?? verifyToken(req)
+  if (!user) return next()
+  req.user = req.user ?? user
+
+  const current = await prisma.termsDocument.findFirst({ orderBy: { publishedAt: 'desc' } })
+  if (!current) return next()
+
+  const accepted = await prisma.termsAcceptance.findUnique({
+    where: { userId_version: { userId: user.id, version: current.version } },
+  })
+  if (!accepted) {
+    return res.status(403).json({
+      error: 'Debes aceptar los Términos y Condiciones vigentes para continuar',
+      code: 'TERMS_REQUIRED',
+      termsVersion: current.version,
+    })
+  }
+
+  next()
+}
+
+/**
+ * Bloquea el acceso a rutas protegidas si el tenant/usuario no terminó el
+ * onboarding (a menos que la ruta esté en el allowlist de onboarding/auth/terms).
+ */
+export async function requireOnboarding(req: Request, res: Response, next: NextFunction) {
+  if (isAllowlisted(req)) return next()
+
+  const user = req.user ?? verifyToken(req)
+  if (!user) return next()
+  req.user = req.user ?? user
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { onboardingStep: true, tenant: { select: { onboardingComplete: true } } },
+  })
+  if (!dbUser) return next()
+
+  if (dbUser.onboardingStep !== 'DONE' && !dbUser.tenant.onboardingComplete) {
+    return res.status(403).json({
+      error: 'Debes completar la configuración inicial de tu negocio para continuar',
+      code: 'ONBOARDING_REQUIRED',
+      onboardingStep: dbUser.onboardingStep,
+    })
+  }
+
+  next()
 }

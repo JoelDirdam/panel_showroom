@@ -17,16 +17,31 @@ enum PaymentMethod {
   TARJETA
   TRANSFERENCIA
   OTRO
+  MIXTO
+}
+
+enum LayawayStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+enum SplitPaymentMethod {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
 }
 
 enum ProductRequestType {
   CREATE_PRODUCT
   RESTOCK
+  WITHDRAWAL
 }
 
 enum ProductRequestStatus {
   PENDING
   ACCEPTED
+  REJECTED
 }
 
 enum ScheduleType {
@@ -34,91 +49,168 @@ enum ScheduleType {
   CUT_PICKUP
 }
 
+enum OnboardingStep {
+  REGISTERED
+  EMAIL_VERIFIED
+  PLAN_SELECTED
+  BUSINESS_CREATED
+  DONE
+}
+
+enum PlanType {
+  NEGOCIO
+  CLINICA
+  RESTAURANTE
+  MARCA
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  EXPIRED
+  CANCELED
+}
+
+enum CommissionFeePayer {
+  BRAND
+  CLIENT
+  BUSINESS
+}
+
+enum CutoffType {
+  WEEKLY
+  MONTHLY_FIXED
+}
+
+enum UsdRateMode {
+  FIXED
+  AUTOMATIC
+}
+
 model Tenant {
-  id              String            @id @default(cuid())
-  name            String
-  slug            String            @unique
-  active          Boolean           @default(true)
-  users           User[]
-  brands          Brand[]
-  sales           Sale[]
-  productRequests ProductRequest[]
-  agendaSettings  AgendaSettings?
-  weeklyRules     WeeklyScheduleRule[]
-  scheduleSlots   ScheduleSlot[]
-  appointments    Appointment[]
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                 String               @id @default(cuid())
+  name               String
+  slug               String               @unique
+  active             Boolean              @default(true)
+  rfc                String?
+  socialUrl          String?
+  address            String?
+  logoUrl            String?
+  onboardingComplete Boolean              @default(true)
+  users              User[]
+  brands             Brand[]
+  sales              Sale[]
+  customers          Customer[]
+  giftCards          GiftCard[]
+  layaways           Layaway[]
+  productRequests    ProductRequest[]
+  agendaSettings     AgendaSettings?
+  weeklyRules        WeeklyScheduleRule[]
+  scheduleSlots      ScheduleSlot[]
+  appointments       Appointment[]
+  categories         Category[]
+  subscription       TenantSubscription?
+  preferences        BusinessPreferences?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 }
 
 model User {
-  id                 String       @id @default(cuid())
-  email              String       @unique
+  id                 String                  @id @default(cuid())
+  email              String                  @unique
   password           String
   name               String
   role               Role
-  mustChangePassword Boolean      @default(false)
+  mustChangePassword Boolean                 @default(false)
+  phone              String?
+  phoneVerifiedAt    DateTime?
+  emailVerifiedAt    DateTime?
+  timezone           String?                 @default("America/Mexico_City")
+  onboardingStep     OnboardingStep          @default(DONE)
   tenantId           String
-  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   brandId            String?
-  brand              Brand?       @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  brand              Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
   stockEntries       StockEntry[]
-  sales              Sale[]
-  requestedProducts  ProductRequest[] @relation("ProductRequestCreatedBy")
-  acceptedProducts   ProductRequest[] @relation("ProductRequestAcceptedBy")
+  sales              Sale[]                  @relation("SaleCreatedBy")
+  attendedSales      Sale[]                  @relation("SaleAttendedBy")
+  layaways           Layaway[]
+  requestedProducts  ProductRequest[]        @relation("ProductRequestCreatedBy")
+  acceptedProducts   ProductRequest[]        @relation("ProductRequestAcceptedBy")
+  rejectedProducts   ProductRequest[]        @relation("ProductRequestRejectedBy")
   appointments       Appointment[]
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  ownedBrands        Brand[]                 @relation("BrandOwner")
+  termsAcceptances   TermsAcceptance[]
+  emailCodes         EmailVerificationCode[]
+  smsCodes           SmsVerificationCode[]
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
 
   @@index([tenantId])
 }
 
 model Brand {
-  id           String    @id @default(cuid())
-  tenantId     String
-  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name         String
-  slug         String
-  contactEmail String?
-  whatsapp    String?
-  active       Boolean   @default(true)
-  isHouseBrand Boolean   @default(false)
-  products     Product[]
-  users        User[]
-  productRequests ProductRequest[]
-  appointments Appointment[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                  String             @id @default(cuid())
+  tenantId            String
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String
+  slug                String
+  contactEmail        String?
+  whatsapp            String?
+  active              Boolean            @default(true)
+  isHouseBrand        Boolean            @default(false)
+  monthlyRent         Decimal            @default(0) @db.Decimal(12, 2)
+  assignedSpace       String?
+  phone               String?
+  cutoffDate          DateTime?
+  commissionPercent   Decimal            @default(0) @db.Decimal(5, 2)
+  cardFeePayer        CommissionFeePayer @default(BRAND)
+  transferFeePayer    CommissionFeePayer @default(BRAND)
+  inviteCodeHash      String?
+  inviteCodeExpiresAt DateTime?
+  ownerUserId         String?
+  owner               User?              @relation("BrandOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  products            Product[]
+  users               User[]
+  productRequests     ProductRequest[]
+  appointments        Appointment[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([ownerUserId])
 }
 
 model Product {
-  id           String       @id @default(cuid())
-  brandId      String
-  brand        Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
-  name         String
-  sku          String
-  description  String?
-  price        Decimal?     @db.Decimal(10, 2)
-  imageUrl     String?
-  stock        Stock?
-  stockEntries StockEntry[]
-  saleLines    SaleLine[]
+  id              String           @id @default(cuid())
+  brandId         String
+  brand           Brand            @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  name            String
+  sku             String
+  description     String?
+  price           Decimal?         @db.Decimal(10, 2)
+  imageUrl        String?
+  categoryId      String?
+  category        Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  stock           Stock?
+  stockEntries    StockEntry[]
+  saleLines       SaleLine[]
+  layawayLines    LayawayLine[]
   productRequests ProductRequest[]
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@unique([brandId, sku])
+  @@index([categoryId])
 }
 
 model Stock {
-  id        String  @id @default(cuid())
-  productId String  @unique
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity  Int     @default(0)
-  minStock  Int     @default(5)
+  id        String   @id @default(cuid())
+  productId String   @unique
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(0)
+  minStock  Int      @default(5)
   updatedAt DateTime @updatedAt
 }
 
@@ -135,18 +227,59 @@ model StockEntry {
   @@index([productId, createdAt])
 }
 
+model Customer {
+  id        String    @id @default(cuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String?
+  sales     Sale[]
+  layaways  Layaway[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([tenantId, name])
+  @@index([tenantId, phone])
+}
+
+model GiftCard {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code      String
+  balance   Decimal  @db.Decimal(10, 2)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+}
+
 model Sale {
-  id            String        @id @default(cuid())
-  tenantId      String
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ticketNumber  Int           @unique @default(autoincrement())
-  paymentMethod PaymentMethod
-  soldAt        DateTime      @default(now())
-  createdById   String?
-  createdBy     User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  lines         SaleLine[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticketNumber   Int           @unique @default(autoincrement())
+  paymentMethod  PaymentMethod
+  soldAt         DateTime      @default(now())
+  ticketComment  String?
+  applyTax       Boolean       @default(false)
+  taxRate        Decimal       @default(0.16) @db.Decimal(5, 4)
+  taxAmount      Decimal       @default(0) @db.Decimal(10, 2)
+  subtotal       Decimal       @default(0) @db.Decimal(10, 2)
+  total          Decimal       @default(0) @db.Decimal(10, 2)
+  giftCardAmount Decimal       @default(0) @db.Decimal(10, 2)
+  createdById    String?
+  createdBy      User?         @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  attendedById   String?
+  attendedBy     User?         @relation("SaleAttendedBy", fields: [attendedById], references: [id], onDelete: SetNull)
+  customerId     String?
+  customer       Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lines          SaleLine[]
+  payments       SalePayment[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([tenantId, soldAt])
 }
@@ -170,6 +303,70 @@ model SaleLine {
   @@index([saleId])
 }
 
+model SalePayment {
+  id     String             @id @default(cuid())
+  saleId String
+  sale   Sale               @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  method SplitPaymentMethod
+  amount Decimal            @db.Decimal(10, 2)
+
+  @@index([saleId])
+}
+
+model Layaway {
+  id            String           @id @default(cuid())
+  tenantId      String
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String
+  status        LayawayStatus    @default(OPEN)
+  subtotal      Decimal          @db.Decimal(10, 2)
+  total         Decimal          @db.Decimal(10, 2)
+  balance       Decimal          @db.Decimal(10, 2)
+  deposit       Decimal          @default(0) @db.Decimal(10, 2)
+  ticketComment String?
+  applyTax      Boolean          @default(false)
+  taxRate       Decimal          @default(0.16) @db.Decimal(5, 4)
+  taxAmount     Decimal          @default(0) @db.Decimal(10, 2)
+  customerId    String?
+  customer      Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdBy     User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  lines         LayawayLine[]
+  payments      LayawayPayment[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+}
+
+model LayawayLine {
+  id        String  @id @default(cuid())
+  layawayId String
+  layaway   Layaway @relation(fields: [layawayId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+  discount  Decimal @default(0) @db.Decimal(10, 2)
+  total     Decimal @db.Decimal(10, 2)
+
+  @@index([layawayId])
+  @@index([productId])
+}
+
+model LayawayPayment {
+  id        String             @id @default(cuid())
+  layawayId String
+  layaway   Layaway            @relation(fields: [layawayId], references: [id], onDelete: Cascade)
+  method    SplitPaymentMethod
+  amount    Decimal            @db.Decimal(10, 2)
+  createdAt DateTime           @default(now())
+
+  @@index([layawayId])
+}
+
 model ProductRequest {
   id            String               @id @default(cuid())
   tenantId      String
@@ -184,6 +381,8 @@ model ProductRequest {
   product       Product?             @relation(fields: [productId], references: [id], onDelete: SetNull)
   name          String?
   sku           String?
+  categoryId    String?
+  category      Category?            @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   description   String?
   price         Decimal?             @db.Decimal(10, 2)
   imageUrl      String?
@@ -193,6 +392,9 @@ model ProductRequest {
   acceptedById  String?
   acceptedBy    User?                @relation("ProductRequestAcceptedBy", fields: [acceptedById], references: [id], onDelete: SetNull)
   acceptedAt    DateTime?
+  rejectedById  String?
+  rejectedBy    User?                @relation("ProductRequestRejectedBy", fields: [rejectedById], references: [id], onDelete: SetNull)
+  rejectedAt    DateTime?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
@@ -213,18 +415,18 @@ model AgendaSettings {
 
 /// One weekly recurrence row per action + weekday (1=Mon … 7=Sun).
 model WeeklyScheduleRule {
-  id              String       @id @default(cuid())
+  id              String         @id @default(cuid())
   tenantId        String
-  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant          Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   type            ScheduleType
   weekday         Int
   startTime       String
   endTime         String
   intervalMinutes Int
-  active          Boolean      @default(true)
+  active          Boolean        @default(true)
   slots           ScheduleSlot[]
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@unique([tenantId, type, weekday])
   @@index([tenantId, type])
@@ -265,4 +467,113 @@ model Appointment {
 
   @@index([tenantId, createdAt])
   @@index([brandId, createdAt])
+}
+
+model TermsDocument {
+  id          String   @id @default(cuid())
+  version     String   @unique
+  title       String
+  content     String
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model TermsAcceptance {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  version    String
+  signedName String
+  acceptedAt DateTime @default(now())
+  ip         String?
+
+  @@unique([userId, version])
+  @@index([userId])
+}
+
+model EmailVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model SmsVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PromoCode {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  extraTrialDays Int      @default(15)
+  active         Boolean  @default(true)
+  maxUses        Int?
+  usedCount      Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model TenantSubscription {
+  id            String             @id @default(cuid())
+  tenantId      String             @unique
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planType      PlanType
+  status        SubscriptionStatus @default(TRIALING)
+  trialEndsAt   DateTime
+  promoCodeUsed String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model BusinessPreferences {
+  id                          String       @id @default(cuid())
+  tenantId                    String       @unique
+  tenant                      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  primaryTerminalCommission   Decimal?     @db.Decimal(5, 2)
+  secondaryTerminalCommission Decimal?     @db.Decimal(5, 2)
+  transferCommission          Decimal?     @db.Decimal(5, 2)
+  layawayDueDays              Int          @default(15)
+  labelWidthMm                Int?
+  labelHeightMm               Int?
+  flexibleInventory           Boolean      @default(false)
+  printTickets                Boolean      @default(true)
+  ticketComments              Boolean      @default(true)
+  chargeIva                   Boolean      @default(false)
+  usdEnabled                  Boolean      @default(false)
+  usdRateMode                 UsdRateMode?
+  usdFixedRate                Decimal?     @db.Decimal(10, 4)
+  cutoffType                  CutoffType   @default(MONTHLY_FIXED)
+  cutoffWeekday               Int?
+  cutoffDaySlots              Int[]
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
+}
+
+model Category {
+  id              String           @id @default(cuid())
+  tenantId        String
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String
+  active          Boolean          @default(true)
+  products        Product[]
+  productRequests ProductRequest[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
 }

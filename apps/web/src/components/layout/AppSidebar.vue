@@ -219,9 +219,10 @@ import { useProductRequestsStore } from "@/stores/productRequests";
 import {
   LayoutDashboard,
   Box,
-  Package,
   CalendarDays,
   Goal,
+  Store,
+  Settings,
 } from "lucide-vue-next";
 import { BoxesIcon, ChevronDownIcon, HorizontalDots, BookOpenPesoIcon } from "../../icons";
 import { useSidebar } from "@/composables/useSidebar";
@@ -232,6 +233,10 @@ const productRequests = useProductRequestsStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
+// `moduleId` prepara el filtrado por plan (ver apps/web/src/lib/entitlements.ts).
+// Hoy `auth.canAccess` siempre regresa `true` porque `/auth/me` todavía no
+// envía `entitlements`, así que este filtro no cambia nada del showroom
+// actual — queda listo para cuando el plan del tenant viaje en la sesión.
 const menuGroups = computed(() => [
   {
     title: "Showroom",
@@ -241,6 +246,7 @@ const menuGroups = computed(() => [
         name: "Dashboard",
         path: "/",
         tourKey: "sidebar-dashboard",
+        moduleId: "dashboard",
       },
       ...(auth.isAdmin
         ? [
@@ -249,6 +255,7 @@ const menuGroups = computed(() => [
               name: "Marcas",
               path: "/brands",
               tourKey: "sidebar-brands",
+              moduleId: "brands",
             },
           ]
         : []),
@@ -257,18 +264,14 @@ const menuGroups = computed(() => [
         name: "Productos",
         path: "/products",
         tourKey: "sidebar-products",
-      },
-      {
-        icon: Package,
-        name: "Stock",
-        path: "/stock",
-        tourKey: "sidebar-stock",
+        moduleId: "products",
       },
       {
         icon: Goal,
-        name: auth.isAdmin ? "Solicitudes" : "Solicitar productos",
+        name: auth.isAdmin ? "Órdenes" : "Solicitar productos",
         path: "/product-requests",
         tourKey: "sidebar-requests",
+        moduleId: "productRequests",
         badge:
           productRequests.pendingCount > 0
             ? productRequests.pendingCount > 99
@@ -281,14 +284,38 @@ const menuGroups = computed(() => [
         name: "Agenda",
         path: "/agenda",
         tourKey: "sidebar-agenda",
+        moduleId: "agenda",
       },
+      ...(auth.isAdmin
+        ? [
+            {
+              icon: Store,
+              name: "Caja",
+              path: "/caja",
+              tourKey: "sidebar-caja",
+              moduleId: "caja",
+            },
+          ]
+        : []),
       {
         icon: BookOpenPesoIcon,
         name: "Ventas/Tickets",
         path: "/sales",
         tourKey: "sidebar-sales",
+        moduleId: "sales",
       },
-    ],
+      ...(auth.isAdmin
+        ? [
+            {
+              icon: Settings,
+              name: "Preferencias",
+              path: "/preferences",
+              tourKey: "sidebar-preferences",
+              moduleId: "preferences",
+            },
+          ]
+        : []),
+    ].filter((item) => auth.canAccess(item.moduleId)),
   },
 ]);
 
