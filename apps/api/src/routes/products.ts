@@ -1,22 +1,37 @@
 import { Router } from 'express'
+import multer from 'multer'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
+import { generateUniqueSku } from '../lib/sku.js'
+import { storage } from '../lib/storage.js'
 import { authenticate, authorize, brandFilter, tenantFilter } from '../middleware/auth.js'
 
 const router = Router()
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 const productSchema = z.object({
   brandId: z.string().optional(),
   name: z.string().min(1),
-  sku: z.string().min(1),
+  sku: z.string().min(1).optional(),
+  categoryId: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   price: z.number().nonnegative().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
   quantity: z.number().int().nonnegative().optional(),
   minStock: z.number().int().nonnegative().optional(),
 })
+
+const bulkDeleteSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+})
+
+const productInclude = {
+  brand: { select: { id: true, name: true, isHouseBrand: true } },
+  category: { select: { id: true, name: true } },
+  stock: true,
+} satisfies Prisma.ProductInclude
 
 router.use(authenticate)
 
@@ -28,6 +43,12 @@ function parseOptionalNumber(value: unknown): number | undefined {
 
 router.get('/', async (req, res) => {
   const filter = brandFilter(req.user!)
+  // Solo ADMIN puede acotar por marca explícitamente (BRAND ya queda fijo por brandFilter).
+  const brandId = typeof req.query.brandId === 'string' ? req.query.brandId.trim() : ''
+  if (brandId && req.user!.role === 'ADMIN') {
+    filter.brandId = brandId
+  }
+  const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
   const name = typeof req.query.name === 'string' ? req.query.name.trim() : ''
   const sku = typeof req.query.sku === 'string' ? req.query.sku.trim() : ''
   const priceMin = parseOptionalNumber(req.query.priceMin)
@@ -51,8 +72,18 @@ router.get('/', async (req, res) => {
 
   const where: Prisma.ProductWhereInput = {
     ...filter,
-    ...(name ? { name: { contains: name, mode: 'insensitive' } } : {}),
-    ...(sku ? { sku: { contains: sku, mode: 'insensitive' } } : {}),
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: 'insensitive' } },
+            { sku: { contains: q, mode: 'insensitive' } },
+            { brand: { name: { contains: q, mode: 'insensitive' } } },
+          ],
+        }
+      : {
+          ...(name ? { name: { contains: name, mode: 'insensitive' } } : {}),
+          ...(sku ? { sku: { contains: sku, mode: 'insensitive' } } : {}),
+        }),
     ...(priceMin !== undefined || priceMax !== undefined
       ? {
           price: {
@@ -67,10 +98,7 @@ router.get('/', async (req, res) => {
   const products = await prisma.product.findMany({
     where,
     orderBy: { updatedAt: 'desc' },
-    include: {
-      brand: { select: { id: true, name: true, isHouseBrand: true } },
-      stock: true,
-    },
+    include: productInclude,
   })
   return res.json(products)
 })
@@ -81,8 +109,7 @@ router.get('/:id', async (req, res) => {
   const product = await prisma.product.findFirst({
     where: { id, ...filter },
     include: {
-      brand: { select: { id: true, name: true, isHouseBrand: true } },
-      stock: true,
+      ...productInclude,
       stockEntries: {
         orderBy: { createdAt: 'desc' },
         take: 50,
@@ -118,24 +145,65 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
     return res.status(404).json({ error: 'Marca no encontrada' })
   }
 
-  const { quantity = 0, minStock = 5, ...productData } = parsed.data
+  const { quantity = 0, minStock = 5, sku: requestedSku, ...productData } = parsed.data
+  const sku = requestedSku?.trim() || (await generateUniqueSku(brandId, productData.name))
 
   try {
     const product = await prisma.product.create({
       data: {
         ...productData,
+        sku,
         brandId,
         price: productData.price != null ? new Prisma.Decimal(productData.price) : null,
         stock: {
           create: { quantity, minStock },
         },
       },
-      include: { brand: true, stock: true },
+      include: productInclude,
     })
+    if (quantity > 0) {
+      await prisma.stockEntry.create({
+        data: {
+          productId: product.id,
+          quantity,
+          note: 'Alta inicial de producto',
+          createdById: req.user!.id,
+        },
+      })
+    }
     return res.status(201).json(product)
   } catch {
     return res.status(409).json({ error: 'SKU duplicado para esta marca' })
   }
+})
+
+/** Sube una imagen de producto y regresa la URL para usarla en create/update. */
+router.post('/upload-image', upload.single('image'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se recibió ningún archivo' })
+  }
+  const saved = await storage.save(req.file.buffer, req.file.originalname, 'products')
+  return res.status(201).json({ url: saved.url })
+})
+
+/** Elimina varios productos a la vez (solo ADMIN). */
+router.post('/bulk-delete', authorize('ADMIN'), async (req, res) => {
+  const parsed = bulkDeleteSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Selecciona al menos un producto' })
+  }
+
+  const filter = brandFilter(req.user!)
+  const products = await prisma.product.findMany({
+    where: { id: { in: parsed.data.ids }, ...filter },
+    select: { id: true },
+  })
+
+  const result = await prisma.product.deleteMany({
+    where: { id: { in: products.map((p) => p.id) } },
+  })
+
+  return res.json({ deleted: result.count, skipped: parsed.data.ids.length - result.count })
 })
 
 router.patch('/:id', authorize('ADMIN'), async (req, res) => {
@@ -177,8 +245,7 @@ router.patch('/:id', authorize('ADMIN'), async (req, res) => {
           : undefined,
     },
     include: {
-      brand: true,
-      stock: true,
+      ...productInclude,
       stockEntries: {
         orderBy: { createdAt: 'desc' },
         take: 50,

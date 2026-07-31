@@ -1,0 +1,19 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Caja POS — admin busca producto, cobra y ve el ticket en Ventas",
+  "description": "Un admin abre Caja desde el menú o desde Registrar venta, agrega un producto al carrito, confirma la compra y luego ve la línea del ticket en Ventas/Tickets.",
+  "priority": "p0",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the login page" },
+    { "type": "action", "description": "Sign in with the admin email and password configured for this project" },
+    { "type": "action", "description": "Open Caja from the sidebar navigation" },
+    { "type": "assertion", "description": "Verify the Caja page shows product search, cart area, payment methods and Confirmar compra" },
+    { "type": "action", "description": "Search or scan a product and add it to the cart" },
+    { "type": "assertion", "description": "Verify the cart shows at least one line item and a non-zero total a pagar" },
+    { "type": "action", "description": "Select Efectivo as payment method and click Confirmar compra" },
+    { "type": "assertion", "description": "Verify a success message with ticket number appears and the cart is cleared" },
+    { "type": "action", "description": "Open Ventas/Tickets from the sidebar" },
+    { "type": "assertion", "description": "Verify the sales table includes the newly created ticket line" }
+  ]
+}
