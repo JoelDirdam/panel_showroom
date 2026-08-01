@@ -3,15 +3,28 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
+import { generateUniqueSku } from '../lib/sku.js'
 import { authenticate, authorize } from '../middleware/auth.js'
 
 const router = Router()
+
+/** Parsea `YYYY-MM-DD` (o ISO completo) desde query params de filtro de fecha. */
+function parseDateParam(value: unknown, options: { endOfDay?: boolean } = {}): Date | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined
+  const date = new Date(value.length === 10 ? `${value}T00:00:00.000` : value)
+  if (Number.isNaN(date.getTime())) return undefined
+  if (options.endOfDay && value.length === 10) {
+    date.setHours(23, 59, 59, 999)
+  }
+  return date
+}
 
 const createProductRequestSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('CREATE_PRODUCT'),
     name: z.string().min(1),
-    sku: z.string().min(1),
+    sku: z.string().min(1).optional(),
+    categoryId: z.string().optional().nullable(),
     description: z.string().optional().nullable(),
     price: z.number().nonnegative(),
     imageUrl: z.string().url().optional().nullable(),
@@ -25,11 +38,18 @@ const createProductRequestSchema = z.discriminatedUnion('type', [
     quantity: z.number().int().positive(),
     notes: z.string().max(1000).optional().nullable(),
   }),
+  z.object({
+    type: z.literal('WITHDRAWAL'),
+    productId: z.string().min(1),
+    quantity: z.number().int().positive(),
+    notes: z.string().max(1000).optional().nullable(),
+  }),
 ])
 
 const updateCreateProductRequestSchema = z.object({
   name: z.string().min(1).optional(),
   sku: z.string().min(1).optional(),
+  categoryId: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
   price: z.number().nonnegative().optional(),
   imageUrl: z.string().url().optional().nullable(),
@@ -48,28 +68,49 @@ const acceptRequestsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(100),
 })
 
+const rejectRequestsSchema = acceptRequestsSchema
+
 const requestInclude = {
   brand: { select: { id: true, name: true, whatsapp: true } },
-  product: { select: { id: true, name: true, sku: true } },
+  product: { select: { id: true, name: true, sku: true, price: true } },
+  category: { select: { id: true, name: true } },
   requestedBy: { select: { id: true, name: true } },
   acceptedBy: { select: { id: true, name: true } },
+  rejectedBy: { select: { id: true, name: true } },
 } as const
 
 router.use(authenticate)
 
 router.get('/', async (req, res) => {
+  const statusParam = typeof req.query.status === 'string' ? req.query.status : undefined
   const status =
-    req.query.status === 'ACCEPTED'
-      ? 'ACCEPTED'
-      : req.query.status === 'ALL'
+    statusParam === 'PENDING' || statusParam === 'ACCEPTED' || statusParam === 'REJECTED'
+      ? statusParam
+      : statusParam === 'ALL'
         ? undefined
         : 'PENDING'
+
+  const brandIdParam = typeof req.query.brandId === 'string' ? req.query.brandId.trim() : ''
+  const from = parseDateParam(req.query.from)
+  const to = parseDateParam(req.query.to, { endOfDay: true })
 
   const requests = await prisma.productRequest.findMany({
     where: {
       tenantId: req.user!.tenantId,
-      ...(req.user!.role === 'BRAND' ? { brandId: req.user!.brandId ?? '__missing__' } : {}),
+      ...(req.user!.role === 'BRAND'
+        ? { brandId: req.user!.brandId ?? '__missing__' }
+        : brandIdParam
+          ? { brandId: brandIdParam }
+          : {}),
       ...(status ? { status } : {}),
+      ...(from || to
+        ? {
+            createdAt: {
+              ...(from ? { gte: from } : {}),
+              ...(to ? { lte: to } : {}),
+            },
+          }
+        : {}),
     },
     orderBy: { createdAt: 'desc' },
     include: requestInclude,
@@ -144,6 +185,7 @@ router.patch('/:id', authorize('BRAND'), async (req, res) => {
       data: {
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.sku !== undefined ? { sku: data.sku } : {}),
+        ...(data.categoryId !== undefined ? { categoryId: data.categoryId || null } : {}),
         ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
         ...(data.price !== undefined ? { price: new Prisma.Decimal(data.price) } : {}),
         ...(data.imageUrl !== undefined ? { imageUrl: data.imageUrl?.trim() || null } : {}),
@@ -202,11 +244,16 @@ router.post('/', authorize('BRAND'), async (req, res) => {
   const brandId = req.user!.brandId
   const tenantId = req.user!.tenantId
 
-  if (data.type === 'RESTOCK') {
+  if (data.type === 'RESTOCK' || data.type === 'WITHDRAWAL') {
     const product = await prisma.product.findFirst({
       where: { id: data.productId, brandId, brand: { tenantId } },
+      include: { stock: true },
     })
     if (!product) return res.status(404).json({ error: 'Producto no encontrado' })
+
+    if (data.type === 'WITHDRAWAL' && data.quantity > (product.stock?.quantity ?? 0)) {
+      return res.status(400).json({ error: 'La cantidad a retirar supera el stock disponible' })
+    }
 
     const request = await prisma.productRequest.create({
       data: {
@@ -226,19 +273,25 @@ router.post('/', authorize('BRAND'), async (req, res) => {
     return res.status(201).json(request)
   }
 
-  const duplicate = await prisma.product.findFirst({
-    where: { brandId, sku: data.sku },
-    select: { id: true },
-  })
-  if (duplicate) return res.status(409).json({ error: 'Ya existe un producto con ese SKU' })
+  const requestedSku = data.sku?.trim()
 
-  const pendingDuplicate = await prisma.productRequest.findFirst({
-    where: { brandId, sku: data.sku, type: 'CREATE_PRODUCT', status: 'PENDING' },
-    select: { id: true },
-  })
-  if (pendingDuplicate) {
-    return res.status(409).json({ error: 'Ya existe una solicitud pendiente con ese SKU' })
+  if (requestedSku) {
+    const duplicate = await prisma.product.findFirst({
+      where: { brandId, sku: requestedSku },
+      select: { id: true },
+    })
+    if (duplicate) return res.status(409).json({ error: 'Ya existe un producto con ese SKU' })
+
+    const pendingDuplicate = await prisma.productRequest.findFirst({
+      where: { brandId, sku: requestedSku, type: 'CREATE_PRODUCT', status: 'PENDING' },
+      select: { id: true },
+    })
+    if (pendingDuplicate) {
+      return res.status(409).json({ error: 'Ya existe una solicitud pendiente con ese SKU' })
+    }
   }
+
+  const sku = requestedSku || (await generateUniqueSku(brandId, data.name))
 
   const request = await prisma.productRequest.create({
     data: {
@@ -247,7 +300,8 @@ router.post('/', authorize('BRAND'), async (req, res) => {
       requestedById: req.user!.id,
       type: data.type,
       name: data.name,
-      sku: data.sku,
+      sku,
+      categoryId: data.categoryId || null,
       description: data.description?.trim() || null,
       price: new Prisma.Decimal(data.price),
       imageUrl: data.imageUrl?.trim() || null,
@@ -301,6 +355,7 @@ router.post('/accept', authorize('ADMIN'), async (req, res) => {
               brandId: request.brandId,
               name: request.name,
               sku: request.sku,
+              categoryId: request.categoryId,
               description: request.description,
               price: request.price,
               imageUrl: request.imageUrl,
@@ -324,7 +379,7 @@ router.post('/accept', authorize('ADMIN'), async (req, res) => {
               },
             })
           }
-        } else {
+        } else if (request.type === 'RESTOCK') {
           if (!productId) throw new Error('Producto de restock no encontrado')
 
           const product = await tx.product.findFirst({
@@ -348,6 +403,36 @@ router.post('/accept', authorize('ADMIN'), async (req, res) => {
             where: { productId },
             create: { productId, quantity: request.quantity, minStock: 5 },
             update: { quantity: { increment: request.quantity } },
+          })
+        } else {
+          // WITHDRAWAL: retira unidades de stock (no puede quedar negativo).
+          if (!productId) throw new Error('Producto de retiro no encontrado')
+
+          const product = await tx.product.findFirst({
+            where: {
+              id: productId,
+              brandId: request.brandId,
+              brand: { tenantId: req.user!.tenantId },
+            },
+            include: { stock: true },
+          })
+          if (!product) throw new Error('Producto de retiro no encontrado')
+
+          const currentQty = product.stock?.quantity ?? 0
+          const removed = Math.min(currentQty, request.quantity)
+
+          await tx.stockEntry.create({
+            data: {
+              productId,
+              quantity: -removed,
+              note: `Solicitud de retiro aprobada${request.notes ? `: ${request.notes}` : ''}`,
+              createdById: req.user!.id,
+            },
+          })
+          await tx.stock.upsert({
+            where: { productId },
+            create: { productId, quantity: 0, minStock: 5 },
+            update: { quantity: { decrement: removed } },
           })
         }
 
@@ -377,6 +462,40 @@ router.post('/accept', authorize('ADMIN'), async (req, res) => {
       error: error instanceof Error ? error.message : 'No se pudieron aceptar las solicitudes',
     })
   }
+})
+
+router.post('/reject', authorize('ADMIN'), async (req, res) => {
+  const parsed = rejectRequestsSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Selecciona al menos una solicitud válida' })
+  }
+
+  const ids = [...new Set(parsed.data.ids)]
+  const requests = await prisma.productRequest.findMany({
+    where: {
+      id: { in: ids },
+      tenantId: req.user!.tenantId,
+      status: 'PENDING',
+    },
+    select: { id: true },
+  })
+
+  if (requests.length !== ids.length) {
+    return res.status(409).json({
+      error: 'Una o más solicitudes ya no están pendientes o no pertenecen al showroom',
+    })
+  }
+
+  const rejected = await prisma.productRequest.updateMany({
+    where: { id: { in: ids } },
+    data: {
+      status: 'REJECTED',
+      rejectedById: req.user!.id,
+      rejectedAt: new Date(),
+    },
+  })
+
+  return res.json({ rejected: rejected.count })
 })
 
 export default router

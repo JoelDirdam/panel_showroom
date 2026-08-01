@@ -9,6 +9,16 @@ import salesRoutes from './routes/sales.js'
 import dashboardRoutes from './routes/dashboard.js'
 import productRequestsRoutes from './routes/productRequests.js'
 import agendaRoutes from './routes/agenda.js'
+import usersRoutes from './routes/users.js'
+import customersRoutes from './routes/customers.js'
+import giftCardsRoutes from './routes/giftCards.js'
+import layawaysRoutes from './routes/layaways.js'
+import termsRoutes from './routes/terms.js'
+import onboardingRoutes from './routes/onboarding.js'
+import preferencesRoutes from './routes/preferences.js'
+import categoriesRoutes from './routes/categories.js'
+import { UPLOADS_ROOT } from './lib/storage.js'
+import { requireOnboarding, requireTerms } from './middleware/auth.js'
 
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
@@ -50,12 +60,19 @@ app.use(
   }),
 )
 app.use(express.json())
+app.use('/uploads', express.static(UPLOADS_ROOT))
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'panel-bubbles-api' })
 })
 
+// Guards globales: no bloquean rutas públicas ni /api/auth, /api/terms,
+// /api/onboarding (allowlist interno de requireTerms/requireOnboarding).
+app.use(requireTerms, requireOnboarding)
+
 app.use('/api/auth', authRoutes)
+app.use('/api/terms', termsRoutes)
+app.use('/api/onboarding', onboardingRoutes)
 app.use('/api/brands', brandsRoutes)
 app.use('/api/products', productsRoutes)
 app.use('/api/stock', stockRoutes)
@@ -63,6 +80,12 @@ app.use('/api/sales', salesRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/product-requests', productRequestsRoutes)
 app.use('/api/agenda', agendaRoutes)
+app.use('/api/users', usersRoutes)
+app.use('/api/customers', customersRoutes)
+app.use('/api/gift-cards', giftCardsRoutes)
+app.use('/api/layaways', layawaysRoutes)
+app.use('/api/preferences', preferencesRoutes)
+app.use('/api/categories', categoriesRoutes)
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on port ${PORT}`)

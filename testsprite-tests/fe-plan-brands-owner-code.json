@@ -1,0 +1,19 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Marcas — crear marca nueva y generar código de invitación del propietario",
+  "description": "Un admin abre Marcas, crea una marca nueva con un nombre único, es redirigido a la página de Propietario y accesos de esa marca, y genera un código de invitación temporal que aparece visible para copiar.",
+  "priority": "p1",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the login page" },
+    { "type": "action", "description": "Sign in with the admin email and password configured for this project" },
+    { "type": "action", "description": "Open Marcas from the sidebar navigation" },
+    { "type": "assertion", "description": "Verify the Marcas page shows the brands management table and a 'Nueva marca' button" },
+    { "type": "action", "description": "Click 'Nueva marca'" },
+    { "type": "action", "description": "Fill the brand form with a unique brand name, a monthly rent amount, a cutoff date, and a commission percentage" },
+    { "type": "action", "description": "Submit the brand form by clicking 'Guardar'" },
+    { "type": "assertion", "description": "Verify the browser navigates to the 'Propietario y accesos' page for the newly created brand, showing the exact brand name just entered and an owner status of 'Sin vincular'" },
+    { "type": "action", "description": "Click 'Generar código'" },
+    { "type": "assertion", "description": "Verify an invitation code block appears in the Código de invitación panel showing an 8-character code, a validity date, and a 'Copiar' button" }
+  ]
+}

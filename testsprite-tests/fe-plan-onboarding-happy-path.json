@@ -1,0 +1,27 @@
+{
+  "projectId": "75b47e1d-971e-436a-abc5-5295b9262c38",
+  "type": "frontend",
+  "name": "Onboarding — de la landing de planes a los módulos del negocio",
+  "description": "Un visitante nuevo entra desde /planes, crea su cuenta, verifica su correo con el código mostrado en pantalla, elige el plan Negocio sin promoción, da de alta su negocio con un nombre único, y llega al hub de módulos que muestra ese mismo nombre de negocio.",
+  "priority": "p0",
+  "planSteps": [
+    { "type": "action", "description": "Navigate to the plans landing page" },
+    { "type": "assertion", "description": "Verify the plans landing page shows the heading about administering a business and a 'Crear mi cuenta gratis' call to action" },
+    { "type": "action", "description": "Click 'Crear mi cuenta gratis' to go to the registration page" },
+    { "type": "action", "description": "Fill the registration form with a unique full name, a unique email address, and a password of at least 8 characters in both the password and confirm password fields" },
+    { "type": "action", "description": "Type the same full name into the signature field for the terms acceptance" },
+    { "type": "action", "description": "Check the checkbox agreeing to the Terms and Conditions" },
+    { "type": "action", "description": "Submit the registration form by clicking 'Crear cuenta'" },
+    { "type": "assertion", "description": "Verify the browser navigates to the verify email page showing a 6-digit code entry and the email address just registered" },
+    { "type": "action", "description": "Read the development verification code shown on the verify email page and type its 6 digits into the code input boxes" },
+    { "type": "action", "description": "Submit the verification code by clicking 'Verificar código'" },
+    { "type": "assertion", "description": "Verify the browser navigates to the select-plan page showing a grid of plan cards including a 'Negocio' plan card" },
+    { "type": "action", "description": "Select the 'Negocio' plan card" },
+    { "type": "action", "description": "Click 'Continuar' without entering a promotional code" },
+    { "type": "assertion", "description": "Verify the confirm-plan page shows the trial status 'Prueba gratuita' and a 'Crear negocio' button, with no applied promo code shown" },
+    { "type": "action", "description": "Click 'Crear negocio' to go to the business setup page" },
+    { "type": "action", "description": "Fill the business name field with a unique business name" },
+    { "type": "action", "description": "Submit the business setup form" },
+    { "type": "assertion", "description": "Verify the browser navigates to the modules hub page and shows a heading confirming that the exact business name just entered is configured" }
+  ]
+}

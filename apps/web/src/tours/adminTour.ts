@@ -1,5 +1,4 @@
 import type { TourStepDef } from './types'
-import { TOUR_OPEN_BRANDS_MODAL, TOUR_OPEN_SALES_MODAL } from './tourEvents'
 
 export function getAdminTourSteps(): TourStepDef[] {
   return [
@@ -101,20 +100,30 @@ export function getAdminTourSteps(): TourStepDef[] {
       popover: {
         title: 'Registrar una marca',
         description:
-          'Lo primero: crea una marca con «Nueva marca». Completa nombre, email de contacto y WhatsApp si lo tienes.',
+          'Lo primero: crea una marca con «Nueva marca». Se abre un formulario dedicado para capturar sus datos.',
         side: 'bottom',
       },
     },
     {
-      element: '[data-tour="brands-modal"]',
-      route: '/brands',
-      open: TOUR_OPEN_BRANDS_MODAL,
+      element: '[data-tour="brand-form"]',
+      route: '/brands/new',
       disableInteraction: true,
       popover: {
-        title: 'Usuario y credenciales',
+        title: 'Datos de la marca',
         description:
-          'Marca «Crear usuario de acceso» y define una contraseña temporal. Al guardar verás las credenciales: cópialas y compártelas con la marca (email + contraseña). Ellos deberán cambiar la contraseña al entrar.',
+          'Completa nombre, renta, espacio asignado, fecha de corte, % de comisión y quién paga cada tipo de comisión.',
         side: 'left',
+      },
+    },
+    {
+      element: '[data-tour="brand-save"]',
+      route: '/brands/new',
+      disableInteraction: true,
+      popover: {
+        title: 'Guardar y continuar',
+        description:
+          'Al guardar pasarás a la pantalla de «Propietario y accesos», donde puedes generar un código temporal para que la marca reclame su acceso.',
+        side: 'top',
       },
     },
     {
@@ -165,42 +174,41 @@ export function getAdminTourSteps(): TourStepDef[] {
       disableInteraction: true,
       popover: {
         title: 'Registrar una venta',
-        description: 'Con productos listos, entra a Ventas y pulsa «Registrar venta» para iniciar un ticket.',
+        description:
+          'Con productos listos, pulsa «Registrar venta» para abrir la Caja POS y cobrar el ticket.',
         side: 'bottom',
       },
     },
     {
-      element: '[data-tour="sales-product-input"]',
-      route: '/sales',
-      open: TOUR_OPEN_SALES_MODAL,
+      element: '[data-tour="caja-search"]',
+      route: '/caja',
       disableInteraction: true,
       popover: {
-        title: 'Producto y cantidad',
+        title: 'Buscar o escanear',
         description:
-          'Elige el producto (SKU o nombre) y la cantidad. Al dar Enter en cantidad se agrega otro renglón para el siguiente producto.',
+          'Escanea el código o busca por nombre/marca. Enter agrega el producto al carrito de la caja activa.',
         side: 'bottom',
       },
     },
     {
-      element: '[data-tour="sales-total"]',
-      route: '/sales',
-      open: TOUR_OPEN_SALES_MODAL,
+      element: '[data-tour="caja-total"]',
+      route: '/caja',
       disableInteraction: true,
       popover: {
         title: 'Total a pagar',
-        description: 'Aquí ves el gran total del ticket según productos, descuentos y comisiones.',
-        side: 'top',
+        description: 'Aquí ves el total del ticket con descuentos e IVA si está activado.',
+        side: 'left',
       },
     },
     {
-      element: '[data-tour="sales-payment-method"]',
-      route: '/sales',
-      open: TOUR_OPEN_SALES_MODAL,
+      element: '[data-tour="caja-payment"]',
+      route: '/caja',
       disableInteraction: true,
       popover: {
         title: 'Método de pago',
-        description: 'Selecciona el método que eligió el cliente final (efectivo, tarjeta, transferencia u otro) y guarda la venta.',
-        side: 'bottom',
+        description:
+          'Elige efectivo, tarjeta, transferencia o mixto y confirma la compra para registrar el ticket.',
+        side: 'left',
       },
     },
     {

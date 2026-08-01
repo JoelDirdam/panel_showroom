@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { PaymentMethod, Prisma } from '@prisma/client'
+import { PaymentMethod, Prisma, SplitPaymentMethod } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
@@ -15,10 +15,22 @@ const saleLineInputSchema = z.object({
   unitPrice: z.number().nonnegative().optional(),
 })
 
+const paymentSplitSchema = z.object({
+  method: z.nativeEnum(SplitPaymentMethod),
+  amount: z.number().positive(),
+})
+
 const createSaleSchema = z.object({
   paymentMethod: z.nativeEnum(PaymentMethod),
   soldAt: z.string().datetime().optional(),
   lines: z.array(saleLineInputSchema).min(1),
+  ticketComment: z.string().max(500).optional().nullable(),
+  applyTax: z.boolean().optional().default(false),
+  taxRate: z.number().nonnegative().max(1).optional().default(0.16),
+  attendedById: z.string().min(1).optional().nullable(),
+  customerId: z.string().min(1).optional().nullable(),
+  giftCardCode: z.string().min(1).optional().nullable(),
+  payments: z.array(paymentSplitSchema).optional(),
 })
 
 const patchLineSchema = z.object({
@@ -30,6 +42,9 @@ const patchLineSchema = z.object({
 
 const saleInclude = {
   createdBy: { select: { id: true, name: true } },
+  attendedBy: { select: { id: true, name: true, role: true } },
+  customer: { select: { id: true, name: true, phone: true } },
+  payments: true,
   lines: {
     include: {
       product: {
@@ -41,6 +56,10 @@ const saleInclude = {
 
 function money(value: number): Prisma.Decimal {
   return new Prisma.Decimal(value.toFixed(2))
+}
+
+function round2(value: number): number {
+  return Math.round(value * 100) / 100
 }
 
 function filterSalesForBrand(brandId: string): Prisma.SaleWhereInput {
@@ -73,6 +92,12 @@ function serializeSale<T extends { lines: Array<{ product: { brandId: string } }
     ...sale,
     lines: filterLinesForBrand(sale.lines, brandId, role),
   }
+}
+
+function toSplitMethod(method: PaymentMethod): SplitPaymentMethod {
+  if (method === 'TARJETA') return SplitPaymentMethod.TARJETA
+  if (method === 'TRANSFERENCIA') return SplitPaymentMethod.TRANSFERENCIA
+  return SplitPaymentMethod.EFECTIVO
 }
 
 router.use(authenticate)
@@ -136,7 +161,18 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
   }
 
-  const { paymentMethod, soldAt, lines } = parsed.data
+  const {
+    paymentMethod,
+    soldAt,
+    lines,
+    ticketComment,
+    applyTax,
+    taxRate,
+    attendedById,
+    customerId,
+    giftCardCode,
+    payments,
+  } = parsed.data
   const productIds = lines.map((line) => line.productId)
   if (new Set(productIds).size !== productIds.length) {
     return res.status(400).json({ error: 'No se permiten productos duplicados en el mismo ticket' })
@@ -156,8 +192,23 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
         throw new Error('PRODUCT_NOT_FOUND')
       }
 
+      if (attendedById) {
+        const attendant = await tx.user.findFirst({
+          where: { id: attendedById, tenantId: req.user!.tenantId },
+        })
+        if (!attendant) throw new Error('ATTENDANT_NOT_FOUND')
+      }
+
+      if (customerId) {
+        const customer = await tx.customer.findFirst({
+          where: { id: customerId, tenantId: req.user!.tenantId },
+        })
+        if (!customer) throw new Error('CUSTOMER_NOT_FOUND')
+      }
+
       const productMap = new Map(products.map((p) => [p.id, p]))
       const lineData: Prisma.SaleLineCreateWithoutSaleInput[] = []
+      let linesSubtotal = 0
 
       for (const line of lines) {
         const product = productMap.get(line.productId)!
@@ -184,6 +235,7 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
         }
         const commission = line.commission ?? 0
         const total = subtotal - discount
+        linesSubtotal += total
 
         lineData.push({
           product: { connect: { id: product.id } },
@@ -196,13 +248,64 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
         })
       }
 
+      linesSubtotal = round2(linesSubtotal)
+      const taxAmount = applyTax ? round2(linesSubtotal * taxRate) : 0
+      let dueBeforeGift = round2(linesSubtotal + taxAmount)
+      let giftCardAmount = 0
+
+      if (giftCardCode?.trim()) {
+        const code = giftCardCode.trim()
+        const giftCard = await tx.giftCard.findFirst({
+          where: { tenantId: req.user!.tenantId, code, active: true },
+        })
+        if (!giftCard) throw new Error('GIFT_CARD_NOT_FOUND')
+        const balance = Number(giftCard.balance)
+        if (balance <= 0) throw new Error('GIFT_CARD_EMPTY')
+        giftCardAmount = round2(Math.min(balance, dueBeforeGift))
+        await tx.giftCard.update({
+          where: { id: giftCard.id },
+          data: { balance: money(balance - giftCardAmount) },
+        })
+      }
+
+      const saleTotal = round2(Math.max(0, dueBeforeGift - giftCardAmount))
+
+      let paymentRows: Array<{ method: SplitPaymentMethod; amount: number }> = []
+      if (paymentMethod === PaymentMethod.MIXTO) {
+        if (!payments || payments.length < 2) {
+          throw new Error('MIXTO_REQUIRES_PAYMENTS')
+        }
+        const sum = round2(payments.reduce((acc, p) => acc + p.amount, 0))
+        if (Math.abs(sum - saleTotal) > 0.01) {
+          throw new Error(`MIXTO_SUM_MISMATCH:${sum}:${saleTotal}`)
+        }
+        paymentRows = payments.map((p) => ({ method: p.method, amount: round2(p.amount) }))
+      } else if (saleTotal > 0) {
+        paymentRows = [{ method: toSplitMethod(paymentMethod), amount: saleTotal }]
+      }
+
       const created = await tx.sale.create({
         data: {
           paymentMethod,
           soldAt: soldAt ? new Date(soldAt) : undefined,
           tenantId: req.user!.tenantId,
           createdById: req.user!.id,
+          attendedById: attendedById || req.user!.id,
+          customerId: customerId || null,
+          ticketComment: ticketComment?.trim() || null,
+          applyTax,
+          taxRate: money(taxRate),
+          taxAmount: money(taxAmount),
+          subtotal: money(linesSubtotal),
+          total: money(saleTotal),
+          giftCardAmount: money(giftCardAmount),
           lines: { create: lineData },
+          payments: {
+            create: paymentRows.map((p) => ({
+              method: p.method,
+              amount: money(p.amount),
+            })),
+          },
         },
         include: saleInclude,
       })
@@ -222,6 +325,27 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
     const message = err instanceof Error ? err.message : ''
     if (message === 'PRODUCT_NOT_FOUND') {
       return res.status(404).json({ error: 'Uno o más productos no existen' })
+    }
+    if (message === 'ATTENDANT_NOT_FOUND') {
+      return res.status(400).json({ error: 'El usuario que atiende no existe' })
+    }
+    if (message === 'CUSTOMER_NOT_FOUND') {
+      return res.status(400).json({ error: 'Cliente no encontrado' })
+    }
+    if (message === 'GIFT_CARD_NOT_FOUND') {
+      return res.status(400).json({ error: 'Tarjeta de regalo no encontrada o inactiva' })
+    }
+    if (message === 'GIFT_CARD_EMPTY') {
+      return res.status(400).json({ error: 'La tarjeta de regalo no tiene saldo' })
+    }
+    if (message === 'MIXTO_REQUIRES_PAYMENTS') {
+      return res.status(400).json({ error: 'Pago mixto requiere al menos dos montos' })
+    }
+    if (message.startsWith('MIXTO_SUM_MISMATCH:')) {
+      const [, sum, total] = message.split(':')
+      return res.status(400).json({
+        error: `Los montos mixtos ($${sum}) no coinciden con el total ($${total})`,
+      })
     }
     if (message.startsWith('MISSING_PRICE:')) {
       return res.status(400).json({

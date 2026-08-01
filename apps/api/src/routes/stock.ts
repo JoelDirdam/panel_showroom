@@ -109,6 +109,56 @@ router.post('/:productId/entries', authorize('ADMIN'), async (req, res) => {
   return res.status(201).json(result)
 })
 
+/** Retiro directo de stock (solo ADMIN). Registra una entrada negativa para trazabilidad. */
+router.post('/:productId/withdraw', authorize('ADMIN'), async (req, res) => {
+  const productId = getParam(req.params.productId)
+  const parsed = stockEntrySchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
+  }
+
+  const filter = brandFilter(req.user!)
+  const product = await prisma.product.findFirst({
+    where: { id: productId, ...filter },
+    include: { stock: true },
+  })
+  if (!product) {
+    return res.status(404).json({ error: 'Producto no encontrado' })
+  }
+
+  const currentQty = product.stock?.quantity ?? 0
+  const removed = Math.min(currentQty, parsed.data.quantity)
+
+  const result = await prisma.$transaction(async (tx) => {
+    const entry = await tx.stockEntry.create({
+      data: {
+        productId: product.id,
+        quantity: -removed,
+        note: parsed.data.note ? `Retiro: ${parsed.data.note}` : 'Retiro de stock',
+        createdById: req.user!.id,
+      },
+      include: {
+        createdBy: { select: { id: true, name: true } },
+      },
+    })
+
+    const stock = await tx.stock.upsert({
+      where: { productId: product.id },
+      create: { productId: product.id, quantity: 0, minStock: 5 },
+      update: { quantity: { decrement: removed } },
+      include: {
+        product: {
+          include: { brand: { select: { id: true, name: true } } },
+        },
+      },
+    })
+
+    return { entry, stock, removed }
+  })
+
+  return res.status(201).json(result)
+})
+
 router.patch('/:productId', authorize('ADMIN'), async (req, res) => {
   const productId = getParam(req.params.productId)
   const parsed = stockUpdateSchema.safeParse(req.body)

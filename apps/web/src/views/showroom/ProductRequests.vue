@@ -1,118 +1,188 @@
 <template>
   <admin-layout>
-    <page-breadcrumb page-title="Solicitudes de productos" />
+    <page-breadcrumb :page-title="auth.isAdmin ? 'Órdenes de Stock' : 'Solicitudes de productos'" />
 
-    <component-card v-if="auth.isAdmin" title="Solicitudes pendientes" data-tour="requests-pending">
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-3">
-          <label data-tour="requests-brand-filter" class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <span class="whitespace-nowrap">Filtrar por marca</span>
-            <select
-              v-model="brandFilter"
-              class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              @change="onBrandFilterChange"
-            >
-              <option value="">Todas las marcas ({{ requests.length }})</option>
-              <option v-for="brand in pendingBrands" :key="brand.id" :value="brand.id">
-                {{ brand.name }} ({{ brand.count }})
-              </option>
+    <template v-if="auth.isAdmin">
+      <p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+        Revisa, filtra y resuelve las órdenes de alta, restock y retiro de stock que envían las marcas. Usa los
+        filtros para acotar por fecha, estado o marca antes de aceptar, rechazar o imprimir etiquetas.
+      </p>
+
+      <component-card title="Órdenes pendientes" class-name="mb-6" data-tour="requests-pending">
+        <div class="flex flex-wrap items-center gap-6">
+          <div>
+            <p class="text-3xl font-semibold text-gray-800 dark:text-white">
+              {{ productRequestsStore.pendingCount }}
+            </p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Solicitudes pendientes de revisión</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span class="rounded-full bg-warning-50 px-3 py-1 text-xs font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
+              Pendientes: {{ statusCounts.PENDING }}
+            </span>
+            <span class="rounded-full bg-success-50 px-3 py-1 text-xs font-medium text-success-700 dark:bg-success-500/10 dark:text-success-400">
+              Aceptadas: {{ statusCounts.ACCEPTED }}
+            </span>
+            <span class="rounded-full bg-error-50 px-3 py-1 text-xs font-medium text-error-700 dark:bg-error-500/10 dark:text-error-400">
+              Rechazadas: {{ statusCounts.REJECTED }}
+            </span>
+          </div>
+        </div>
+      </component-card>
+
+      <component-card title="Filtros" class-name="mb-6">
+        <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 lg:items-end" @submit.prevent="applyFilters">
+          <div>
+            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Desde</label>
+            <input v-model="filters.from" type="date" class="field" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Hasta</label>
+            <input v-model="filters.to" type="date" class="field" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Estado</label>
+            <select v-model="filters.status" class="field">
+              <option value="ALL">Todos</option>
+              <option value="PENDING">Pendiente</option>
+              <option value="ACCEPTED">Aceptada</option>
+              <option value="REJECTED">Rechazada</option>
             </select>
-          </label>
+          </div>
+          <div>
+            <label data-tour="requests-brand-filter" class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Marca</label>
+            <select v-model="filters.brandId" class="field">
+              <option value="">Todas las marcas</option>
+              <option v-for="brand in brandsList" :key="brand.id" :value="brand.id">{{ brand.name }}</option>
+            </select>
+          </div>
+          <button type="submit" class="primary-button h-[42px]">Aplicar filtro</button>
+        </form>
+      </component-card>
+
+      <component-card title="Solicitudes">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
           <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input type="checkbox" :checked="allSelected" @change="toggleAll" />
-            Seleccionar todos
-            <span v-if="brandFilter" class="text-xs text-gray-500">(de esta marca)</span>
+            Seleccionar todos ({{ requests.length }})
           </label>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              :disabled="selectedLabelItems.length === 0"
+              @click="showLabelModal = true"
+            >
+              Imprimir etiquetas ({{ selectedLabelItems.length }})
+            </button>
+            <button
+              type="button"
+              class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="selectedPendingIds.length === 0 || rejecting || saving"
+              @click="rejectSelected"
+            >
+              {{ rejecting ? 'Rechazando…' : `Rechazar seleccionadas (${selectedPendingIds.length})` }}
+            </button>
+            <button
+              data-tour="requests-accept"
+              type="button"
+              class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="selectedPendingIds.length === 0 || saving || rejecting"
+              @click="acceptSelected"
+            >
+              {{ saving ? 'Aceptando…' : `Aceptar seleccionadas (${selectedPendingIds.length})` }}
+            </button>
+          </div>
         </div>
-        <button
-          data-tour="requests-accept"
-          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          :disabled="selected.length === 0 || saving"
-          @click="acceptSelected"
-        >
-          {{ saving ? 'Aceptando…' : `Aceptar seleccionados (${selected.length})` }}
-        </button>
-      </div>
 
-      <p v-if="error" class="mb-3 text-sm text-error-500">{{ error }}</p>
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
-          <thead>
-            <tr class="border-b border-gray-200 text-left text-gray-500 dark:border-gray-800">
-              <th class="py-3 pr-3"></th>
-              <th class="py-3 pr-4">Marca</th>
-              <th class="py-3 pr-4">Solicitud</th>
-              <th class="py-3 pr-4">Producto</th>
-              <th class="py-3 pr-4">Cantidad</th>
-              <th class="py-3 pr-4">Observaciones</th>
-              <th class="py-3">Contacto</th>
-            </tr>
-          </thead>
-          <tbody>
-            <template v-for="group in groupedRequests" :key="group.brandId">
-              <tr class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-white/[0.02]">
-                <td colspan="7" class="px-1 py-2.5">
-                  <div class="flex flex-wrap items-center justify-between gap-2">
-                    <span class="font-semibold text-gray-800 dark:text-white">
-                      {{ group.brandName }}
-                      <span class="ml-1 font-normal text-gray-500">
-                        · {{ group.requests.length }}
-                        {{ group.requests.length === 1 ? 'solicitud' : 'solicitudes' }}
+        <p v-if="error" class="mb-3 text-sm text-error-500">{{ error }}</p>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="border-b border-gray-200 text-left text-gray-500 dark:border-gray-800">
+                <th class="py-3 pr-3"></th>
+                <th class="py-3 pr-4">Marca</th>
+                <th class="py-3 pr-4">Solicitud</th>
+                <th class="py-3 pr-4">Producto</th>
+                <th class="py-3 pr-4">Cantidad</th>
+                <th class="py-3 pr-4">Estado</th>
+                <th class="py-3 pr-4">Observaciones</th>
+                <th class="py-3 pr-4">Contacto</th>
+                <th class="py-3">Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="group in groupedRequests" :key="group.brandId">
+                <tr class="border-b border-gray-100 bg-gray-50 dark:border-gray-800 dark:bg-white/[0.02]">
+                  <td colspan="9" class="px-1 py-2.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <span class="font-semibold text-gray-800 dark:text-white">
+                        {{ group.brandName }}
+                        <span class="ml-1 font-normal text-gray-500">
+                          · {{ group.requests.length }}
+                          {{ group.requests.length === 1 ? 'solicitud' : 'solicitudes' }}
+                        </span>
                       </span>
+                      <button
+                        type="button"
+                        class="text-xs text-brand-500 hover:underline"
+                        @click="toggleBrandSelection(group)"
+                      >
+                        {{ isBrandFullySelected(group) ? 'Quitar selección' : 'Seleccionar marca' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr
+                  v-for="request in group.requests"
+                  :key="request.id"
+                  class="border-b border-gray-100 dark:border-gray-800"
+                >
+                  <td class="py-3 pr-3">
+                    <input v-model="selected" type="checkbox" :value="request.id" />
+                  </td>
+                  <td class="py-3 pr-4 font-medium text-gray-800 dark:text-white">{{ request.brand.name }}</td>
+                  <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ typeLabel(request.type) }}</td>
+                  <td class="py-3 pr-4 text-gray-800 dark:text-white">
+                    {{ request.product?.name || request.name }}
+                    <span class="block text-xs text-gray-400">{{ request.product?.sku || request.sku }}</span>
+                  </td>
+                  <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ request.quantity }}</td>
+                  <td class="py-3 pr-4">
+                    <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="statusMeta(request.status).class">
+                      {{ statusMeta(request.status).label }}
                     </span>
-                    <button
-                      type="button"
-                      class="text-xs text-brand-500 hover:underline"
-                      @click="toggleBrandSelection(group)"
+                  </td>
+                  <td class="max-w-xs py-3 pr-4 text-gray-600 dark:text-gray-300">{{ request.notes || '—' }}</td>
+                  <td class="py-3 pr-4">
+                    <a
+                      v-if="request.brand.whatsapp"
+                      :href="whatsappUrl(request)"
+                      target="_blank"
+                      rel="noopener"
+                      class="text-success-500 hover:underline"
                     >
-                      {{ isBrandFullySelected(group) ? 'Quitar selección' : 'Seleccionar marca' }}
+                      WhatsApp
+                    </a>
+                    <span v-else class="text-gray-400">—</span>
+                  </td>
+                  <td class="py-3">
+                    <button type="button" class="text-brand-500 hover:underline" @click="openDetail(request)">
+                      Ver detalle
                     </button>
-                  </div>
+                  </td>
+                </tr>
+              </template>
+              <tr v-if="requests.length === 0">
+                <td colspan="9" class="py-8 text-center text-gray-500">
+                  No hay solicitudes con estos filtros.
                 </td>
               </tr>
-              <tr
-                v-for="request in group.requests"
-                :key="request.id"
-                class="border-b border-gray-100 dark:border-gray-800"
-              >
-                <td class="py-3 pr-3">
-                  <input v-model="selected" type="checkbox" :value="request.id" />
-                </td>
-                <td class="py-3 pr-4 font-medium text-gray-800 dark:text-white">{{ request.brand.name }}</td>
-                <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ typeLabel(request.type) }}</td>
-                <td class="py-3 pr-4 text-gray-800 dark:text-white">
-                  {{ request.product?.name || request.name }}
-                  <span class="block text-xs text-gray-400">{{ request.product?.sku || request.sku }}</span>
-                </td>
-                <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ request.quantity }}</td>
-                <td class="max-w-xs py-3 pr-4 text-gray-600 dark:text-gray-300">{{ request.notes || '—' }}</td>
-                <td class="py-3">
-                  <a
-                    v-if="request.brand.whatsapp"
-                    :href="whatsappUrl(request)"
-                    target="_blank"
-                    rel="noopener"
-                    class="text-success-500 hover:underline"
-                  >
-                    WhatsApp
-                  </a>
-                  <span v-else class="text-gray-400">—</span>
-                </td>
-              </tr>
-            </template>
-            <tr v-if="filteredRequests.length === 0">
-              <td colspan="7" class="py-8 text-center text-gray-500">
-                {{
-                  brandFilter
-                    ? 'No hay solicitudes pendientes para esta marca.'
-                    : 'No hay solicitudes pendientes.'
-                }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </component-card>
+            </tbody>
+          </table>
+        </div>
+      </component-card>
+    </template>
 
     <template v-else>
       <div class="grid gap-6 lg:grid-cols-2">
@@ -227,19 +297,33 @@
                 <td class="py-3 pr-4 text-gray-600 dark:text-gray-300">{{ typeLabel(request.type) }}</td>
                 <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ request.product?.name || request.name }}</td>
                 <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ request.quantity }}</td>
-                <td class="py-3 pr-4" :class="request.status === 'ACCEPTED' ? 'text-success-500' : 'text-warning-500'">
-                  {{ request.status === 'ACCEPTED' ? 'Aceptada' : 'Pendiente' }}
+                <td class="py-3 pr-4">
+                  <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="statusMeta(request.status).class">
+                    {{ statusMeta(request.status).label }}
+                  </span>
                 </td>
                 <td class="py-3">
-                  <button
-                    v-if="request.status === 'PENDING'"
-                    type="button"
-                    class="text-brand-500 hover:underline"
-                    @click="openEdit(request)"
-                  >
-                    Editar
-                  </button>
-                  <span v-else class="text-gray-400">—</span>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      v-if="request.status === 'PENDING'"
+                      type="button"
+                      class="text-brand-500 hover:underline"
+                      @click="openEdit(request)"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      v-if="request.status === 'ACCEPTED' && (request.product || request.productId)"
+                      type="button"
+                      class="text-brand-500 hover:underline"
+                      @click="printOwnLabel(request)"
+                    >
+                      Imprimir etiqueta
+                    </button>
+                    <button type="button" class="text-gray-500 hover:underline" @click="openDetail(request)">
+                      Ver detalle
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="requests.length === 0">
@@ -333,27 +417,134 @@
         </div>
       </div>
     </template>
+
+    <!-- Ver detalle (admin y marca) -->
+    <div v-if="detailRequest" class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4" @click.self="detailRequest = null">
+      <div class="w-full max-w-lg rounded-2xl bg-white p-6 dark:bg-gray-900">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Detalle de la solicitud</h3>
+          <span class="rounded-full px-2 py-0.5 text-xs font-medium" :class="statusMeta(detailRequest.status).class">
+            {{ statusMeta(detailRequest.status).label }}
+          </span>
+        </div>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">Marca</dt>
+            <dd class="text-gray-800 dark:text-white">{{ detailRequest.brand.name }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">Tipo</dt>
+            <dd class="text-gray-800 dark:text-white">{{ typeLabel(detailRequest.type) }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">Producto</dt>
+            <dd class="text-gray-800 dark:text-white">{{ detailRequest.product?.name || detailRequest.name || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">SKU</dt>
+            <dd class="text-gray-800 dark:text-white">{{ detailRequest.product?.sku || detailRequest.sku || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">Cantidad</dt>
+            <dd class="text-gray-800 dark:text-white">{{ detailRequest.quantity }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">Precio</dt>
+            <dd class="text-gray-800 dark:text-white">
+              {{ (detailRequest.product?.price ?? detailRequest.price) ? `$${detailRequest.product?.price ?? detailRequest.price}` : '—' }}
+            </dd>
+          </div>
+          <div class="col-span-2">
+            <dt class="text-gray-500 dark:text-gray-400">Observaciones</dt>
+            <dd class="text-gray-800 dark:text-white">{{ detailRequest.notes || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">Solicitado por</dt>
+            <dd class="text-gray-800 dark:text-white">{{ detailRequest.requestedBy?.name || '—' }}</dd>
+          </div>
+          <div>
+            <dt class="text-gray-500 dark:text-gray-400">Fecha</dt>
+            <dd class="text-gray-800 dark:text-white">{{ formatDate(detailRequest.createdAt) }}</dd>
+          </div>
+          <template v-if="detailRequest.status === 'ACCEPTED'">
+            <div>
+              <dt class="text-gray-500 dark:text-gray-400">Aceptado por</dt>
+              <dd class="text-gray-800 dark:text-white">{{ detailRequest.acceptedBy?.name || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-gray-500 dark:text-gray-400">Fecha de aceptación</dt>
+              <dd class="text-gray-800 dark:text-white">{{ detailRequest.acceptedAt ? formatDate(detailRequest.acceptedAt) : '—' }}</dd>
+            </div>
+          </template>
+          <template v-if="detailRequest.status === 'REJECTED'">
+            <div>
+              <dt class="text-gray-500 dark:text-gray-400">Rechazado por</dt>
+              <dd class="text-gray-800 dark:text-white">{{ detailRequest.rejectedBy?.name || '—' }}</dd>
+            </div>
+            <div>
+              <dt class="text-gray-500 dark:text-gray-400">Fecha de rechazo</dt>
+              <dd class="text-gray-800 dark:text-white">{{ detailRequest.rejectedAt ? formatDate(detailRequest.rejectedAt) : '—' }}</dd>
+            </div>
+          </template>
+        </dl>
+        <div class="mt-5 flex justify-end">
+          <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600 dark:text-gray-300" @click="detailRequest = null">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <LabelPrintModal v-model="showLabelModal" :items="selectedLabelItems" :default-size-id="defaultLabelSizeId" />
+    <LabelPrintModal v-model="showOwnLabelModal" :items="ownLabelItems" :default-size-id="defaultLabelSizeId" />
   </admin-layout>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
-import api, { type Product, type ProductRequest, type ProductRequestType } from '@/services/api'
+import LabelPrintModal from '@/components/labels/LabelPrintModal.vue'
+import api, {
+  acceptProductRequests,
+  fetchPreferences,
+  fetchProductRequests,
+  rejectProductRequests,
+  type Brand,
+  type Product,
+  type ProductRequest,
+  type ProductRequestStatus,
+  type ProductRequestType,
+} from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import { useProductRequestsStore } from '@/stores/productRequests'
+import { matchLabelSizeFromMm, type LabelPrintItem, type LabelSizeId } from '@/utils/labelPdf'
 
+const route = useRoute()
 const auth = useAuthStore()
 const productRequestsStore = useProductRequestsStore()
 const requests = ref<ProductRequest[]>([])
 const products = ref<Product[]>([])
+const brandsList = ref<Brand[]>([])
 const selected = ref<string[]>([])
-const brandFilter = ref('')
 const saving = ref(false)
+const rejecting = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
+const detailRequest = ref<ProductRequest | null>(null)
+const showLabelModal = ref(false)
+const showOwnLabelModal = ref(false)
+const ownLabelItems = ref<LabelPrintItem[]>([])
+const defaultLabelSizeId = ref<LabelSizeId | null>(null)
+
+const filters = reactive({
+  from: '',
+  to: '',
+  status: 'PENDING' as ProductRequestStatus | 'ALL',
+  brandId: '',
+})
 
 const productForm = reactive({
   name: '',
@@ -384,31 +575,9 @@ type BrandGroup = {
   requests: ProductRequest[]
 }
 
-const pendingBrands = computed(() => {
-  const map = new Map<string, { id: string; name: string; count: number }>()
-  for (const request of requests.value) {
-    const current = map.get(request.brandId)
-    if (current) {
-      current.count += 1
-    } else {
-      map.set(request.brandId, {
-        id: request.brandId,
-        name: request.brand.name,
-        count: 1,
-      })
-    }
-  }
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
-})
-
-const filteredRequests = computed(() => {
-  if (!brandFilter.value) return requests.value
-  return requests.value.filter((request) => request.brandId === brandFilter.value)
-})
-
 const groupedRequests = computed(() => {
   const map = new Map<string, BrandGroup>()
-  for (const request of filteredRequests.value) {
+  for (const request of requests.value) {
     const existing = map.get(request.brandId)
     if (existing) {
       existing.requests.push(request)
@@ -424,38 +593,62 @@ const groupedRequests = computed(() => {
 })
 
 const allSelected = computed(
-  () =>
-    filteredRequests.value.length > 0 &&
-    filteredRequests.value.every((request) => selected.value.includes(request.id)),
+  () => requests.value.length > 0 && requests.value.every((request) => selected.value.includes(request.id)),
 )
 
+const statusCounts = computed(() => {
+  const counts: Record<ProductRequestStatus, number> = { PENDING: 0, ACCEPTED: 0, REJECTED: 0 }
+  for (const request of requests.value) counts[request.status] += 1
+  return counts
+})
+
+const selectedRequests = computed(() => requests.value.filter((request) => selected.value.includes(request.id)))
+
+const selectedPendingIds = computed(() =>
+  selectedRequests.value.filter((request) => request.status === 'PENDING').map((request) => request.id),
+)
+
+const selectedLabelItems = computed<LabelPrintItem[]>(() => requestsToLabelItems(selectedRequests.value))
+
+function requestsToLabelItems(items: ProductRequest[]): LabelPrintItem[] {
+  return items
+    .filter((request) => request.status === 'ACCEPTED')
+    .map((request) => ({
+      sku: request.product?.sku || request.sku || '',
+      name: request.product?.name || request.name || '',
+      price: request.product?.price ?? request.price,
+      quantity: request.quantity,
+    }))
+    .filter((item) => item.sku)
+}
+
 async function load() {
-  const { data } = await api.get<ProductRequest[]>('/product-requests', {
-    params: { status: auth.isAdmin ? 'PENDING' : 'ALL' },
-  })
-  requests.value = data
-  selected.value = []
-  if (brandFilter.value && !pendingBrands.value.some((brand) => brand.id === brandFilter.value)) {
-    brandFilter.value = ''
-  }
   if (auth.isAdmin) {
-    productRequestsStore.setPendingCount(data.length)
+    requests.value = await fetchProductRequests({
+      status: filters.status,
+      brandId: filters.brandId || undefined,
+      from: filters.from || undefined,
+      to: filters.to || undefined,
+    })
+    selected.value = []
+    await productRequestsStore.fetchPendingCount()
   } else {
+    const data = await fetchProductRequests({ status: 'ALL' })
+    requests.value = data
+    selected.value = []
     productRequestsStore.setPendingCount(data.filter((request) => request.status === 'PENDING').length)
-  }
-  if (!auth.isAdmin) {
     const response = await api.get<Product[]>('/products')
     products.value = response.data
   }
 }
 
-function onBrandFilterChange() {
-  selected.value = []
+function applyFilters() {
+  return load()
 }
 
 function toggleAll(event: Event) {
   const checked = (event.target as HTMLInputElement).checked
-  selected.value = checked ? filteredRequests.value.map((request) => request.id) : []
+  selected.value = checked ? requests.value.map((request) => request.id) : []
 }
 
 function isBrandFullySelected(group: BrandGroup) {
@@ -472,16 +665,40 @@ function toggleBrandSelection(group: BrandGroup) {
 }
 
 async function acceptSelected() {
+  if (selectedPendingIds.value.length === 0) return
   saving.value = true
   error.value = null
   try {
-    await api.post('/product-requests/accept', { ids: selected.value })
+    await acceptProductRequests(selectedPendingIds.value)
     await load()
   } catch (e: unknown) {
     error.value = apiError(e, 'No se pudieron aceptar las solicitudes')
   } finally {
     saving.value = false
   }
+}
+
+async function rejectSelected() {
+  if (selectedPendingIds.value.length === 0) return
+  rejecting.value = true
+  error.value = null
+  try {
+    await rejectProductRequests(selectedPendingIds.value)
+    await load()
+  } catch (e: unknown) {
+    error.value = apiError(e, 'No se pudieron rechazar las solicitudes')
+  } finally {
+    rejecting.value = false
+  }
+}
+
+function openDetail(request: ProductRequest) {
+  detailRequest.value = request
+}
+
+function printOwnLabel(request: ProductRequest) {
+  ownLabelItems.value = requestsToLabelItems([request])
+  showOwnLabelModal.value = true
 }
 
 async function submitProduct() {
@@ -628,7 +845,28 @@ async function saveEdit() {
 }
 
 function typeLabel(type: ProductRequestType) {
-  return type === 'CREATE_PRODUCT' ? 'Nuevo producto' : 'Restock'
+  if (type === 'CREATE_PRODUCT') return 'Nuevo producto'
+  if (type === 'RESTOCK') return 'Restock'
+  return 'Retiro'
+}
+
+function statusMeta(status: ProductRequestStatus) {
+  if (status === 'ACCEPTED') {
+    return {
+      label: 'Aceptada',
+      class: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400',
+    }
+  }
+  if (status === 'REJECTED') {
+    return {
+      label: 'Rechazada',
+      class: 'bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400',
+    }
+  }
+  return {
+    label: 'Pendiente',
+    class: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400',
+  }
 }
 
 function whatsappUrl(request: ProductRequest) {
@@ -650,7 +888,25 @@ function apiError(error: unknown, fallback: string) {
   return (error as { response?: { data?: { error?: string } } }).response?.data?.error || fallback
 }
 
-onMounted(load)
+onMounted(async () => {
+  // Permite llegar filtrado desde la pestaña Órdenes de una marca.
+  const brandIdParam = route.query.brandId
+  if (typeof brandIdParam === 'string' && brandIdParam) {
+    filters.brandId = brandIdParam
+  }
+
+  if (auth.isAdmin) {
+    try {
+      const [{ data: brands }, prefs] = await Promise.all([api.get<Brand[]>('/brands'), fetchPreferences()])
+      brandsList.value = brands
+      defaultLabelSizeId.value = matchLabelSizeFromMm(prefs.labelWidthMm, prefs.labelHeightMm)
+    } catch {
+      brandsList.value = []
+    }
+  }
+
+  return load()
+})
 </script>
 
 <style scoped>

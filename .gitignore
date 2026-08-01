@@ -31,7 +31,13 @@ skills-lock.json
 apps/api/prisma/*.db
 apps/api/prisma/*.db-journal
 
+# Uploads locales (logos, adjuntos) — solo para dev con LocalStorageAdapter
+apps/api/uploads/
+
 # Test / coverage
 coverage/
 .testsprite/seed-password.txt
 .testsprite/runs/
+
+# Graphify (grafo de conocimiento local, se regenera)
+graphify-out/

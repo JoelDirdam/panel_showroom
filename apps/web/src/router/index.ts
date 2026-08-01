@@ -19,6 +19,62 @@ const router = createRouter({
       component: () => import('../views/showroom/ChangePassword.vue'),
       meta: { title: 'Cambiar contraseña', allowMustChangePassword: true },
     },
+    // --- Landing / marketing público ---------------------------------
+    {
+      path: '/planes',
+      name: 'LandingPlanes',
+      component: () => import('../views/marketing/LandingPlanes.vue'),
+      meta: { title: 'Planes', public: true },
+    },
+    {
+      path: '/terms',
+      name: 'Terms',
+      component: () => import('../views/marketing/Terms.vue'),
+      meta: { title: 'Términos y Condiciones', public: true },
+    },
+    // --- Alta / onboarding ---------------------------------------------
+    {
+      path: '/register',
+      name: 'Register',
+      component: () => import('../views/onboarding/Register.vue'),
+      meta: { title: 'Crear cuenta', public: true },
+    },
+    {
+      path: '/onboarding/accept-terms',
+      name: 'OnboardingAcceptTerms',
+      component: () => import('../views/onboarding/AcceptTerms.vue'),
+      meta: { title: 'Términos y Condiciones', allowMustChangePassword: true },
+    },
+    {
+      path: '/onboarding/verify-email',
+      name: 'OnboardingVerifyEmail',
+      component: () => import('../views/onboarding/VerifyEmail.vue'),
+      meta: { title: 'Verifica tu correo' },
+    },
+    {
+      path: '/onboarding/select-plan',
+      name: 'OnboardingSelectPlan',
+      component: () => import('../views/onboarding/SelectPlan.vue'),
+      meta: { title: 'Elige tu plan' },
+    },
+    {
+      path: '/onboarding/confirm-plan',
+      name: 'OnboardingConfirmPlan',
+      component: () => import('../views/onboarding/ConfirmPlan.vue'),
+      meta: { title: 'Confirma tu plan' },
+    },
+    {
+      path: '/onboarding/create-business',
+      name: 'OnboardingCreateBusiness',
+      component: () => import('../views/onboarding/CreateBusiness.vue'),
+      meta: { title: 'Crea tu negocio' },
+    },
+    {
+      path: '/onboarding/hub',
+      name: 'OnboardingHub',
+      component: () => import('../views/onboarding/ModulesHub.vue'),
+      meta: { title: 'Módulos de tu negocio' },
+    },
     {
       path: '/',
       name: 'Dashboard',
@@ -28,8 +84,44 @@ const router = createRouter({
     {
       path: '/brands',
       name: 'Brands',
-      component: () => import('../views/showroom/Brands.vue'),
+      component: () => import('../views/showroom/brands/BrandsList.vue'),
       meta: { title: 'Marcas', adminOnly: true },
+    },
+    {
+      path: '/brands/new',
+      name: 'BrandCreate',
+      component: () => import('../views/showroom/brands/BrandForm.vue'),
+      meta: { title: 'Nueva marca', adminOnly: true },
+    },
+    {
+      path: '/brands/:id/edit',
+      name: 'BrandEdit',
+      component: () => import('../views/showroom/brands/BrandForm.vue'),
+      meta: { title: 'Editar marca', adminOnly: true },
+    },
+    {
+      path: '/brands/:id/owner',
+      name: 'BrandOwner',
+      component: () => import('../views/showroom/brands/BrandOwner.vue'),
+      meta: { title: 'Propietario y accesos', adminOnly: true },
+    },
+    {
+      path: '/brands/:id/products/new',
+      name: 'BrandProductNew',
+      component: () => import('../views/showroom/brands/BrandProductNew.vue'),
+      meta: { title: 'Nuevo producto de marca', adminOnly: true },
+    },
+    {
+      path: '/brands/:id/products',
+      name: 'BrandProducts',
+      component: () => import('../views/showroom/brands/BrandDetail.vue'),
+      meta: { title: 'Productos de la marca', adminOnly: true },
+    },
+    {
+      path: '/brands/:id',
+      name: 'BrandDetail',
+      component: () => import('../views/showroom/brands/BrandDetail.vue'),
+      meta: { title: 'Resumen de marca', adminOnly: true },
     },
     {
       path: '/products',
@@ -62,11 +154,72 @@ const router = createRouter({
       meta: { title: 'Ventas/Tickets' },
     },
     {
+      path: '/caja',
+      name: 'Caja',
+      component: () => import('../views/showroom/Caja.vue'),
+      meta: { title: 'Caja', adminOnly: true },
+    },
+    {
+      path: '/preferences',
+      name: 'Preferences',
+      component: () => import('../views/showroom/Preferences.vue'),
+      meta: { title: 'Preferencias', adminOnly: true },
+    },
+    // --- Stubs de planes CLÍNICA / RESTAURANTE ---------------------------
+    // Rutas de arquitectura/placeholder, sin implementación de producto.
+    // `meta.planRequired` documenta el plan al que pertenecen; hoy no
+    // bloquean nada porque `auth.user.entitlements` todavía no existe (ver
+    // guard más abajo y docs/plans-contracts.md).
+    {
+      path: '/stubs/clinic/reminders',
+      name: 'ClinicReminders',
+      component: () => import('../views/stubs/clinic/ClinicReminders.vue'),
+      meta: { title: 'Recordatorios de pacientes', planRequired: 'CLINICA', moduleId: 'agenda', flagRequired: 'patientReminders' },
+    },
+    {
+      path: '/stubs/clinic/history',
+      name: 'ClinicHistory',
+      component: () => import('../views/stubs/clinic/ClinicHistory.vue'),
+      meta: { title: 'Historial médico', planRequired: 'CLINICA', moduleId: 'customers', flagRequired: 'medicalHistory' },
+    },
+    {
+      path: '/stubs/restaurant/dishes',
+      name: 'RestaurantDishes',
+      component: () => import('../views/stubs/restaurant/RestaurantDishes.vue'),
+      meta: { title: 'Platillos', planRequired: 'RESTAURANTE', moduleId: 'products', flagRequired: 'dishes' },
+    },
+    {
+      path: '/stubs/restaurant/kitchen-orders',
+      name: 'RestaurantKitchenOrders',
+      component: () => import('../views/stubs/restaurant/RestaurantKitchenOrders.vue'),
+      meta: { title: 'Comandas de cocina', planRequired: 'RESTAURANTE', moduleId: 'orders', flagRequired: 'ordersKitchen' },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
   ],
 })
+
+/**
+ * Ruta a la que se confina al usuario mientras `onboardingStep` no sea DONE
+ * (ver `apps/api/src/lib/onboarding.ts` — el orden nunca retrocede).
+ * PLAN_SELECTED cubre dos vistas (confirmación + creación de negocio)
+ * porque `create-business` es el único endpoint que avanza ese paso.
+ */
+const ONBOARDING_STEP_ROUTE: Record<string, string> = {
+  REGISTERED: '/onboarding/verify-email',
+  EMAIL_VERIFIED: '/onboarding/select-plan',
+  PLAN_SELECTED: '/onboarding/confirm-plan',
+  BUSINESS_CREATED: '/onboarding/create-business',
+}
+
+const ONBOARDING_PATHS = new Set([
+  '/onboarding/verify-email',
+  '/onboarding/select-plan',
+  '/onboarding/confirm-plan',
+  '/onboarding/create-business',
+])
 
 router.beforeEach(async (to, _from, next) => {
   document.title = `${to.meta.title || 'Panel'} | PuntoManeki`
@@ -94,7 +247,43 @@ router.beforeEach(async (to, _from, next) => {
     return next('/')
   }
 
+  // Mientras deba cambiar contraseña, no se evalúan términos/onboarding
+  // todavía (evita rebotes entre /change-password y estas vistas): una vez
+  // resuelto el cambio de contraseña, este bloque se vuelve a evaluar.
+  if (auth.isAuthenticated && !auth.mustChangePassword) {
+    // Términos vigentes: si hay una versión publicada y el usuario no la
+    // aceptó (ver `terms.currentVersion`/`terms.accepted` en meShape.ts),
+    // se bloquea todo menos la vista de aceptación.
+    if (!auth.termsAccepted && to.path !== '/onboarding/accept-terms') {
+      return next('/onboarding/accept-terms')
+    }
+    if (to.path === '/onboarding/accept-terms' && auth.termsAccepted) {
+      return next('/')
+    }
+
+    // Onboarding: confina al usuario al paso pendiente hasta llegar a DONE.
+    if (auth.user && auth.onboardingStep !== 'DONE') {
+      const target = ONBOARDING_STEP_ROUTE[auth.onboardingStep]
+      const allowed =
+        to.path === target || (auth.onboardingStep === 'PLAN_SELECTED' && to.path === '/onboarding/create-business')
+      if (target && !allowed) {
+        return next(target)
+      }
+    } else if (ONBOARDING_PATHS.has(to.path)) {
+      // Ya completó el onboarding: no tiene sentido volver a esas vistas.
+      return next('/onboarding/hub')
+    }
+  }
+
   if (to.meta.adminOnly && auth.user?.role !== 'ADMIN') {
+    return next('/')
+  }
+
+  // `subscription.planType` viene de `/auth/me` (ver meShape.ts). Si el
+  // usuario no tiene suscripción cargada todavía, no se bloquea nada.
+  const planRequired = to.meta.planRequired as string | undefined
+  const currentPlan = auth.user?.subscription?.planType
+  if (planRequired && currentPlan && currentPlan !== planRequired) {
     return next('/')
   }
 
