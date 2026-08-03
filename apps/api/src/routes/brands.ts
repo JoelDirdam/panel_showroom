@@ -109,7 +109,7 @@ function parseCsv(text: string): string[][] {
 
 router.use(authenticate)
 
-router.get('/', authorize('ADMIN'), async (req, res) => {
+router.get('/', authorize('BUSINESS'), async (req, res) => {
   const brands = await prisma.brand.findMany({
     where: tenantFilter(req.user!),
     orderBy: [{ isHouseBrand: 'desc' }, { name: 'asc' }],
@@ -119,7 +119,7 @@ router.get('/', authorize('ADMIN'), async (req, res) => {
 })
 
 /** KPIs para el listado de marcas. */
-router.get('/stats', authorize('ADMIN'), async (req, res) => {
+router.get('/stats', authorize('BUSINESS'), async (req, res) => {
   const where = tenantFilter(req.user!)
   const [total, withOwner, aggregate] = await Promise.all([
     prisma.brand.count({ where }),
@@ -137,7 +137,7 @@ router.get('/stats', authorize('ADMIN'), async (req, res) => {
 })
 
 /** Plantilla CSV para alta masiva de marcas. */
-router.get('/template', authorize('ADMIN'), async (_req, res) => {
+router.get('/template', authorize('BUSINESS'), async (_req, res) => {
   const header =
     'name,monthlyRent,assignedSpace,phone,cutoffDate,commissionPercent,cardFeePayer,transferFeePayer,contactEmail,whatsapp'
   const example =
@@ -150,7 +150,7 @@ router.get('/template', authorize('ADMIN'), async (_req, res) => {
 })
 
 /** Alta masiva desde CSV (mismas columnas que /brands/template). */
-router.post('/import', authorize('ADMIN'), async (req, res) => {
+router.post('/import', authorize('BUSINESS'), async (req, res) => {
   const { csv } = req.body as { csv?: string }
   if (!csv || typeof csv !== 'string' || !csv.trim()) {
     return res.status(400).json({ error: 'Falta el contenido CSV' })
@@ -227,7 +227,7 @@ router.post('/import', authorize('ADMIN'), async (req, res) => {
 })
 
 /** Elimina (o desactiva si tiene historial) varias marcas a la vez. */
-router.post('/bulk-delete', authorize('ADMIN'), async (req, res) => {
+router.post('/bulk-delete', authorize('BUSINESS'), async (req, res) => {
   const parsed = bulkDeleteSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Selecciona al menos una marca' })
@@ -312,7 +312,7 @@ router.post('/redeem-invite', async (req, res) => {
   return res.status(404).json({ error: 'Código inválido o expirado' })
 })
 
-router.get('/:id', authorize('ADMIN'), async (req, res) => {
+router.get('/:id', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const brand = await prisma.brand.findFirst({
     where: { id, ...tenantFilter(req.user!) },
@@ -328,7 +328,7 @@ router.get('/:id', authorize('ADMIN'), async (req, res) => {
  * Los pagos MIXTOS se prorratean entre efectivo/tarjeta/transferencia según
  * el peso de cada `SalePayment` dentro del total de la venta.
  */
-router.get('/:id/summary', authorize('ADMIN'), async (req, res) => {
+router.get('/:id/summary', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const brand = await prisma.brand.findFirst({ where: { id, ...tenantFilter(req.user!) } })
   if (!brand) return res.status(404).json({ error: 'Marca no encontrada' })
@@ -412,7 +412,7 @@ router.get('/:id/summary', authorize('ADMIN'), async (req, res) => {
   })
 })
 
-router.post('/', authorize('ADMIN'), async (req, res) => {
+router.post('/', authorize('BUSINESS'), async (req, res) => {
   const parsed = createBrandSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -522,7 +522,7 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
 })
 
 /** Genera un código de invitación temporal (48h) para que el dueño de la marca reclame su acceso. */
-router.post('/:id/invite-code', authorize('ADMIN'), async (req, res) => {
+router.post('/:id/invite-code', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const brand = await prisma.brand.findFirst({ where: { id, ...tenantFilter(req.user!) } })
   if (!brand) return res.status(404).json({ error: 'Marca no encontrada' })
@@ -540,7 +540,7 @@ router.post('/:id/invite-code', authorize('ADMIN'), async (req, res) => {
 })
 
 /** Desvincula al propietario actual (por si se generó por error o hay que reasignar). */
-router.post('/:id/unlink-owner', authorize('ADMIN'), async (req, res) => {
+router.post('/:id/unlink-owner', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const brand = await prisma.brand.findFirst({ where: { id, ...tenantFilter(req.user!) } })
   if (!brand) return res.status(404).json({ error: 'Marca no encontrada' })
@@ -549,7 +549,7 @@ router.post('/:id/unlink-owner', authorize('ADMIN'), async (req, res) => {
   return res.json({ ok: true })
 })
 
-router.patch('/:id', authorize('ADMIN'), async (req, res) => {
+router.patch('/:id', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const parsed = updateBrandSchema.safeParse(req.body)
   if (!parsed.success) {
@@ -573,7 +573,7 @@ router.patch('/:id', authorize('ADMIN'), async (req, res) => {
   }
 })
 
-router.delete('/:id', authorize('ADMIN'), async (req, res) => {
+router.delete('/:id', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const parsed = deleteBrandSchema.safeParse(req.body)
   if (!parsed.success) {

@@ -15,7 +15,7 @@ def test_brand_crud_and_invite_code_can_be_generated_and_redeemed():
         headers=admin,
         json={
             "name": name,
-            "contactEmail": f"crud-brand-{stamp}@example.com",
+            "contactEmail": f"qa-crud-brand-{stamp}@example.com",
             "monthlyRent": 1500,
             "commissionPercent": 12.5,
             "assignedSpace": "Pasillo QA",

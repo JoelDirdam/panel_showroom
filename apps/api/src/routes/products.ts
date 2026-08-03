@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import multer from 'multer'
+import { imageUpload, safeImageOriginalName } from '../lib/upload.js'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
@@ -9,7 +9,6 @@ import { storage } from '../lib/storage.js'
 import { authenticate, authorize, brandFilter, tenantFilter } from '../middleware/auth.js'
 
 const router = Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 const productSchema = z.object({
   brandId: z.string().optional(),
@@ -43,9 +42,9 @@ function parseOptionalNumber(value: unknown): number | undefined {
 
 router.get('/', async (req, res) => {
   const filter = brandFilter(req.user!)
-  // Solo ADMIN puede acotar por marca explícitamente (BRAND ya queda fijo por brandFilter).
+  // Solo BUSINESS puede acotar por marca explícitamente (BRAND ya queda fijo por brandFilter).
   const brandId = typeof req.query.brandId === 'string' ? req.query.brandId.trim() : ''
-  if (brandId && req.user!.role === 'ADMIN') {
+  if (brandId && req.user!.role === 'BUSINESS') {
     filter.brandId = brandId
   }
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
@@ -123,7 +122,7 @@ router.get('/:id', async (req, res) => {
   return res.json(product)
 })
 
-router.post('/', authorize('ADMIN'), async (req, res) => {
+router.post('/', authorize('BUSINESS'), async (req, res) => {
   const parsed = productSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -178,16 +177,23 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
 })
 
 /** Sube una imagen de producto y regresa la URL para usarla en create/update. */
-router.post('/upload-image', upload.single('image'), async (req, res) => {
+router.post('/upload-image', (req, res, next) => {
+  imageUpload.single('image')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'Archivo inválido' })
+    }
+    next()
+  })
+}, async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo' })
   }
-  const saved = await storage.save(req.file.buffer, req.file.originalname, 'products')
+  const saved = await storage.save(req.file.buffer, safeImageOriginalName(req.file), 'products')
   return res.status(201).json({ url: saved.url })
 })
 
-/** Elimina varios productos a la vez (solo ADMIN). */
-router.post('/bulk-delete', authorize('ADMIN'), async (req, res) => {
+/** Elimina varios productos a la vez (solo BUSINESS). */
+router.post('/bulk-delete', authorize('BUSINESS'), async (req, res) => {
   const parsed = bulkDeleteSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Selecciona al menos un producto' })
@@ -206,7 +212,7 @@ router.post('/bulk-delete', authorize('ADMIN'), async (req, res) => {
   return res.json({ deleted: result.count, skipped: parsed.data.ids.length - result.count })
 })
 
-router.patch('/:id', authorize('ADMIN'), async (req, res) => {
+router.patch('/:id', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const parsed = productSchema.partial().safeParse(req.body)
   if (!parsed.success) {
@@ -259,7 +265,7 @@ router.patch('/:id', authorize('ADMIN'), async (req, res) => {
   return res.json(product)
 })
 
-router.delete('/:id', authorize('ADMIN'), async (req, res) => {
+router.delete('/:id', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const filter = brandFilter(req.user!)
   const existing = await prisma.product.findFirst({

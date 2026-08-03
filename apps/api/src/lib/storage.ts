@@ -25,9 +25,15 @@ export const UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads')
  * Adapter local: guarda en el filesystem bajo `uploads/<folder>/` y sirve el
  * archivo vía `/uploads/<folder>/<archivo>` (ver static en index.ts).
  */
+const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp'])
+
 export class LocalStorageAdapter implements StorageProvider {
   async save(buffer: Buffer, originalName: string, folder = 'misc'): Promise<StoredFile> {
-    const ext = path.extname(originalName || '').slice(0, 10)
+    let ext = path.extname(originalName || '').toLowerCase().slice(0, 10)
+    if (!IMAGE_EXTS.has(ext)) {
+      ext = '.bin'
+    }
+    if (ext === '.jpeg') ext = '.jpg'
     const filename = `${randomUUID()}${ext}`
     const dir = path.join(UPLOADS_ROOT, folder)
     await mkdir(dir, { recursive: true })

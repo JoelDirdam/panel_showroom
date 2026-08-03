@@ -222,7 +222,7 @@ import {
   CalendarDays,
   Goal,
   Store,
-  Settings,
+  Users,
 } from "lucide-vue-next";
 import { BoxesIcon, ChevronDownIcon, HorizontalDots, BookOpenPesoIcon } from "../../icons";
 import { useSidebar } from "@/composables/useSidebar";
@@ -295,6 +295,13 @@ const menuGroups = computed(() => [
               tourKey: "sidebar-caja",
               moduleId: "caja",
             },
+            {
+              icon: Users,
+              name: "Empleados",
+              path: "/employees",
+              tourKey: "sidebar-employees",
+              moduleId: "employees",
+            },
           ]
         : []),
       {
@@ -304,17 +311,6 @@ const menuGroups = computed(() => [
         tourKey: "sidebar-sales",
         moduleId: "sales",
       },
-      ...(auth.isAdmin
-        ? [
-            {
-              icon: Settings,
-              name: "Preferencias",
-              path: "/preferences",
-              tourKey: "sidebar-preferences",
-              moduleId: "preferences",
-            },
-          ]
-        : []),
     ].filter((item) => auth.canAccess(item.moduleId)),
   },
 ]);

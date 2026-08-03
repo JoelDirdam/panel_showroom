@@ -52,7 +52,7 @@ router.get('/settings', async (req, res) => {
   return res.json(settings)
 })
 
-router.patch('/settings', authorize('ADMIN'), async (req, res) => {
+router.patch('/settings', authorize('BUSINESS'), async (req, res) => {
   const parsed = settingsSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos' })
 
@@ -80,7 +80,7 @@ router.get('/weekly-rules', async (req, res) => {
   return res.json(rules)
 })
 
-router.put('/weekly-rules', authorize('ADMIN'), async (req, res) => {
+router.put('/weekly-rules', authorize('BUSINESS'), async (req, res) => {
   const parsed = weeklyRulesSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -112,7 +112,7 @@ router.put('/weekly-rules', authorize('ADMIN'), async (req, res) => {
   }
 })
 
-router.delete('/weekly-rules/:type', authorize('ADMIN'), async (req, res) => {
+router.delete('/weekly-rules/:type', authorize('BUSINESS'), async (req, res) => {
   const type = getParam(req.params.type)
   if (type !== 'STOCK_DELIVERY' && type !== 'CUT_PICKUP') {
     return res.status(400).json({ error: 'Tipo inválido' })
@@ -186,7 +186,7 @@ router.get('/slots', async (req, res) => {
     },
   })
 
-  if (req.user!.role === 'ADMIN') return res.json(slots)
+  if (req.user!.role === 'BUSINESS') return res.json(slots)
 
   return res.json(
     slots.map((slot) => ({
@@ -202,7 +202,7 @@ router.get('/slots', async (req, res) => {
   )
 })
 
-router.delete('/slots/:id', authorize('ADMIN'), async (req, res) => {
+router.delete('/slots/:id', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const slot = await prisma.scheduleSlot.findFirst({
     where: { id, tenantId: req.user!.tenantId },

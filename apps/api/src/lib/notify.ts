@@ -17,10 +17,18 @@ export interface NotificationProvider {
  */
 export class ConsoleNotifyAdapter implements NotificationProvider {
   async sendEmailCode(to: string, code: string, purpose: NotifyPurpose): Promise<void> {
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[notify:email] destinatario=${to} purpose=${purpose} (código omitido en prod)`)
+      return
+    }
     console.log(`[notify:email] destinatario=${to} purpose=${purpose} código=${code}`)
   }
 
   async sendSmsCode(to: string, code: string, purpose: NotifyPurpose): Promise<void> {
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[notify:sms] destinatario=${to} purpose=${purpose} (código omitido en prod)`)
+      return
+    }
     console.log(`[notify:sms] destinatario=${to} purpose=${purpose} código=${code}`)
   }
 }

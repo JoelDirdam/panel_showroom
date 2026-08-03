@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import multer from 'multer'
 import { z } from 'zod'
 import type { PlanType } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
@@ -8,9 +7,9 @@ import { buildMeResponse } from '../lib/meShape.js'
 import { advanceStep } from '../lib/onboarding.js'
 import { ensureHouseBrand } from '../lib/houseBrand.js'
 import { storage } from '../lib/storage.js'
+import { imageUpload, safeImageOriginalName } from '../lib/upload.js'
 
 const router = Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
 const PLAN_TYPES: PlanType[] = ['NEGOCIO', 'CLINICA', 'RESTAURANTE', 'MARCA']
 const TRIAL_BASE_DAYS = 15
@@ -28,7 +27,7 @@ const createBusinessSchema = z.object({
   address: z.string().max(300).optional().nullable(),
 })
 
-router.use(authenticate, authorize('ADMIN'))
+router.use(authenticate, authorize('BUSINESS'))
 
 /**
  * Selecciona el plan y activa el trial. Sin promo: 15 días. Con MANEKI30
@@ -99,7 +98,14 @@ router.post('/select-plan', async (req, res) => {
  * Último paso del onboarding: datos del negocio + logo opcional. Cierra el
  * flujo con onboardingStep DONE y tenant.onboardingComplete=true.
  */
-router.post('/create-business', upload.single('logo'), async (req, res) => {
+router.post('/create-business', (req, res, next) => {
+  imageUpload.single('logo')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'Archivo inválido' })
+    }
+    next()
+  })
+}, async (req, res) => {
   const parsed = createBusinessSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -109,7 +115,7 @@ router.post('/create-business', upload.single('logo'), async (req, res) => {
 
   let logoUrl: string | undefined
   if (req.file) {
-    const saved = await storage.save(req.file.buffer, req.file.originalname, 'logos')
+    const saved = await storage.save(req.file.buffer, safeImageOriginalName(req.file), 'logos')
     logoUrl = saved.url
   }
 

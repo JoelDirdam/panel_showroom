@@ -160,6 +160,24 @@ const router = createRouter({
       meta: { title: 'Caja', adminOnly: true },
     },
     {
+      path: '/employees',
+      name: 'Employees',
+      component: () => import('../views/showroom/Employees.vue'),
+      meta: { title: 'Empleados', adminOnly: true },
+    },
+    {
+      path: '/platform',
+      name: 'PlatformDashboard',
+      component: () => import('../views/platform/PlatformDashboard.vue'),
+      meta: { title: 'Plataforma', platformOnly: true },
+    },
+    {
+      path: '/platform/tenants/:id',
+      name: 'PlatformTenantDetail',
+      component: () => import('../views/platform/PlatformTenantDetail.vue'),
+      meta: { title: 'Negocio', platformOnly: true },
+    },
+    {
       path: '/preferences',
       name: 'Preferences',
       component: () => import('../views/showroom/Preferences.vue'),
@@ -232,6 +250,7 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.path === '/login' && auth.isAuthenticated) {
     if (auth.mustChangePassword) return next('/change-password')
+    if (auth.isSuperAdmin) return next('/platform')
     return next('/')
   }
 
@@ -239,12 +258,27 @@ router.beforeEach(async (to, _from, next) => {
     await auth.fetchMe()
   }
 
+  if (auth.isAuthenticated && auth.isSuperAdmin) {
+    if (!to.path.startsWith('/platform') && to.path !== '/login' && to.path !== '/change-password') {
+      return next('/platform')
+    }
+  }
+
+  if (to.meta.platformOnly && !auth.isSuperAdmin) {
+    return next('/')
+  }
+
   if (auth.isAuthenticated && auth.mustChangePassword && !to.meta.allowMustChangePassword) {
     return next('/change-password')
   }
 
   if (to.path === '/change-password' && auth.isAuthenticated && !auth.mustChangePassword) {
-    return next('/')
+    return next(auth.isSuperAdmin ? '/platform' : '/')
+  }
+
+  // SUPER_ADMIN omite términos/onboarding del showroom
+  if (auth.isAuthenticated && auth.isSuperAdmin) {
+    return next()
   }
 
   // Mientras deba cambiar contraseña, no se evalúan términos/onboarding
@@ -275,7 +309,7 @@ router.beforeEach(async (to, _from, next) => {
     }
   }
 
-  if (to.meta.adminOnly && auth.user?.role !== 'ADMIN') {
+  if (to.meta.adminOnly && auth.user?.role !== 'BUSINESS') {
     return next('/')
   }
 

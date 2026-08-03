@@ -42,7 +42,7 @@ const patchLineSchema = z.object({
 
 const saleInclude = {
   createdBy: { select: { id: true, name: true } },
-  attendedBy: { select: { id: true, name: true, role: true } },
+  attendedBy: { select: { id: true, name: true } },
   customer: { select: { id: true, name: true, phone: true } },
   payments: true,
   lines: {
@@ -155,7 +155,7 @@ router.get('/:id', async (req, res) => {
   return res.json(serializeSale(sale, user.role, user.brandId))
 })
 
-router.post('/', authorize('ADMIN'), async (req, res) => {
+router.post('/', authorize('BUSINESS'), async (req, res) => {
   const parsed = createSaleSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -193,8 +193,8 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
       }
 
       if (attendedById) {
-        const attendant = await tx.user.findFirst({
-          where: { id: attendedById, tenantId: req.user!.tenantId },
+        const attendant = await tx.employee.findFirst({
+          where: { id: attendedById, tenantId: req.user!.tenantId!, active: true },
         })
         if (!attendant) throw new Error('ATTENDANT_NOT_FOUND')
       }
@@ -288,9 +288,9 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
         data: {
           paymentMethod,
           soldAt: soldAt ? new Date(soldAt) : undefined,
-          tenantId: req.user!.tenantId,
+          tenantId: req.user!.tenantId!,
           createdById: req.user!.id,
-          attendedById: attendedById || req.user!.id,
+          attendedById: attendedById || null,
           customerId: customerId || null,
           ticketComment: ticketComment?.trim() || null,
           applyTax,
@@ -368,7 +368,7 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
   }
 })
 
-router.patch('/lines/:lineId', authorize('ADMIN'), async (req, res) => {
+router.patch('/lines/:lineId', authorize('BUSINESS'), async (req, res) => {
   const lineId = getParam(req.params.lineId)
   const parsed = patchLineSchema.safeParse(req.body)
   if (!parsed.success) {

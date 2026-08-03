@@ -24,7 +24,7 @@ def test_weekly_rules_generate_and_preserve_bookings():
 
     stamp = int(time.time())
     slug = f"agenda-brand-{stamp}"
-    email = f"{slug}@example.com"
+    email = f"qa-{slug}@example.com"
     password = f"Temp{stamp}Aa!"
 
     brand_res = requests.post(

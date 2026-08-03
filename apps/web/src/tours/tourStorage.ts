@@ -1,4 +1,4 @@
-export type TourRole = 'ADMIN' | 'BRAND'
+export type TourRole = 'BUSINESS' | 'BRAND'
 
 export function tourStorageKey(userId: string, role: TourRole): string {
   return `panel-tour-done:${userId}:${role}`

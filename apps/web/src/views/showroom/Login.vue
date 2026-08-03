@@ -101,7 +101,7 @@ const showPassword = ref(false)
 async function handleSubmit() {
   const ok = await auth.login(email.value, password.value)
   if (ok) {
-    router.push(auth.mustChangePassword ? '/change-password' : '/')
+    router.push(auth.mustChangePassword ? '/change-password' : auth.isSuperAdmin ? '/platform' : '/')
   }
 }
 </script>

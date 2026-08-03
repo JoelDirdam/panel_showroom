@@ -137,7 +137,7 @@ panel-bubbles/
 |--------|------|-------------|
 | POST | `/api/auth/login` | Login |
 | GET | `/api/auth/me` | Usuario actual |
-| CRUD | `/api/brands` | Marcas (solo ADMIN) |
+| CRUD | `/api/brands` | Marcas (solo BUSINESS) |
 | CRUD | `/api/products` | Productos |
 | GET/PATCH | `/api/stock` | Inventario |
 | GET | `/api/dashboard` | KPIs |

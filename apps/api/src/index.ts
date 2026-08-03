@@ -17,6 +17,8 @@ import termsRoutes from './routes/terms.js'
 import onboardingRoutes from './routes/onboarding.js'
 import preferencesRoutes from './routes/preferences.js'
 import categoriesRoutes from './routes/categories.js'
+import employeesRoutes from './routes/employees.js'
+import platformRoutes from './routes/platform.js'
 import { UPLOADS_ROOT } from './lib/storage.js'
 import { requireOnboarding, requireTerms } from './middleware/auth.js'
 
@@ -24,7 +26,10 @@ const app = express()
 const PORT = Number(process.env.PORT) || 3000
 
 function resolveAllowedOrigins(): string[] {
-  const origins = new Set<string>(['http://localhost:5173'])
+  const origins = new Set<string>([
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+  ])
 
   const corsOrigin = process.env.CORS_ORIGIN?.trim()
   if (corsOrigin) {
@@ -60,7 +65,22 @@ app.use(
   }),
 )
 app.use(express.json())
-app.use('/uploads', express.static(UPLOADS_ROOT))
+app.use(
+  '/uploads',
+  express.static(UPLOADS_ROOT, {
+    setHeaders(res, filePath) {
+      const lower = filePath.toLowerCase()
+      if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+        res.setHeader('Content-Type', 'image/jpeg')
+      } else if (lower.endsWith('.png')) {
+        res.setHeader('Content-Type', 'image/png')
+      } else if (lower.endsWith('.webp')) {
+        res.setHeader('Content-Type', 'image/webp')
+      }
+      res.setHeader('X-Content-Type-Options', 'nosniff')
+    },
+  }),
+)
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'panel-bubbles-api' })
@@ -86,6 +106,8 @@ app.use('/api/gift-cards', giftCardsRoutes)
 app.use('/api/layaways', layawaysRoutes)
 app.use('/api/preferences', preferencesRoutes)
 app.use('/api/categories', categoriesRoutes)
+app.use('/api/employees', employeesRoutes)
+app.use('/api/platform', platformRoutes)
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on port ${PORT}`)

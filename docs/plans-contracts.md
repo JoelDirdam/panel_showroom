@@ -25,7 +25,7 @@ Ambos archivos (`apps/api` y `apps/web`) declaran los mismos tipos (`Entitlement
 
 ```jsonc
 {
-  "id": "...", "email": "...", "name": "...", "role": "ADMIN",
+  "id": "...", "email": "...", "name": "...", "role": "BUSINESS",
   "tenantId": "...", "brandId": null,
   "tenant": { "id": "...", "name": "...", "slug": "...", /* ... */ },
   "subscription": { "planType": "NEGOCIO", "status": "ACTIVE", "trialEndsAt": "...", "promoCodeUsed": null } /* | null */,
@@ -136,7 +136,7 @@ POST   /api/kitchen-orders/:id/notify-sms  <- { customerPhone }   // sólo si fl
 Ya existen en `Brand` los campos `inviteCodeHash` e `inviteCodeExpiresAt` (ver `schema.prisma`), pero el flujo de canje **no está implementado**. Contrato esperado:
 
 ```
-POST /api/brands/:brandId/invite            -> { code: string, expiresAt: string }   // ADMIN genera código (hash guardado en inviteCodeHash)
+POST /api/brands/:brandId/invite            -> { code: string, expiresAt: string }   // BUSINESS genera código (hash guardado en inviteCodeHash)
 POST /api/auth/redeem-invite                <- { code, name, email, password }
                                              -> { token, user }
 ```

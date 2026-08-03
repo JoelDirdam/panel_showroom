@@ -1,5 +1,5 @@
 /**
- * Smoke: admin tutorial auto-start + replay.
+ * Smoke: login must NOT auto-start tutorial; no «Ver tutorial» menu entry.
  * node scripts/browser-test-tutorial.mjs
  */
 import { chromium } from 'playwright'
@@ -45,66 +45,33 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 
 try {
   await login(page, 'admin@showroom.com', 'Showroom2026!')
-  ok('Login admin')
+  ok('Login negocio')
 
   await page.goto(`${BASE}/`)
+  await page.waitForTimeout(1500)
   const popover = page.locator('.driver-popover')
-  await popover.waitFor({ state: 'visible', timeout: 12000 })
-  const title = (await popover.locator('.driver-popover-title').textContent())?.trim() || ''
-  ok('Tour autoarranque visible', title)
-  await page.screenshot({ path: path.join(OUT, '01-admin-tour-sidebar.png'), fullPage: true })
-
-  await popover.locator('.driver-popover-next-btn').click({ force: true })
-  await page.waitForTimeout(500)
-  ok('Tour avanza con Siguiente')
-  await page.screenshot({ path: path.join(OUT, '02-admin-tour-next.png'), fullPage: true })
-
-  // Close via X
-  const close = page.locator('.driver-popover-close-btn')
-  if (await close.count()) {
-    await close.click({ force: true })
+  const autoVisible = await popover.isVisible().catch(() => false)
+  if (autoVisible) {
+    fail('Tour no debe autoarrancar tras login')
   } else {
-    await page.keyboard.press('Escape')
+    ok('Sin autoarranque de tutorial tras login')
   }
-  await page.waitForTimeout(400)
-  if (await popover.isVisible().catch(() => false)) {
-    fail('Tour no se cerró')
-  } else {
-    ok('Tour cerrado')
-  }
+  await page.screenshot({ path: path.join(OUT, '01-no-auto-tour.png'), fullPage: true })
 
-  // Replay
-  await page.getByRole('button', { name: /Administrador Showroom/i }).click()
-  await page.getByRole('button', { name: 'Ver tutorial' }).click()
-  await popover.waitFor({ state: 'visible', timeout: 10000 })
-  ok('Replay desde Ver tutorial')
-  await page.screenshot({ path: path.join(OUT, '03-admin-tour-replay.png'), fullPage: true })
-
-  // Brand tour — close current and switch user
-  await page.locator('.driver-popover-close-btn').click({ force: true }).catch(() => {})
-  await page.evaluate(() => {
-    const keys = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i)
-      if (k && (k.startsWith('panel-tour-done:') || k === 'token')) keys.push(k)
+  // User menu must not expose «Ver tutorial»
+  const userBtn = page.getByRole('button', { name: /Administrador Showroom|Showroom|Negocio/i }).first()
+  if (await userBtn.count()) {
+    await userBtn.click()
+    await page.waitForTimeout(300)
+    const replay = page.getByRole('button', { name: 'Ver tutorial' })
+    if (await replay.count()) {
+      fail('Botón Ver tutorial no debe aparecer')
+    } else {
+      ok('Menú sin Ver tutorial')
     }
-    keys.forEach((k) => localStorage.removeItem(k))
-  })
-  await page.goto(`${BASE}/login`)
-  await page.getByPlaceholder('Ingresa tu email').fill('marca@bubbles.com')
-  await page.getByPlaceholder('Ingresa tu contraseña').fill('Showroom2026!')
-  await page.getByRole('button', { name: 'Iniciar sesión' }).click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15000 })
-
-  // may land on change-password
-  if (page.url().includes('change-password')) {
-    ok('Marca requiere cambio de contraseña — se omite tour de marca en este smoke')
+    await page.screenshot({ path: path.join(OUT, '02-user-menu.png'), fullPage: true })
   } else {
-    await page.goto(`${BASE}/`)
-    await popover.waitFor({ state: 'visible', timeout: 12000 })
-    const brandTitle = (await popover.locator('.driver-popover-title').textContent())?.trim() || ''
-    ok('Tour marca autoarranque', brandTitle)
-    await page.screenshot({ path: path.join(OUT, '04-brand-tour.png'), fullPage: true })
+    ok('Menú usuario no encontrado con ese patrón — se omite assert de Ver tutorial')
   }
 } catch (err) {
   fail('Excepción', String(err))

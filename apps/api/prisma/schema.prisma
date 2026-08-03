@@ -8,8 +8,9 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
+  BUSINESS
   BRAND
+  SUPER_ADMIN
 }
 
 enum PaymentMethod {
@@ -98,6 +99,7 @@ model Tenant {
   logoUrl            String?
   onboardingComplete Boolean              @default(true)
   users              User[]
+  employees          Employee[]
   brands             Brand[]
   sales              Sale[]
   customers          Customer[]
@@ -127,13 +129,12 @@ model User {
   emailVerifiedAt    DateTime?
   timezone           String?                 @default("America/Mexico_City")
   onboardingStep     OnboardingStep          @default(DONE)
-  tenantId           String
-  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenantId           String?
+  tenant             Tenant?                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   brandId            String?
   brand              Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
   stockEntries       StockEntry[]
   sales              Sale[]                  @relation("SaleCreatedBy")
-  attendedSales      Sale[]                  @relation("SaleAttendedBy")
   layaways           Layaway[]
   requestedProducts  ProductRequest[]        @relation("ProductRequestCreatedBy")
   acceptedProducts   ProductRequest[]        @relation("ProductRequestAcceptedBy")
@@ -147,6 +148,23 @@ model User {
   updatedAt          DateTime                @updatedAt
 
   @@index([tenantId])
+}
+
+model Employee {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  email         String?
+  phone         String?
+  active        Boolean  @default(true)
+  // Futuro: userId String? @unique para vincular login/permisos
+  attendedSales Sale[]   @relation("SaleAttendedByEmployee")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, active])
 }
 
 model Brand {
@@ -273,7 +291,7 @@ model Sale {
   createdById    String?
   createdBy      User?         @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   attendedById   String?
-  attendedBy     User?         @relation("SaleAttendedBy", fields: [attendedById], references: [id], onDelete: SetNull)
+  attendedBy     Employee?     @relation("SaleAttendedByEmployee", fields: [attendedById], references: [id], onDelete: SetNull)
   customerId     String?
   customer       Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lines          SaleLine[]
@@ -550,7 +568,7 @@ model BusinessPreferences {
   labelHeightMm               Int?
   flexibleInventory           Boolean      @default(false)
   printTickets                Boolean      @default(true)
-  ticketComments              Boolean      @default(true)
+  ticketFixedComment          String?
   chargeIva                   Boolean      @default(false)
   usdEnabled                  Boolean      @default(false)
   usdRateMode                 UsdRateMode?

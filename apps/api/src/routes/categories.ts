@@ -65,7 +65,7 @@ router.post('/', async (req, res) => {
   return res.status(201).json(category)
 })
 
-router.patch('/:id', authorize('ADMIN'), async (req, res) => {
+router.patch('/:id', authorize('BUSINESS'), async (req, res) => {
   const id = getParam(req.params.id)
   const parsed = updateSchema.safeParse(req.body)
   if (!parsed.success) {

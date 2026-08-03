@@ -2,6 +2,22 @@
   <admin-layout>
     <page-breadcrumb page-title="Caja" />
 
+    <div
+      v-if="prefsBanner"
+      class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100"
+    >
+      {{ prefsBanner }}
+      <router-link to="/preferences" class="ml-2 font-medium underline">Ir a Preferencias</router-link>
+    </div>
+
+    <div
+      v-if="employees.length === 0 && !loadingEmployees"
+      class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100"
+    >
+      Registra empleados para seleccionar quién atiende en Caja.
+      <router-link to="/employees" class="ml-2 font-medium underline">Ir a Empleados</router-link>
+    </div>
+
     <div class="mb-4 flex flex-wrap items-center gap-2" data-tour="caja-tabs">
       <button
         v-for="tab in tabs"
@@ -177,7 +193,8 @@
             data-tour="caja-attendant"
             class="mb-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
           >
-            <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+            <option value="">— Seleccionar —</option>
+            <option v-for="e in employees" :key="e.id" :value="e.id">{{ e.name }}</option>
           </select>
           <p class="mb-4 text-xs text-gray-500">
             {{ attendantLabel }}
@@ -224,7 +241,7 @@
             </div>
           </div>
 
-          <div class="mt-5 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/50">
+          <div v-if="usdEnabled" class="mt-5 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/50">
             <p class="mb-2 text-xs font-medium text-gray-700 dark:text-gray-300">
               Conversor pesos a dólares
             </p>
@@ -255,9 +272,16 @@
               </button>
             </div>
             <p class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-              Equivalente en USD: ${{ formatMoney((activeTab.converterPesos || 0) / USD_RATE) }} USD
-              <span class="text-gray-400">(tasa {{ USD_RATE }})</span>
+              Equivalente en USD: ${{ formatMoney((activeTab.converterPesos || 0) / usdRate) }} USD
+              <span class="text-gray-400">(tasa {{ usdRate }})</span>
             </p>
+          </div>
+
+          <div
+            v-if="commissionHint"
+            class="mt-3 rounded-lg border border-gray-100 bg-white/60 px-3 py-2 text-xs text-gray-600 dark:border-gray-800 dark:text-gray-300"
+          >
+            {{ commissionHint }}
           </div>
 
           <div v-if="activeTab.paymentMethod === 'EFECTIVO'" class="mt-4">
@@ -405,9 +429,15 @@
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
           <h4 class="mb-1 text-sm font-semibold text-gray-800 dark:text-white">Comentario en ticket</h4>
           <p class="mb-2 text-xs text-gray-500">
-            Agrega notas internas que se guardarán junto con la venta y aparecerán en el ticket
-            impreso.
+            Nota única de esta venta (independiente de los comentarios fijos del negocio).
           </p>
+          <div
+            v-if="ticketFixedComment"
+            class="mb-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:bg-gray-900/50 dark:text-gray-300"
+          >
+            <span class="font-medium">Texto fijo del ticket:</span>
+            {{ ticketFixedComment }}
+          </div>
           <textarea
             v-model="activeTab.ticketComment"
             maxlength="500"
@@ -429,25 +459,77 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import api, {
+  fetchEmployees,
+  fetchPreferences,
+  type BusinessPreferences,
   type CreateLayawayPayload,
   type CreateSalePayload,
   type Customer,
+  type Employee,
   type GiftCardPreview,
   type PaymentMethod,
   type Product,
   type Sale,
-  type TenantUser,
 } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import {
+  DEFAULT_USD_RATE,
   MAX_CAJAS,
-  USD_RATE,
   formatMoney,
   round2,
   useCajaSession,
 } from '@/composables/useCajaSession'
 
 const auth = useAuthStore()
+const prefs = ref<BusinessPreferences | null>(null)
+const employees = ref<Employee[]>([])
+const loadingEmployees = ref(true)
+
+const usdEnabled = computed(() => !!prefs.value?.usdEnabled)
+const usdRate = computed(() => {
+  const p = prefs.value
+  if (p?.usdEnabled && p.usdRateMode === 'FIXED' && p.usdFixedRate) {
+    const n = Number(p.usdFixedRate)
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  return DEFAULT_USD_RATE
+})
+const ticketFixedComment = computed(() => prefs.value?.ticketFixedComment?.trim() || '')
+const prefsBanner = computed(() => {
+  const p = prefs.value
+  if (!p) {
+    return 'Configura las preferencias del negocio para que Caja use tu tasa USD, IVA y textos de ticket.'
+  }
+  if (p.usdEnabled && p.usdRateMode === 'FIXED' && !p.usdFixedRate) {
+    return 'USD está activado en modo fijo pero falta la tasa. Complétala en Preferencias.'
+  }
+  if (p.createdAt && p.updatedAt && p.createdAt === p.updatedAt) {
+    return 'Configura las preferencias del negocio para que Caja use tu tasa USD, IVA y textos de ticket.'
+  }
+  return ''
+})
+
+const commissionHint = computed(() => {
+  const p = prefs.value
+  if (!p) return ''
+  const method = activeTab.value.paymentMethod
+  const parts: string[] = []
+  if (method === 'TARJETA' || method === 'MIXTO') {
+    if (p.primaryTerminalCommission) {
+      parts.push(`Comisión terminal 1: ${p.primaryTerminalCommission}%`)
+    }
+    if (p.secondaryTerminalCommission) {
+      parts.push(`Comisión terminal 2: ${p.secondaryTerminalCommission}%`)
+    }
+  }
+  if (method === 'TRANSFERENCIA' || method === 'MIXTO') {
+    if (p.transferCommission) {
+      parts.push(`Comisión transferencia: ${p.transferCommission}%`)
+    }
+  }
+  return parts.length ? `Referencia (no altera el total): ${parts.join(' · ')}` : ''
+})
+
 const {
   tabs,
   activeId,
@@ -466,9 +548,11 @@ const {
   totalToPay,
   changeDue,
   mixedPayments,
-} = useCajaSession(() => auth.user?.id || '')
+} = useCajaSession({
+  defaultAttendedById: () => employees.value[0]?.id || '',
+  defaultApplyTax: () => !!prefs.value?.chargeIva,
+})
 
-const users = ref<TenantUser[]>([])
 const searchQuery = ref('')
 const searchResults = ref<Product[]>([])
 const showSearchDropdown = ref(false)
@@ -507,9 +591,8 @@ const mixedSum = computed(() =>
 const mixedOk = computed(() => Math.abs(mixedSum.value - totalToPay.value) < 0.01)
 
 const attendantLabel = computed(() => {
-  const u = users.value.find((x) => x.id === activeTab.value.attendedById)
-  if (!u) return ''
-  return `${u.name} · ${u.role === 'ADMIN' ? 'Propietario' : 'Marca'}`
+  const e = employees.value.find((x) => x.id === activeTab.value.attendedById)
+  return e ? `${e.name} · Empleado` : ''
 })
 
 function scheduleSearch() {
@@ -662,7 +745,7 @@ async function confirmSale() {
     applyTax: activeTab.value.applyTax,
     taxRate: 0.16,
     ticketComment: activeTab.value.ticketComment || null,
-    attendedById: activeTab.value.attendedById || auth.user?.id,
+    attendedById: activeTab.value.attendedById || null,
     customerId: activeTab.value.customerId,
     giftCardCode: activeTab.value.giftCardApplied > 0 ? activeTab.value.giftCardCode.trim() : null,
     lines: buildLinesPayload(),
@@ -716,10 +799,29 @@ async function createLayaway() {
 }
 
 onMounted(async () => {
-  const { data } = await api.get<TenantUser[]>('/users')
-  users.value = data
-  if (!activeTab.value.attendedById && auth.user?.id) {
-    activeTab.value.attendedById = auth.user.id
+  try {
+    if (!auth.user?.preferences) {
+      await auth.fetchMe()
+    }
+    prefs.value = auth.user?.preferences ?? (await fetchPreferences())
+  } catch {
+    try {
+      prefs.value = await fetchPreferences()
+    } catch {
+      prefs.value = null
+    }
+  }
+
+  try {
+    employees.value = await fetchEmployees(true)
+  } catch {
+    employees.value = []
+  } finally {
+    loadingEmployees.value = false
+  }
+
+  if (!activeTab.value.attendedById && employees.value[0]) {
+    activeTab.value.attendedById = employees.value[0].id
   }
   void nextTick(() => searchInputRef.value?.focus())
 })

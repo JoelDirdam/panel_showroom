@@ -19,8 +19,8 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'ADMIN' | 'BRAND'
-  tenantId?: string
+  role: 'BUSINESS' | 'BRAND' | 'SUPER_ADMIN'
+  tenantId?: string | null
   brandId: string | null
   mustChangePassword?: boolean
   brand?: { id: string; name: string } | null
@@ -63,7 +63,7 @@ export interface User {
     address: string | null
     logoUrl: string | null
     onboardingComplete: boolean
-  }
+  } | null
   preferences?: BusinessPreferences | null
 }
 
@@ -174,7 +174,7 @@ export interface BusinessPreferences {
   labelHeightMm: number | null
   flexibleInventory: boolean
   printTickets: boolean
-  ticketComments: boolean
+  ticketFixedComment: string | null
   chargeIva: boolean
   usdEnabled: boolean
   usdRateMode: UsdRateMode | null
@@ -195,7 +195,7 @@ export interface UpdateBusinessPreferencesPayload {
   labelHeightMm?: number | null
   flexibleInventory?: boolean
   printTickets?: boolean
-  ticketComments?: boolean
+  ticketFixedComment?: string | null
   chargeIva?: boolean
   usdEnabled?: boolean
   usdRateMode?: UsdRateMode | null
@@ -573,7 +573,104 @@ export interface TenantUser {
   id: string
   name: string
   email: string
-  role: 'ADMIN' | 'BRAND'
+  role: 'BUSINESS' | 'BRAND'
+}
+
+export interface Employee {
+  id: string
+  tenantId: string
+  name: string
+  email: string | null
+  phone: string | null
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export async function fetchEmployees(activeOnly = false): Promise<Employee[]> {
+  const { data } = await api.get<Employee[]>('/employees', {
+    params: activeOnly ? { active: true } : undefined,
+  })
+  return data
+}
+
+export async function createEmployee(payload: {
+  name: string
+  email?: string | null
+  phone?: string | null
+}): Promise<Employee> {
+  const { data } = await api.post<Employee>('/employees', payload)
+  return data
+}
+
+export async function updateEmployee(
+  id: string,
+  payload: Partial<{ name: string; email: string | null; phone: string | null; active: boolean }>,
+): Promise<Employee> {
+  const { data } = await api.patch<Employee>(`/employees/${id}`, payload)
+  return data
+}
+
+export async function deactivateEmployee(id: string): Promise<Employee> {
+  const { data } = await api.delete<Employee>(`/employees/${id}`)
+  return data
+}
+
+export interface PlatformStats {
+  tenants: number
+  brands: number
+  products: number
+  sales: number
+  employees: number
+  salesTotalSum: number
+  salesLast30Days: number
+}
+
+export interface PlatformTenantRow {
+  id: string
+  name: string
+  slug: string
+  active: boolean
+  rfc: string | null
+  onboardingComplete: boolean
+  createdAt: string
+  subscription: {
+    planType: string
+    status: string
+    trialEndsAt: string
+  } | null
+  counts: {
+    users: number
+    brands: number
+    sales: number
+    employees: number
+    products: number
+  }
+}
+
+export async function fetchPlatformStats(): Promise<PlatformStats> {
+  const { data } = await api.get<PlatformStats>('/platform/stats')
+  return data
+}
+
+export async function fetchPlatformTenants(): Promise<PlatformTenantRow[]> {
+  const { data } = await api.get<PlatformTenantRow[]>('/platform/tenants')
+  return data
+}
+
+export async function fetchPlatformTenant(id: string): Promise<Record<string, unknown>> {
+  const { data } = await api.get(`/platform/tenants/${id}`)
+  return data
+}
+
+export async function deletePlatformTenant(
+  id: string,
+  confirmSlug: string,
+): Promise<{ ok: boolean; deletedId: string; slug: string }> {
+  const { data } = await api.delete(`/platform/tenants/${id}`, {
+    params: { confirm: confirmSlug },
+  })
+  return data
 }
 
 export interface GiftCardPreview {

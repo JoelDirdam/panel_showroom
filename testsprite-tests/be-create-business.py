@@ -8,6 +8,35 @@ if not API.endswith("/api"):
     API = f"{API}/api"
 
 
+def cleanup_qa_tenant(tenant_id: str, slug: str) -> None:
+    """Best-effort teardown: borra el tenant de QA via SUPER_ADMIN, si hay credenciales."""
+    email = os.environ.get("SUPER_ADMIN_EMAIL")
+    password = os.environ.get("SUPER_ADMIN_PASSWORD")
+    if not email or not password:
+        print(f"[QA cleanup skipped] tenant={tenant_id} slug={slug} — set SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD")
+        return
+    try:
+        login = requests.post(f"{API}/auth/login", json={"email": email, "password": password}, timeout=30)
+        if login.status_code != 200:
+            print(f"[QA cleanup] login SUPER_ADMIN fallo ({login.status_code}): {login.text}")
+            return
+        token = login.json().get("token")
+        if not token:
+            return
+        r = requests.delete(
+            f"{API}/platform/tenants/{tenant_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"confirm": slug},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            print(f"[QA cleanup] tenant borrado: {tenant_id} ({slug})")
+        else:
+            print(f"[QA cleanup] fallo al borrar tenant {tenant_id} ({r.status_code}): {r.text}")
+    except requests.RequestException as exc:
+        print(f"[QA cleanup] error al borrar tenant {tenant_id}: {exc}")
+
+
 def test_create_business_completes_onboarding_and_provisions_tenant_defaults():
     terms = requests.get(f"{API}/terms/current", timeout=30)
     assert terms.status_code == 200, terms.text
@@ -76,6 +105,9 @@ def test_create_business_completes_onboarding_and_provisions_tenant_defaults():
     prefs = requests.get(f"{API}/preferences", headers=headers, timeout=30)
     assert prefs.status_code == 200, prefs.text
     assert "cutoffDaySlots" in prefs.json()
+
+    # Teardown: todos los asserts pasaron, se limpia el tenant de QA creado.
+    cleanup_qa_tenant(user["tenant"]["id"], user["tenant"]["slug"])
 
 
 test_create_business_completes_onboarding_and_provisions_tenant_defaults()

@@ -8,7 +8,7 @@ router.use(authenticate)
 
 router.get('/', async (req, res) => {
   const filter = brandFilter(req.user!)
-  const isAdmin = req.user!.role === 'ADMIN'
+  const isAdmin = req.user!.role === 'BUSINESS'
 
   const allStock = await prisma.stock.findMany({
     where: { product: filter },

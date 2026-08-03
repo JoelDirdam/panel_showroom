@@ -207,13 +207,24 @@
                 Imprimir tickets automáticamente
               </label>
               <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <input v-model="prefsForm.ticketComments" type="checkbox" />
-                Permitir comentarios en tickets
-              </label>
-              <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <input v-model="prefsForm.chargeIva" type="checkbox" />
                 Cobrar IVA por defecto
               </label>
+            </div>
+            <div class="mt-4">
+              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">
+                Comentarios fijos en tickets
+              </label>
+              <p class="mb-2 text-xs text-gray-500">
+                Este texto se incluye siempre en los tickets (aparte del comentario único de cada venta en Caja).
+              </p>
+              <textarea
+                v-model="prefsForm.ticketFixedComment"
+                maxlength="1000"
+                rows="3"
+                placeholder="Ej. Gracias por su compra · Políticas de cambio…"
+                class="field w-full"
+              />
             </div>
           </div>
 
@@ -580,7 +591,7 @@ const prefsForm = reactive({
   labelHeightMm: '',
   flexibleInventory: false,
   printTickets: true,
-  ticketComments: true,
+  ticketFixedComment: '',
   chargeIva: false,
   usdEnabled: false,
   usdRateMode: '' as '' | UsdRateMode,
@@ -633,7 +644,7 @@ function applyPreferences(data: BusinessPreferences) {
   prefsForm.labelHeightMm = data.labelHeightMm != null ? String(data.labelHeightMm) : ''
   prefsForm.flexibleInventory = data.flexibleInventory
   prefsForm.printTickets = data.printTickets
-  prefsForm.ticketComments = data.ticketComments
+  prefsForm.ticketFixedComment = data.ticketFixedComment || ''
   prefsForm.chargeIva = data.chargeIva
   prefsForm.usdEnabled = data.usdEnabled
   prefsForm.usdRateMode = data.usdRateMode ?? ''
@@ -691,7 +702,7 @@ async function savePreferences() {
       labelHeightMm: intOrNull(prefsForm.labelHeightMm),
       flexibleInventory: prefsForm.flexibleInventory,
       printTickets: prefsForm.printTickets,
-      ticketComments: prefsForm.ticketComments,
+      ticketFixedComment: prefsForm.ticketFixedComment?.trim() || null,
       chargeIva: prefsForm.chargeIva,
       usdEnabled: prefsForm.usdEnabled,
       usdRateMode: prefsForm.usdRateMode || null,

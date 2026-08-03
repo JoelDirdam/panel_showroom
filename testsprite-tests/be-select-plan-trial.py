@@ -33,7 +33,41 @@ def register_fresh_tenant(tag: str) -> dict:
     )
     assert reg.status_code == 201, reg.text
     body = reg.json()
-    return {"Authorization": f"Bearer {body['token']}"}
+    user = body["user"]
+    return {
+        "headers": {"Authorization": f"Bearer {body['token']}"},
+        "tenant_id": user["tenant"]["id"],
+        "tenant_slug": user["tenant"]["slug"],
+    }
+
+
+def cleanup_qa_tenant(tenant_id: str, slug: str) -> None:
+    """Best-effort teardown: borra el tenant de QA via SUPER_ADMIN, si hay credenciales."""
+    email = os.environ.get("SUPER_ADMIN_EMAIL")
+    password = os.environ.get("SUPER_ADMIN_PASSWORD")
+    if not email or not password:
+        print(f"[QA cleanup skipped] tenant={tenant_id} slug={slug} — set SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD")
+        return
+    try:
+        login = requests.post(f"{API}/auth/login", json={"email": email, "password": password}, timeout=30)
+        if login.status_code != 200:
+            print(f"[QA cleanup] login SUPER_ADMIN fallo ({login.status_code}): {login.text}")
+            return
+        token = login.json().get("token")
+        if not token:
+            return
+        r = requests.delete(
+            f"{API}/platform/tenants/{tenant_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"confirm": slug},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            print(f"[QA cleanup] tenant borrado: {tenant_id} ({slug})")
+        else:
+            print(f"[QA cleanup] fallo al borrar tenant {tenant_id} ({r.status_code}): {r.text}")
+    except requests.RequestException as exc:
+        print(f"[QA cleanup] error al borrar tenant {tenant_id}: {exc}")
 
 
 def trial_days(trial_ends_at: str) -> int:
@@ -45,11 +79,11 @@ def trial_days(trial_ends_at: str) -> int:
 
 
 def test_select_plan_without_promo_grants_15_day_trial():
-    headers = register_fresh_tenant("sin-promo")
+    tenant = register_fresh_tenant("sin-promo")
 
     r = requests.post(
         f"{API}/onboarding/select-plan",
-        headers=headers,
+        headers=tenant["headers"],
         json={"planType": "NEGOCIO"},
         timeout=30,
     )
@@ -64,13 +98,15 @@ def test_select_plan_without_promo_grants_15_day_trial():
     days = trial_days(sub["trialEndsAt"])
     assert TRIAL_BASE_DAYS - 1 <= days <= TRIAL_BASE_DAYS, f"esperaba ~{TRIAL_BASE_DAYS} dias, obtuve {days}"
 
+    cleanup_qa_tenant(tenant["tenant_id"], tenant["tenant_slug"])
+
 
 def test_select_plan_with_maneki30_extends_trial_to_30_days():
-    headers = register_fresh_tenant("con-promo")
+    tenant = register_fresh_tenant("con-promo")
 
     r = requests.post(
         f"{API}/onboarding/select-plan",
-        headers=headers,
+        headers=tenant["headers"],
         json={"planType": "NEGOCIO", "promoCode": "maneki30"},
         timeout=30,
     )
@@ -81,17 +117,21 @@ def test_select_plan_with_maneki30_extends_trial_to_30_days():
     days = trial_days(sub["trialEndsAt"])
     assert 29 <= days <= 30, f"esperaba ~30 dias con MANEKI30, obtuve {days}"
 
+    cleanup_qa_tenant(tenant["tenant_id"], tenant["tenant_slug"])
+
 
 def test_select_plan_with_invalid_promo_code_is_rejected():
-    headers = register_fresh_tenant("promo-invalido")
+    tenant = register_fresh_tenant("promo-invalido")
 
     r = requests.post(
         f"{API}/onboarding/select-plan",
-        headers=headers,
+        headers=tenant["headers"],
         json={"planType": "NEGOCIO", "promoCode": "NOEXISTE123"},
         timeout=30,
     )
     assert r.status_code == 400, r.text
+
+    cleanup_qa_tenant(tenant["tenant_id"], tenant["tenant_slug"])
 
 
 test_select_plan_without_promo_grants_15_day_trial()

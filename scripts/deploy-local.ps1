@@ -166,11 +166,14 @@ Write-Step "Preparando Web"
 $webDir = Join-Path $root "apps\web"
 $webEnv = Join-Path $webDir ".env"
 
+# Preferir proxy de Vite (`/api` → localhost:3000) para evitar CORS
+# entre localhost y 127.0.0.1. Solo crear .env si falta; no forzar URL absoluta.
 if (-not (Test-Path $webEnv)) {
     @"
-VITE_API_URL=http://localhost:3000/api
-"@ | Set-Content -Path $webEnv -Encoding UTF8
-    Write-Host "Creado apps/web/.env" -ForegroundColor Yellow
+# Dejar vacío o comentar para usar el proxy de Vite (recomendado en local).
+# VITE_API_URL=http://localhost:3000/api
+"@ | Set-Content -Path $webEnv -Encoding utf8
+    Write-Host "Creado apps/web/.env (proxy Vite /api)" -ForegroundColor Yellow
 }
 
 Push-Location $webDir

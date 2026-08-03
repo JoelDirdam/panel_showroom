@@ -95,7 +95,7 @@ async function main() {
       email: 'admin@showroom.com',
       password: adminHash,
       name: 'Administrador Showroom',
-      role: Role.ADMIN,
+      role: Role.BUSINESS,
       tenantId: tenant.id,
       onboardingStep: 'DONE',
       emailVerifiedAt: new Date(),

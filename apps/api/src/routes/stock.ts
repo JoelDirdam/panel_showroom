@@ -55,7 +55,7 @@ router.get('/:productId/entries', async (req, res) => {
   return res.json(entries)
 })
 
-router.post('/:productId/entries', authorize('ADMIN'), async (req, res) => {
+router.post('/:productId/entries', authorize('BUSINESS'), async (req, res) => {
   const productId = getParam(req.params.productId)
   const parsed = stockEntrySchema.safeParse(req.body)
   if (!parsed.success) {
@@ -109,8 +109,8 @@ router.post('/:productId/entries', authorize('ADMIN'), async (req, res) => {
   return res.status(201).json(result)
 })
 
-/** Retiro directo de stock (solo ADMIN). Registra una entrada negativa para trazabilidad. */
-router.post('/:productId/withdraw', authorize('ADMIN'), async (req, res) => {
+/** Retiro directo de stock (solo BUSINESS). Registra una entrada negativa para trazabilidad. */
+router.post('/:productId/withdraw', authorize('BUSINESS'), async (req, res) => {
   const productId = getParam(req.params.productId)
   const parsed = stockEntrySchema.safeParse(req.body)
   if (!parsed.success) {
@@ -159,7 +159,7 @@ router.post('/:productId/withdraw', authorize('ADMIN'), async (req, res) => {
   return res.status(201).json(result)
 })
 
-router.patch('/:productId', authorize('ADMIN'), async (req, res) => {
+router.patch('/:productId', authorize('BUSINESS'), async (req, res) => {
   const productId = getParam(req.params.productId)
   const parsed = stockUpdateSchema.safeParse(req.body)
   if (!parsed.success) {

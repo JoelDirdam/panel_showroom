@@ -21,7 +21,37 @@ export async function buildMeResponse(userId: string) {
     ? user.termsAcceptances.find((a) => a.version === currentTerms.version)
     : undefined
 
+  if (user.role === 'SUPER_ADMIN') {
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      tenantId: null,
+      brandId: null,
+      mustChangePassword: user.mustChangePassword,
+      phone: user.phone,
+      phoneVerifiedAt: user.phoneVerifiedAt,
+      emailVerifiedAt: user.emailVerifiedAt,
+      timezone: user.timezone,
+      onboardingStep: user.onboardingStep,
+      brand: null,
+      terms: {
+        currentVersion: currentTerms?.version ?? null,
+        accepted: true,
+        acceptedVersion: acceptance?.version ?? null,
+        acceptedAt: acceptance?.acceptedAt ?? null,
+      },
+      tenant: null,
+      subscription: null,
+      entitlements: [],
+      featureFlags: [],
+      preferences: null,
+    }
+  }
+
   const { tenant } = user
+  if (!tenant) return null
   const subscription = tenant.subscription
 
   return {
