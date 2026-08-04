@@ -1,7 +1,7 @@
 import type { PlanType } from './entitlements'
 
 /**
- * Catálogo de planes para Landing (`/planes`) y el flujo de onboarding
+ * Catálogo de planes para Landing (`/`) y el flujo de onboarding
  * (`/onboarding/select-plan`, `/onboarding/confirm-plan`). Solo NEGOCIO
  * tiene flujo de producto completo hoy; el resto se muestra como
  * "Próximamente" (ver docs/plans-contracts.md y `lib/entitlements.ts`).

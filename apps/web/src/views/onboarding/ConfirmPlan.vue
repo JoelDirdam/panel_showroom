@@ -30,9 +30,9 @@
         <button
           type="button"
           class="mt-6 flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
-          @click="router.push('/onboarding/create-business')"
+          @click="router.push('/onboarding/payment')"
         >
-          Crear negocio
+          Continuar al pago / prueba
         </button>
         <button
           type="button"

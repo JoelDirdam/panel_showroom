@@ -2,6 +2,48 @@
   <admin-layout>
     <page-breadcrumb page-title="Marcas" />
 
+    <div
+      class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
+    >
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        Módulos disponibles
+      </p>
+      <ul class="mt-3 space-y-2 text-sm">
+        <li class="flex items-center gap-2">
+          <span
+            class="h-2.5 w-2.5 rounded-full"
+            :class="setup?.businessConfigured ? 'bg-success-500' : 'bg-gray-300 dark:bg-gray-600'"
+          />
+          {{ setup?.businessConfigured ? 'Negocio configurado' : 'Negocio pendiente' }}
+        </li>
+        <li class="flex items-center gap-2">
+          <span
+            class="h-2.5 w-2.5 rounded-full"
+            :class="setup?.hasHouseBrand ? 'bg-success-500' : 'bg-gray-300 dark:bg-gray-600'"
+          />
+          {{ setup?.hasHouseBrand ? 'Marca propia registrada' : 'Marca no registrada' }}
+        </li>
+      </ul>
+      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        Estas opciones habilitan preferencias adicionales dentro de tu perfil.
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <router-link
+          v-if="!setup?.hasHouseBrand"
+          to="/brands/new?house=1"
+          class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
+        >
+          Registrar mi marca
+        </router-link>
+        <router-link
+          to="/brands/new"
+          class="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700"
+        >
+          Agregar otra marca
+        </router-link>
+      </div>
+    </div>
+
     <div v-if="stats" class="mb-6 grid grid-cols-12 gap-4 md:gap-6">
       <div class="col-span-12 sm:col-span-6 xl:col-span-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -271,8 +313,11 @@ import api, {
   fetchBrandStats,
   importBrandsCsv,
 } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
+const setup = computed(() => auth.user?.setupStatus)
 
 const brands = ref<Brand[]>([])
 const stats = ref<BrandStats | null>(null)

@@ -36,7 +36,7 @@ const changePasswordSchema = z.object({
 const registerSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email(),
-  phone: z.string().max(30).optional().nullable(),
+  phone: z.string().min(7).max(30),
   password: z.string().min(8),
   signedName: z.string().min(1).max(200),
   termsVersion: z.string().min(1),
@@ -159,7 +159,7 @@ router.post('/register', authRateLimit, async (req, res) => {
         email,
         password: passwordHash,
         name,
-        phone: phone?.trim() || null,
+        phone: phone.trim(),
         role: 'BUSINESS',
         tenantId: tenant.id,
         onboardingStep: 'REGISTERED',

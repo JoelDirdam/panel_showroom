@@ -1,9 +1,10 @@
 import { prisma } from './prisma.js'
 import { getEntitlements, getFeatureFlags } from './entitlements.js'
+import { assertSubscriptionActive } from './subscription.js'
 
 /**
  * Shape compartido usado por `GET /me`, `/register` y las respuestas de
- * auth/onboarding para que el frontend (Agente C) tenga un único contrato.
+ * auth/onboarding para que el frontend tenga un único contrato.
  */
 export async function buildMeResponse(userId: string) {
   const user = await prisma.user.findUnique({
@@ -44,6 +45,7 @@ export async function buildMeResponse(userId: string) {
       },
       tenant: null,
       subscription: null,
+      setupStatus: null,
       entitlements: [],
       featureFlags: [],
       preferences: null,
@@ -52,7 +54,21 @@ export async function buildMeResponse(userId: string) {
 
   const { tenant } = user
   if (!tenant) return null
-  const subscription = tenant.subscription
+
+  // Refresca EXPIRED si el trial ya venció (sin bloquear /me).
+  if (tenant.subscription) {
+    await assertSubscriptionActive(tenant.id)
+  }
+
+  const freshSub = await prisma.tenantSubscription.findUnique({ where: { tenantId: tenant.id } })
+
+  const [houseBrand, brandCount] = await Promise.all([
+    prisma.brand.findFirst({
+      where: { tenantId: tenant.id, isHouseBrand: true, active: true },
+      select: { id: true },
+    }),
+    prisma.brand.count({ where: { tenantId: tenant.id } }),
+  ])
 
   return {
     id: user.id,
@@ -84,19 +100,25 @@ export async function buildMeResponse(userId: string) {
       logoUrl: tenant.logoUrl,
       onboardingComplete: tenant.onboardingComplete,
     },
-    subscription: subscription
+    subscription: freshSub
       ? {
-          planType: subscription.planType,
-          status: subscription.status,
-          trialEndsAt: subscription.trialEndsAt,
-          promoCodeUsed: subscription.promoCodeUsed,
+          planType: freshSub.planType,
+          status: freshSub.status,
+          trialEndsAt: freshSub.trialEndsAt,
+          promoCodeUsed: freshSub.promoCodeUsed,
+          paymentDeferred: freshSub.paymentDeferred,
+          currentPeriodEndsAt: freshSub.currentPeriodEndsAt,
+          paymentProvider: freshSub.paymentProvider,
         }
       : null,
-    entitlements: getEntitlements(subscription?.planType),
-    // Flags de funcionalidad stub por plan (recordatorios/historial en
-    // CLINICA, platillos/comandas/ia/sms en RESTAURANTE). Ver
-    // docs/plans-contracts.md — Agente H.
-    featureFlags: getFeatureFlags(subscription?.planType),
+    setupStatus: {
+      businessConfigured: tenant.onboardingComplete,
+      hasHouseBrand: Boolean(houseBrand),
+      brandCount,
+      houseBrandId: houseBrand?.id ?? null,
+    },
+    entitlements: getEntitlements(freshSub?.planType),
+    featureFlags: getFeatureFlags(freshSub?.planType),
     preferences: tenant.preferences ?? null,
   }
 }

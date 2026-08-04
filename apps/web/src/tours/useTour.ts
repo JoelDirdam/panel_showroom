@@ -172,7 +172,7 @@ export async function replayTour(): Promise<void> {
   clearTourDone(auth.user.id, role)
   stopTour()
   if (routerRef && routerRef.currentRoute.value.path !== '/') {
-    await routerRef.push('/')
+    await routerRef.push('/home')
     await nextTick()
     await wait(200)
   }

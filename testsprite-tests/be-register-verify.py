@@ -87,6 +87,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
         json={
             "name": "Duplicado",
             "email": email,
+            "phone": "5215500000001",
             "password": password,
             "signedName": "Duplicado",
             "termsVersion": version,
@@ -101,6 +102,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
         json={
             "name": "QA Stale Terms",
             "email": f"qa-register-stale-{stamp}@example.com",
+            "phone": "5215500000002",
             "password": password,
             "signedName": "QA Stale Terms",
             "termsVersion": f"{version}-obsoleta",

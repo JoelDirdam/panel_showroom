@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-white dark:bg-gray-900">
     <header class="border-b border-gray-200 dark:border-gray-800">
       <div class="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
-        <router-link to="/planes" class="text-lg font-semibold text-gray-800 dark:text-white">
+        <router-link to="/" class="text-lg font-semibold text-gray-800 dark:text-white">
           PuntoManeki
         </router-link>
         <router-link

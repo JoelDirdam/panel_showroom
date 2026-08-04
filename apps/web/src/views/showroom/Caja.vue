@@ -11,11 +11,18 @@
     </div>
 
     <div
-      v-if="employees.length === 0 && !loadingEmployees"
+      v-if="!loadingEmployees"
       class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100"
     >
-      Registra empleados para seleccionar quién atiende en Caja.
-      <router-link to="/employees" class="ml-2 font-medium underline">Ir a Empleados</router-link>
+      <template v-if="employees.length === 0">
+        Puedes atender tú mismo ahora. También puedes
+        <router-link to="/employees" class="font-medium underline">registrar empleados</router-link>
+        para asignarlos en Caja.
+      </template>
+      <template v-else>
+        Tip: si quieres que más personas atiendan, gestiona el equipo en
+        <router-link to="/employees" class="font-medium underline">Empleados</router-link>.
+      </template>
     </div>
 
     <div class="mb-4 flex flex-wrap items-center gap-2" data-tour="caja-tabs">
@@ -194,6 +201,7 @@
             class="mb-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
           >
             <option value="">— Seleccionar —</option>
+            <option v-if="auth.user" :value="SELF_ATTENDANT">Yo ({{ auth.user.name }})</option>
             <option v-for="e in employees" :key="e.id" :value="e.id">{{ e.name }}</option>
           </select>
           <p class="mb-4 text-xs text-gray-500">
@@ -484,6 +492,8 @@ const auth = useAuthStore()
 const prefs = ref<BusinessPreferences | null>(null)
 const employees = ref<Employee[]>([])
 const loadingEmployees = ref(true)
+/** Valor especial del select: el dueño BUSINESS atiende sin Employee. */
+const SELF_ATTENDANT = '__self__'
 
 const usdEnabled = computed(() => !!prefs.value?.usdEnabled)
 const usdRate = computed(() => {
@@ -591,6 +601,9 @@ const mixedSum = computed(() =>
 const mixedOk = computed(() => Math.abs(mixedSum.value - totalToPay.value) < 0.01)
 
 const attendantLabel = computed(() => {
+  if (activeTab.value.attendedById === SELF_ATTENDANT && auth.user) {
+    return `${auth.user.name} · Tu cuenta`
+  }
   const e = employees.value.find((x) => x.id === activeTab.value.attendedById)
   return e ? `${e.name} · Empleado` : ''
 })
@@ -740,12 +753,14 @@ async function confirmSale() {
     return
   }
 
+  const isSelf = activeTab.value.attendedById === SELF_ATTENDANT
   const payload: CreateSalePayload = {
     paymentMethod: activeTab.value.paymentMethod,
     applyTax: activeTab.value.applyTax,
     taxRate: 0.16,
     ticketComment: activeTab.value.ticketComment || null,
-    attendedById: activeTab.value.attendedById || null,
+    attendedById: isSelf ? null : activeTab.value.attendedById || null,
+    attendedByUserId: isSelf && auth.user ? auth.user.id : null,
     customerId: activeTab.value.customerId,
     giftCardCode: activeTab.value.giftCardApplied > 0 ? activeTab.value.giftCardCode.trim() : null,
     lines: buildLinesPayload(),
@@ -820,8 +835,8 @@ onMounted(async () => {
     loadingEmployees.value = false
   }
 
-  if (!activeTab.value.attendedById && employees.value[0]) {
-    activeTab.value.attendedById = employees.value[0].id
+  if (!activeTab.value.attendedById) {
+    activeTab.value.attendedById = employees.value[0]?.id || SELF_ATTENDANT
   }
   void nextTick(() => searchInputRef.value?.focus())
 })

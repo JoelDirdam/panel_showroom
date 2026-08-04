@@ -37,6 +37,15 @@ export interface User {
     status: 'TRIALING' | 'ACTIVE' | 'EXPIRED' | 'CANCELED'
     trialEndsAt: string
     promoCodeUsed: string | null
+    paymentDeferred?: boolean
+    currentPeriodEndsAt?: string | null
+    paymentProvider?: string | null
+  } | null
+  setupStatus?: {
+    businessConfigured: boolean
+    hasHouseBrand: boolean
+    brandCount: number
+    houseBrandId: string | null
   } | null
   /**
    * Resto del shape de `buildMeResponse` (ver `apps/api/src/lib/meShape.ts`),
@@ -92,7 +101,7 @@ export async function fetchCurrentTerms(): Promise<TermsDocument> {
 export interface RegisterPayload {
   name: string
   email: string
-  phone?: string
+  phone: string
   password: string
   signedName: string
   termsVersion: string
@@ -135,6 +144,12 @@ export async function selectPlan(
     planType,
     promoCode: promoCode?.trim() || undefined,
   })
+  return data
+}
+
+/** Stub de pago: continúa con prueba gratis (Stripe/MP pendiente). */
+export async function skipPayment(): Promise<{ ok: boolean; user: User }> {
+  const { data } = await api.post<{ ok: boolean; user: User }>('/onboarding/skip-payment')
   return data
 }
 
@@ -272,6 +287,79 @@ export interface DashboardStats {
       brand: { id: string; name: string }
     }
   }>
+}
+
+export interface DashboardAnalytics {
+  kpis: {
+    revenueMonth: number
+    revenueChangePct: number
+    customersMonth: number
+    customersChangePct: number
+    avgTicketMonth: number
+    avgTicketChangePct: number
+    lowStockCount: number
+    totalStockUnits: number
+  }
+  sparkline: {
+    layawaysOpen: number
+    layawayWeekDelta: number
+    salesWeekCount: number
+    salesWeekChangePct: number
+    salesLast7Days: number[]
+    revenueLast7Days: number[]
+  }
+  salesByBrandMonthly: {
+    months: string[]
+    series: Array<{ name: string; data: number[] }>
+  }
+  weekly: {
+    days: string[]
+    revenueByDay: number[]
+    avgDailySales: number
+    avgDailyChangePct: number
+    topProducts: Array<{ name: string; qty: number; changeDir: 'up' | 'down' | 'flat' }>
+  }
+  recentSales: Array<{
+    id: string
+    ticketNumber: number
+    soldAt: string
+    total: number
+    paymentMethod: string
+    customerName: string | null
+    attendantName: string | null
+  }>
+  activities: Array<{
+    id: string
+    type: 'sale' | 'product_request' | 'appointment'
+    actorName: string
+    action: string
+    reference: string
+    at: string
+  }>
+  lowStockItems: DashboardStats['lowStockItems']
+}
+
+export interface HomeSummary {
+  salesTodayCount: number
+  salesTodayTotal: number
+  totalProducts: number
+  totalBrands: number
+  lowStockCount: number
+  setupStatus: {
+    businessConfigured: boolean
+    hasHouseBrand: boolean
+    houseBrandId: string | null
+  }
+}
+
+export async function fetchHomeSummary(): Promise<HomeSummary> {
+  const { data } = await api.get<HomeSummary>('/dashboard/home-summary')
+  return data
+}
+
+export async function fetchDashboardAnalytics(): Promise<DashboardAnalytics> {
+  const { data } = await api.get<DashboardAnalytics>('/dashboard/analytics')
+  return data
 }
 
 export type CommissionFeePayer = 'BRAND' | 'CLIENT' | 'BUSINESS'
@@ -624,6 +712,10 @@ export interface PlatformStats {
   employees: number
   salesTotalSum: number
   salesLast30Days: number
+  salesLast30Sum: number
+  trialingTenants: number
+  activeSubscriptions: number
+  expiredSubscriptions: number
 }
 
 export interface PlatformTenantRow {
@@ -719,6 +811,7 @@ export interface Sale {
   createdAt: string
   createdBy?: { id: string; name: string } | null
   attendedBy?: { id: string; name: string; role?: string } | null
+  attendedByUser?: { id: string; name: string } | null
   customer?: Customer | null
   payments?: SalePayment[]
   lines: SaleLine[]
@@ -731,6 +824,7 @@ export interface CreateSalePayload {
   applyTax?: boolean
   taxRate?: number
   attendedById?: string | null
+  attendedByUserId?: string | null
   customerId?: string | null
   giftCardCode?: string | null
   payments?: Array<{ method: SplitPaymentMethod; amount: number }>

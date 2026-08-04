@@ -9,6 +9,38 @@ Panel administrativo para que las marcas gestionen sus productos y stock en el s
 - **Deploy**: Railway CLI
 - **Repo**: https://github.com/JoelDirdam/panel_showroom.git
 
+## Modelo de cuentas, planes y marcas
+
+PuntoManeki separa tres ideas para que un mismo negocio pueda crecer sin crear roles raros ni tablas duplicadas:
+
+1. **Quién inicia sesión (identidad)**  
+   El usuario del panel del negocio tiene el rol `BUSINESS`. Eso significa “administra este negocio”, no “solo puede ser un tipo de producto”.  
+   El rol `BRAND` es para otra persona: el dueño de una marca externa que consignas en tu local (portal de marca).  
+   El rol `SUPER_ADMIN` es de la plataforma.
+
+2. **Qué plan paga (facturación)**  
+   Cada negocio (`Tenant`) tiene una suscripción con un plan principal: Negocio, Clínica, Restaurante o Marca.  
+   Ahí se guarda si está en prueba, activo o vencido, y hasta cuándo dura la prueba o el periodo pagado.  
+   En el futuro, módulos extra (por ejemplo Clínica encima de Negocio, o cobro por marca propia) se modelan como **complementos (add-ons)** del mismo negocio, no como un segundo usuario ni como tablas `BUSINESS` / `CLINIC` / `RESTAURANT` separadas.
+
+3. **Qué ya configuró (capacidades)**  
+   - Negocio registrado: el tenant ya completó el alta (`onboardingComplete`).  
+   - Marca propia: existe una marca del negocio marcada como marca casa (`isHouseBrand`).  
+   - Marcas de terceros: otras marcas del mismo negocio, sin ser la marca casa.  
+   Los módulos visibles del menú salen del plan principal más los complementos activos.
+
+### Ejemplos
+
+- **Cafetería:** te registras como negocio, das de alta tu local y, si quieres, creas tu marca propia para los productos de la cafetería. También puedes registrar marcas de proveedores y sus productos. Sigues siendo el mismo usuario `BUSINESS`.  
+- **Negocio + clínica (futuro):** pagas o activas el complemento de clínica sobre el mismo negocio; no creas otra cuenta “CLINIC”.  
+- **Marca consignadora externa:** esa persona entra con rol `BRAND` y se vincula a una marca concreta; no es lo mismo que “el negocio tiene marca propia”.
+
+### ¿Cómo sabemos si el negocio aún no creó su marca?
+
+Hay marca propia solo si existe un registro `Brand` de ese negocio con `isHouseBrand = true`.  
+Si no existe, la interfaz muestra “Marca no registrada” (aunque ya haya marcas de terceros).  
+Ese estado se expone en la API (`setupStatus` en `/me`) para Preferencias, Marcas y el Home.
+
 ## Requisitos
 
 - Node.js 20+

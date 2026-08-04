@@ -25,6 +25,7 @@ def register_fresh_tenant(tag: str) -> dict:
         json={
             "name": f"QA Plan {tag}",
             "email": email,
+            "phone": "5215512345678",
             "password": password,
             "signedName": f"QA Plan {tag}",
             "termsVersion": version,

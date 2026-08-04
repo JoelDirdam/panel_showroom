@@ -8,23 +8,36 @@ const router = Router()
 router.use(authenticate, authorize('SUPER_ADMIN'))
 
 router.get('/stats', async (_req, res) => {
-  const [tenants, brands, products, sales, employees] = await Promise.all([
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+
+  const [
+    tenants,
+    brands,
+    products,
+    sales,
+    employees,
+    salesAgg,
+    recentSales,
+    salesLast30Agg,
+    trialing,
+    activeSubs,
+    expiredSubs,
+  ] = await Promise.all([
     prisma.tenant.count(),
     prisma.brand.count(),
     prisma.product.count(),
     prisma.sale.count(),
     prisma.employee.count(),
+    prisma.sale.aggregate({ _sum: { total: true } }),
+    prisma.sale.count({ where: { soldAt: { gte: thirtyDaysAgo } } }),
+    prisma.sale.aggregate({
+      where: { soldAt: { gte: thirtyDaysAgo } },
+      _sum: { total: true },
+    }),
+    prisma.tenantSubscription.count({ where: { status: 'TRIALING' } }),
+    prisma.tenantSubscription.count({ where: { status: 'ACTIVE' } }),
+    prisma.tenantSubscription.count({ where: { status: 'EXPIRED' } }),
   ])
-
-  const salesAgg = await prisma.sale.aggregate({
-    _sum: { total: true },
-  })
-
-  const recentSales = await prisma.sale.count({
-    where: {
-      soldAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-    },
-  })
 
   return res.json({
     tenants,
@@ -34,6 +47,10 @@ router.get('/stats', async (_req, res) => {
     employees,
     salesTotalSum: salesAgg._sum.total ? Number(salesAgg._sum.total) : 0,
     salesLast30Days: recentSales,
+    salesLast30Sum: salesLast30Agg._sum.total ? Number(salesLast30Agg._sum.total) : 0,
+    trialingTenants: trialing,
+    activeSubscriptions: activeSubs,
+    expiredSubscriptions: expiredSubs,
   })
 })
 

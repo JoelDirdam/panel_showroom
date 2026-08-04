@@ -161,6 +161,7 @@ export async function requireTerms(req: Request, res: Response, next: NextFuncti
 /**
  * Bloquea el acceso a rutas protegidas si el tenant/usuario no terminó el
  * onboarding (a menos que la ruta esté en el allowlist de onboarding/auth/terms).
+ * También marca/bloquea suscripción vencida (`SUBSCRIPTION_EXPIRED`).
  */
 export async function requireOnboarding(req: Request, res: Response, next: NextFunction) {
   if (isAllowlisted(req)) return next()
@@ -173,7 +174,7 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { onboardingStep: true, tenant: { select: { onboardingComplete: true } } },
+    select: { onboardingStep: true, tenant: { select: { id: true, onboardingComplete: true } } },
   })
   if (!dbUser) return next()
 
@@ -183,6 +184,19 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
       code: 'ONBOARDING_REQUIRED',
       onboardingStep: dbUser.onboardingStep,
     })
+  }
+
+  if (dbUser.tenant?.id) {
+    const { assertSubscriptionActive } = await import('../lib/subscription.js')
+    const gate = await assertSubscriptionActive(dbUser.tenant.id)
+    if (!gate.ok) {
+      return res.status(402).json({
+        error: 'Tu prueba o suscripción ha vencido. Renueva tu plan para continuar.',
+        code: 'SUBSCRIPTION_EXPIRED',
+        trialEndsAt: gate.subscription.trialEndsAt,
+        status: gate.subscription.status,
+      })
+    }
   }
 
   next()

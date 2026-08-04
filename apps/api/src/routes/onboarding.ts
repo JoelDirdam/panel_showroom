@@ -5,7 +5,6 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, authorize } from '../middleware/auth.js'
 import { buildMeResponse } from '../lib/meShape.js'
 import { advanceStep } from '../lib/onboarding.js'
-import { ensureHouseBrand } from '../lib/houseBrand.js'
 import { storage } from '../lib/storage.js'
 import { imageUpload, safeImageOriginalName } from '../lib/upload.js'
 
@@ -95,8 +94,28 @@ router.post('/select-plan', async (req, res) => {
 })
 
 /**
- * Último paso del onboarding: datos del negocio + logo opcional. Cierra el
- * flujo con onboardingStep DONE y tenant.onboardingComplete=true.
+ * Stub de pago: el usuario continúa con la prueba gratis sin Stripe/MP.
+ * TODO: integrar Stripe / Mercado Pago y reemplazar este bypass.
+ */
+router.post('/skip-payment', async (req, res) => {
+  const tenantId = req.user!.tenantId
+  const sub = await prisma.tenantSubscription.findUnique({ where: { tenantId } })
+  if (!sub) {
+    return res.status(400).json({ error: 'Debes seleccionar un plan antes de continuar' })
+  }
+
+  await prisma.tenantSubscription.update({
+    where: { tenantId },
+    data: { paymentDeferred: true },
+  })
+
+  const me = await buildMeResponse(req.user!.id)
+  return res.json({ ok: true, user: me })
+})
+
+/**
+ * Último paso del onboarding: datos del negocio + logo opcional.
+ * La marca propia (house brand) NO se crea aquí — es decisión del usuario en Marcas.
  */
 router.post('/create-business', (req, res, next) => {
   imageUpload.single('logo')(req, res, (err) => {
@@ -119,7 +138,7 @@ router.post('/create-business', (req, res, next) => {
     logoUrl = saved.url
   }
 
-  const tenant = await prisma.tenant.update({
+  await prisma.tenant.update({
     where: { id: tenantId },
     data: {
       name: name.trim(),
@@ -131,16 +150,12 @@ router.post('/create-business', (req, res, next) => {
     },
   })
 
-  await ensureHouseBrand(prisma, tenant, req.user!.email)
-
   await prisma.businessPreferences.upsert({
     where: { tenantId },
     update: {},
     create: { tenantId, cutoffDaySlots: [] },
   })
 
-  // No hay una acción distinta entre BUSINESS_CREATED y DONE: este es el
-  // último paso del onboarding, así que se avanza directo a DONE.
   const user = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id } })
   await prisma.user.update({
     where: { id: user.id },

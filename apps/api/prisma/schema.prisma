@@ -135,6 +135,7 @@ model User {
   brand              Brand?                  @relation(fields: [brandId], references: [id], onDelete: SetNull)
   stockEntries       StockEntry[]
   sales              Sale[]                  @relation("SaleCreatedBy")
+  attendedSales      Sale[]                  @relation("SaleAttendedByUser")
   layaways           Layaway[]
   requestedProducts  ProductRequest[]        @relation("ProductRequestCreatedBy")
   acceptedProducts   ProductRequest[]        @relation("ProductRequestAcceptedBy")
@@ -288,11 +289,13 @@ model Sale {
   subtotal       Decimal       @default(0) @db.Decimal(10, 2)
   total          Decimal       @default(0) @db.Decimal(10, 2)
   giftCardAmount Decimal       @default(0) @db.Decimal(10, 2)
-  createdById    String?
-  createdBy      User?         @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  attendedById   String?
-  attendedBy     Employee?     @relation("SaleAttendedByEmployee", fields: [attendedById], references: [id], onDelete: SetNull)
-  customerId     String?
+  createdById       String?
+  createdBy         User?         @relation("SaleCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  attendedById      String?
+  attendedBy        Employee?     @relation("SaleAttendedByEmployee", fields: [attendedById], references: [id], onDelete: SetNull)
+  attendedByUserId  String?
+  attendedByUser    User?         @relation("SaleAttendedByUser", fields: [attendedByUserId], references: [id], onDelete: SetNull)
+  customerId        String?
   customer       Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   lines          SaleLine[]
   payments       SalePayment[]
@@ -545,15 +548,21 @@ model PromoCode {
 }
 
 model TenantSubscription {
-  id            String             @id @default(cuid())
-  tenantId      String             @unique
-  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  planType      PlanType
-  status        SubscriptionStatus @default(TRIALING)
-  trialEndsAt   DateTime
-  promoCodeUsed String?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id                  String             @id @default(cuid())
+  tenantId            String             @unique
+  tenant              Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planType            PlanType
+  status              SubscriptionStatus @default(TRIALING)
+  trialEndsAt         DateTime
+  promoCodeUsed       String?
+  /// Stub de pago futuro (Stripe / Mercado Pago). true = eligió prueba sin cobrar aún.
+  paymentDeferred     Boolean            @default(false)
+  currentPeriodEndsAt DateTime?
+  /// "stripe" | "mercadopago" | null hasta integrar cobro.
+  paymentProvider     String?
+  externalCustomerId  String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 }
 
 model BusinessPreferences {

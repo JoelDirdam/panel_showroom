@@ -12,12 +12,15 @@
     </div>
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <template v-for="module in visibleModules" :key="module.id">
+      <template v-for="module in visibleModules" :key="`${module.name}-${module.path ?? module.id}`">
         <router-link
           v-if="module.path"
           :to="module.path"
           class="group flex cursor-pointer flex-col rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-brand-300 hover:shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03]"
         >
+          <div class="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-200">
+            <component :is="module.icon" class="h-4 w-4" />
+          </div>
           <h3 class="text-sm font-semibold text-gray-800 dark:text-white">{{ module.name }}</h3>
           <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ module.description }}</p>
           <span class="mt-3 inline-flex items-center gap-1 text-xs font-medium text-brand-500 group-hover:text-brand-600">
@@ -28,12 +31,15 @@
           v-else
           class="flex flex-col rounded-2xl border border-gray-200 bg-white p-5 opacity-70 dark:border-gray-800 dark:bg-white/[0.03]"
         >
-          <div class="flex items-start justify-between">
-            <h3 class="text-sm font-semibold text-gray-800 dark:text-white">{{ module.name }}</h3>
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-200">
+              <component :is="module.icon" class="h-4 w-4" />
+            </div>
             <span class="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-500 dark:bg-white/10 dark:text-gray-400">
               Próximamente
             </span>
           </div>
+          <h3 class="text-sm font-semibold text-gray-800 dark:text-white">{{ module.name }}</h3>
           <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">{{ module.description }}</p>
         </div>
       </template>
@@ -41,10 +47,10 @@
 
     <div class="mt-8 flex justify-center">
       <router-link
-        to="/"
+        to="/home"
         class="rounded-lg bg-brand-500 px-6 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
       >
-        Ir a mi Dashboard
+        Ir a Home
       </router-link>
     </div>
   </admin-layout>

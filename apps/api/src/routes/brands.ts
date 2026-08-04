@@ -34,6 +34,8 @@ const createBrandSchema = z.object({
   createUser: z.boolean().optional(),
   password: z.string().min(8).optional(),
   userName: z.string().min(1).optional(),
+  /** Marca propia del negocio (productos de la casa). Solo una por tenant. */
+  isHouseBrand: z.boolean().optional(),
   ...brandCommonFields,
 })
 
@@ -418,8 +420,18 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
   }
 
-  const { createUser, password, userName, slug: requestedSlug, ...brandData } = parsed.data
+  const { createUser, password, userName, slug: requestedSlug, isHouseBrand, ...brandData } = parsed.data
   const tenantId = req.user!.tenantId
+
+  if (isHouseBrand) {
+    const existingHouse = await prisma.brand.findFirst({
+      where: { tenantId, isHouseBrand: true },
+      select: { id: true },
+    })
+    if (existingHouse) {
+      return res.status(409).json({ error: 'Ya tienes una marca propia registrada' })
+    }
+  }
 
   // Usuario BRAND sin marca (residuo de una marca eliminada): se reutiliza en vez de bloquear el email.
   let orphanUserId: string | null = null
@@ -462,7 +474,7 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
           whatsapp: brandData.whatsapp?.trim() || null,
           phone: brandData.phone?.trim() || null,
           active: brandData.active ?? true,
-          isHouseBrand: false,
+          isHouseBrand: Boolean(isHouseBrand),
           monthlyRent: brandData.monthlyRent ?? 0,
           assignedSpace: brandData.assignedSpace || null,
           cutoffDate: brandData.cutoffDate ?? null,

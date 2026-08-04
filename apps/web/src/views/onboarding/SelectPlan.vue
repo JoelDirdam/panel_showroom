@@ -20,7 +20,8 @@
                 ? 'border-brand-500 ring-2 ring-brand-500/30 bg-brand-50/40 dark:bg-brand-500/5'
                 : 'border-gray-200 bg-white hover:border-gray-300 dark:border-gray-800 dark:bg-white/[0.03]'
             "
-            @click="selectedPlan = plan.type"
+            :disabled="!plan.available"
+            @click="plan.available && (selectedPlan = plan.type)"
           >
             <span
               class="absolute -top-2.5 left-4 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white"
@@ -75,7 +76,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { CheckIcon } from 'lucide-vue-next'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -83,15 +84,39 @@ import { PLANS, TRIAL_BASE_DAYS } from '@/lib/plans'
 import type { PlanType } from '@/lib/entitlements'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
-const selectedPlan = ref<PlanType>('NEGOCIO')
+const planFromQuery = typeof route.query.plan === 'string' ? route.query.plan : null
+let planFromStorage: string | null = null
+try {
+  planFromStorage = sessionStorage.getItem('pendingPlanType')
+} catch {
+  planFromStorage = null
+}
+const preferredPlan = planFromQuery || planFromStorage
+const initialPlan =
+  PLANS.find((p) => p.type === preferredPlan && p.available)?.type ??
+  PLANS.find((p) => p.available)?.type ??
+  'NEGOCIO'
+
+const selectedPlan = ref<PlanType>(initialPlan)
 const promoCode = ref('')
 
 async function handleContinue() {
   if (!selectedPlan.value) return
+  const plan = PLANS.find((p) => p.type === selectedPlan.value)
+  if (!plan?.available) {
+    auth.error = 'Ese plan aún no está disponible'
+    return
+  }
   const ok = await auth.selectPlan(selectedPlan.value, promoCode.value.trim() || undefined)
   if (ok) {
+    try {
+      sessionStorage.removeItem('pendingPlanType')
+    } catch {
+      /* ignore */
+    }
     router.push('/onboarding/confirm-plan')
   }
 }
