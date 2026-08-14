@@ -24,7 +24,7 @@ function money(value: number): Prisma.Decimal {
 router.use(authenticate)
 
 /** Preview / validar tarjeta de regalo sin descontar. */
-router.post('/preview', authorize('ADMIN'), async (req, res) => {
+router.post('/preview', authorize('BUSINESS'), async (req, res) => {
   const parsed = previewSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -50,7 +50,7 @@ router.post('/preview', authorize('ADMIN'), async (req, res) => {
   })
 })
 
-router.post('/', authorize('ADMIN'), async (req, res) => {
+router.post('/', authorize('BUSINESS'), async (req, res) => {
   const parsed = createGiftCardSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -75,7 +75,7 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
   }
 })
 
-router.get('/', authorize('ADMIN'), async (req, res) => {
+router.get('/', authorize('BUSINESS'), async (req, res) => {
   const cards = await prisma.giftCard.findMany({
     where: { tenantId: req.user!.tenantId },
     orderBy: { createdAt: 'desc' },

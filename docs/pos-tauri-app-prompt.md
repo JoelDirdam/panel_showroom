@@ -46,7 +46,7 @@ Sí: el POS DEBE tener acceso al catálogo para que un cajero/cliente consulte p
 - Usar `GET /api/products` con filtros ya existentes (`name`, `sku`, `priceMin`, `priceMax`, `stockMin`, `stockMax`, `sinStock`) — ver `apps/api/src/routes/products.ts`.
 - Mostrar al menos: nombre, SKU, marca, precio, stock disponible.
 - UI táctil-friendly: búsqueda rápida por nombre o SKU (input siempre enfocable para lectores HID que actúan como teclado).
-- Roles: respetar `brandFilter` / auth existente (`ADMIN` ve todo; `BRAND` solo su marca). Si más adelante se añade rol de caja, documentarlo en API; el MVP puede usar usuarios ADMIN (o un usuario operativo del showroom) ya existentes.
+- Roles: respetar `brandFilter` / auth existente (`BUSINESS` ve todo; `BRAND` solo su marca). Si más adelante se añade rol de caja, documentarlo en API; el MVP puede usar usuarios BUSINESS (o un usuario operativo del showroom) ya existentes.
 
 ## Fases de implementación
 

@@ -26,7 +26,10 @@ export const useAuthStore = defineStore('auth', () => {
   const devCode = ref<string | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.role === 'ADMIN')
+  const isBusiness = computed(() => user.value?.role === 'BUSINESS')
+  /** Alias de `isBusiness` — se mantiene para no romper templates existentes que usan `isAdmin`. */
+  const isAdmin = isBusiness
+  const isSuperAdmin = computed(() => user.value?.role === 'SUPER_ADMIN')
   const mustChangePassword = computed(() => !!user.value?.mustChangePassword)
   const onboardingStep = computed(() => user.value?.onboardingStep ?? 'DONE')
   /** `true` si no hay términos vigentes pendientes de aceptar (nada publicado, o ya aceptados). */
@@ -208,7 +211,9 @@ export const useAuthStore = defineStore('auth', () => {
     terms,
     devCode,
     isAuthenticated,
+    isBusiness,
     isAdmin,
+    isSuperAdmin,
     mustChangePassword,
     onboardingStep,
     termsAccepted,

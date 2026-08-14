@@ -28,6 +28,8 @@ const createSaleSchema = z.object({
   applyTax: z.boolean().optional().default(false),
   taxRate: z.number().nonnegative().max(1).optional().default(0.16),
   attendedById: z.string().min(1).optional().nullable(),
+  /** Usuario BUSINESS que atiende (p. ej. el dueño sin empleados registrados). */
+  attendedByUserId: z.string().min(1).optional().nullable(),
   customerId: z.string().min(1).optional().nullable(),
   giftCardCode: z.string().min(1).optional().nullable(),
   payments: z.array(paymentSplitSchema).optional(),
@@ -42,7 +44,8 @@ const patchLineSchema = z.object({
 
 const saleInclude = {
   createdBy: { select: { id: true, name: true } },
-  attendedBy: { select: { id: true, name: true, role: true } },
+  attendedBy: { select: { id: true, name: true } },
+  attendedByUser: { select: { id: true, name: true } },
   customer: { select: { id: true, name: true, phone: true } },
   payments: true,
   lines: {
@@ -155,7 +158,7 @@ router.get('/:id', async (req, res) => {
   return res.json(serializeSale(sale, user.role, user.brandId))
 })
 
-router.post('/', authorize('ADMIN'), async (req, res) => {
+router.post('/', authorize('BUSINESS'), async (req, res) => {
   const parsed = createSaleSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -169,6 +172,7 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
     applyTax,
     taxRate,
     attendedById,
+    attendedByUserId,
     customerId,
     giftCardCode,
     payments,
@@ -192,11 +196,29 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
         throw new Error('PRODUCT_NOT_FOUND')
       }
 
+      if (attendedById && attendedByUserId) {
+        throw new Error('ATTENDANT_CONFLICT')
+      }
+
       if (attendedById) {
-        const attendant = await tx.user.findFirst({
-          where: { id: attendedById, tenantId: req.user!.tenantId },
+        const attendant = await tx.employee.findFirst({
+          where: { id: attendedById, tenantId: req.user!.tenantId!, active: true },
         })
         if (!attendant) throw new Error('ATTENDANT_NOT_FOUND')
+      }
+
+      if (attendedByUserId) {
+        if (attendedByUserId !== req.user!.id) {
+          throw new Error('ATTENDANT_USER_INVALID')
+        }
+        const attendantUser = await tx.user.findFirst({
+          where: {
+            id: attendedByUserId,
+            tenantId: req.user!.tenantId!,
+            role: 'BUSINESS',
+          },
+        })
+        if (!attendantUser) throw new Error('ATTENDANT_USER_INVALID')
       }
 
       if (customerId) {
@@ -288,9 +310,10 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
         data: {
           paymentMethod,
           soldAt: soldAt ? new Date(soldAt) : undefined,
-          tenantId: req.user!.tenantId,
+          tenantId: req.user!.tenantId!,
           createdById: req.user!.id,
-          attendedById: attendedById || req.user!.id,
+          attendedById: attendedById || null,
+          attendedByUserId: attendedByUserId || null,
           customerId: customerId || null,
           ticketComment: ticketComment?.trim() || null,
           applyTax,
@@ -327,7 +350,13 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
       return res.status(404).json({ error: 'Uno o más productos no existen' })
     }
     if (message === 'ATTENDANT_NOT_FOUND') {
-      return res.status(400).json({ error: 'El usuario que atiende no existe' })
+      return res.status(400).json({ error: 'El empleado que atiende no existe' })
+    }
+    if (message === 'ATTENDANT_USER_INVALID') {
+      return res.status(400).json({ error: 'El usuario que atiende no es válido' })
+    }
+    if (message === 'ATTENDANT_CONFLICT') {
+      return res.status(400).json({ error: 'Indica empleado o usuario, no ambos' })
     }
     if (message === 'CUSTOMER_NOT_FOUND') {
       return res.status(400).json({ error: 'Cliente no encontrado' })
@@ -368,7 +397,7 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
   }
 })
 
-router.patch('/lines/:lineId', authorize('ADMIN'), async (req, res) => {
+router.patch('/lines/:lineId', authorize('BUSINESS'), async (req, res) => {
   const lineId = getParam(req.params.lineId)
   const parsed = patchLineSchema.safeParse(req.body)
   if (!parsed.success) {

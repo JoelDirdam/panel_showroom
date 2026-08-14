@@ -125,7 +125,7 @@ async function handleSubmit() {
     logo: logoFile.value,
   })
   if (ok) {
-    router.push('/onboarding/hub')
+    router.push('/home')
   }
 }
 </script>

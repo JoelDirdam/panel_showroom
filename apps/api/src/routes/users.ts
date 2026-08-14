@@ -7,7 +7,7 @@ const router = Router()
 router.use(authenticate)
 
 /** Lista usuarios del tenant (selector «Atiende» en Caja). */
-router.get('/', authorize('ADMIN'), async (req, res) => {
+router.get('/', authorize('BUSINESS'), async (req, res) => {
   const users = await prisma.user.findMany({
     where: { tenantId: req.user!.tenantId },
     select: { id: true, name: true, email: true, role: true },

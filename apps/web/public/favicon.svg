@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="PuntoManeki">
+  <rect width="32" height="32" rx="8" fill="#465FFF"/>
+  <path fill="#fff" d="M9.6 13.4 12.8 6.2 16.4 13.4z"/>
+  <path fill="#fff" d="M15.6 13.4 19.2 6.2 22.4 13.4z"/>
+  <ellipse cx="16" cy="19.2" rx="8.4" ry="7.6" fill="#fff"/>
+  <ellipse cx="24.8" cy="11.2" rx="3.1" ry="3.8" fill="#fff"/>
+  <circle cx="24.8" cy="8.2" r="1.05" fill="#FFB4C8"/>
+  <ellipse cx="13.2" cy="18.4" rx="1.25" ry="1.7" fill="#161950"/>
+  <ellipse cx="18.8" cy="18.4" rx="1.25" ry="1.7" fill="#161950"/>
+  <ellipse cx="16" cy="21.1" rx="1.05" ry="0.7" fill="#FF8FAB"/>
+  <path d="M13.6 22.8c1.5 1.6 3.3 1.6 4.8 0" fill="none" stroke="#161950" stroke-width="0.85" stroke-linecap="round"/>
+  <rect x="12.4" y="25.4" width="7.2" height="1.5" rx="0.75" fill="#F5C518"/>
+  <circle cx="16" cy="27.6" r="1.25" fill="#F5C518"/>
+</svg>

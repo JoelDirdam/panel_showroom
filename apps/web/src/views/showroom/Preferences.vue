@@ -67,17 +67,39 @@
           </div>
 
           <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Módulos disponibles</p>
-            <p v-if="!availableModules" class="mt-1 text-sm font-medium text-gray-800 dark:text-white">Todos (sin restricción de plan)</p>
-            <div v-else class="mt-2 flex flex-wrap gap-1">
-              <span
-                v-for="label in availableModules"
-                :key="label"
-                class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"
-              >
-                {{ label }}
-              </span>
-            </div>
+            <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Módulos disponibles
+            </p>
+            <ul class="space-y-2.5 text-sm">
+              <li class="flex items-center gap-2">
+                <span
+                  class="h-2.5 w-2.5 rounded-full"
+                  :class="businessConfigured ? 'bg-success-500' : 'bg-gray-300 dark:bg-gray-600'"
+                />
+                <span class="text-gray-800 dark:text-white">
+                  {{ businessConfigured ? 'Negocio configurado' : 'Negocio pendiente' }}
+                </span>
+              </li>
+              <li class="flex items-center gap-2">
+                <span
+                  class="h-2.5 w-2.5 rounded-full"
+                  :class="hasHouseBrand ? 'bg-success-500' : 'bg-gray-300 dark:bg-gray-600'"
+                />
+                <span class="text-gray-800 dark:text-white">
+                  {{ hasHouseBrand ? 'Marca propia registrada' : 'Marca no registrada' }}
+                </span>
+              </li>
+            </ul>
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              Estas opciones habilitan preferencias adicionales dentro de tu perfil.
+            </p>
+            <router-link
+              v-if="!hasHouseBrand"
+              to="/brands/new?house=1"
+              class="mt-3 inline-block text-xs font-medium text-brand-500 hover:underline"
+            >
+              Registrar mi marca propia →
+            </router-link>
           </div>
 
           <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
@@ -94,16 +116,16 @@
           <div class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
             <p class="text-sm text-gray-500 dark:text-gray-400">Marcas</p>
             <p class="mt-1 text-sm font-medium text-gray-800 dark:text-white">
-              {{ brandStats ? `${brandStats.total} registrada(s)` : '—' }}
+              {{ setupBrandCount != null ? `${setupBrandCount} registrada(s)` : '—' }}
             </p>
             <span
               class="mt-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-              :class="brandsConfigured ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400' : 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400'"
+              :class="hasHouseBrand ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400' : 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-400'"
             >
-              {{ brandsConfigured ? 'Configuradas' : 'Pendiente' }}
+              {{ hasHouseBrand ? 'Marca propia OK' : 'Sin marca propia' }}
             </span>
             <router-link to="/brands" class="ml-2 text-xs text-brand-500 hover:underline">
-              {{ brandsConfigured ? 'Ver marcas →' : 'Registrar marcas →' }}
+              {{ hasHouseBrand ? 'Ver marcas →' : 'Registrar marcas →' }}
             </router-link>
           </div>
         </div>
@@ -114,34 +136,27 @@
         <form class="space-y-4" @submit.prevent="saveProfile">
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nombre</label>
-              <input v-model="profileForm.name" required class="field" />
+              <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Nombre</label>
+              <input
+                v-model="profileForm.name"
+                required
+                class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+              />
             </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Correo</label>
-              <input v-model="profileForm.email" type="email" required class="field" />
-              <p class="mt-1 text-xs text-gray-400">Cambiar el correo requiere volver a verificarlo.</p>
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Teléfono</label>
-              <input v-model="profileForm.phone" type="tel" maxlength="30" placeholder="Ej. 5215512345678" class="field" />
-              <p class="mt-1 text-xs text-gray-400">Cambiar el teléfono requiere volver a verificarlo por SMS.</p>
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Zona horaria</label>
-              <input v-model="profileForm.timezone" list="tz-options" class="field" />
-              <datalist id="tz-options">
-                <option value="America/Mexico_City" />
-                <option value="America/Cancun" />
-                <option value="America/Merida" />
-                <option value="America/Monterrey" />
-                <option value="America/Chihuahua" />
-                <option value="America/Hermosillo" />
-                <option value="America/Mazatlan" />
-                <option value="America/Tijuana" />
-                <option value="America/Bahia_Banderas" />
-              </datalist>
-            </div>
+            <EmailField
+              v-model="profileForm.email"
+              required
+              hint="Cambiar el correo requiere volver a verificarlo."
+            />
+            <PhoneField
+              v-model="profileForm.phone"
+              hint="Cambiar el teléfono requiere volver a verificarlo por SMS."
+            />
+            <SelectField
+              v-model="profileForm.timezone"
+              label="Zona horaria"
+              :options="timezoneOptions"
+            />
           </div>
 
           <p v-if="profileMsg" class="text-sm text-success-600 dark:text-success-400">{{ profileMsg }}</p>
@@ -198,31 +213,38 @@
               </div>
             </div>
             <div class="mt-4 grid gap-3 sm:grid-cols-2">
-              <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <input v-model="prefsForm.flexibleInventory" type="checkbox" />
+              <FormCheckbox v-model="prefsForm.flexibleInventory" align="center">
                 Inventario flexible (permite vender sin stock exacto)
-              </label>
-              <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <input v-model="prefsForm.printTickets" type="checkbox" />
+              </FormCheckbox>
+              <FormCheckbox v-model="prefsForm.printTickets" align="center">
                 Imprimir tickets automáticamente
-              </label>
-              <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <input v-model="prefsForm.ticketComments" type="checkbox" />
-                Permitir comentarios en tickets
-              </label>
-              <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                <input v-model="prefsForm.chargeIva" type="checkbox" />
+              </FormCheckbox>
+              <FormCheckbox v-model="prefsForm.chargeIva" align="center">
                 Cobrar IVA por defecto
+              </FormCheckbox>
+            </div>
+            <div class="mt-4">
+              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">
+                Comentarios fijos en tickets
               </label>
+              <p class="mb-2 text-xs text-gray-500">
+                Este texto se incluye siempre en los tickets (aparte del comentario único de cada venta en Caja).
+              </p>
+              <textarea
+                v-model="prefsForm.ticketFixedComment"
+                maxlength="1000"
+                rows="3"
+                placeholder="Ej. Gracias por su compra · Políticas de cambio…"
+                class="field w-full"
+              />
             </div>
           </div>
 
           <div>
             <h4 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-200">Dólares (USD)</h4>
-            <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <input v-model="prefsForm.usdEnabled" type="checkbox" />
+            <FormCheckbox v-model="prefsForm.usdEnabled" align="center">
               Aceptar pagos en dólares
-            </label>
+            </FormCheckbox>
             <div v-if="prefsForm.usdEnabled" class="mt-3 grid gap-4 sm:grid-cols-2">
               <div>
                 <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Tipo de cambio</label>
@@ -278,22 +300,17 @@
 
             <div v-else class="mt-4">
               <p class="mb-2 text-sm text-gray-600 dark:text-gray-300">Días del mes para el corte (puedes elegir varios)</p>
-              <div class="space-y-2">
-                <div v-for="range in cutoffDayRanges" :key="range.label">
-                  <p class="mb-1 text-xs uppercase text-gray-400">{{ range.label }}</p>
-                  <div class="flex flex-wrap gap-1.5">
-                    <button
-                      v-for="day in range.days"
-                      :key="day"
-                      type="button"
-                      class="h-8 w-8 rounded-lg text-sm"
-                      :class="prefsForm.cutoffDaySlots.includes(day) ? 'bg-brand-500 text-white' : 'border border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300'"
-                      @click="toggleCutoffDay(day)"
-                    >
-                      {{ day }}
-                    </button>
-                  </div>
-                </div>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="day in cutoffDays"
+                  :key="day"
+                  type="button"
+                  class="h-8 w-8 rounded-lg text-sm"
+                  :class="prefsForm.cutoffDaySlots.includes(day) ? 'bg-brand-500 text-white' : 'border border-gray-300 text-gray-600 dark:border-gray-700 dark:text-gray-300'"
+                  @click="toggleCutoffDay(day)"
+                >
+                  {{ day }}
+                </button>
               </div>
               <p class="mt-2 text-xs text-gray-400">
                 Si eliges el día 30 o 31 en un mes más corto (p. ej. febrero), el corte se recorre automáticamente al
@@ -320,19 +337,27 @@
 
       <!-- Seguridad -->
       <component-card title="Seguridad" desc="Actualiza tu contraseña de acceso.">
-        <form class="max-w-md space-y-4" @submit.prevent="savePassword">
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Contraseña actual</label>
-            <input v-model="pwForm.current" type="password" required class="field" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nueva contraseña</label>
-            <input v-model="pwForm.next" type="password" minlength="8" required class="field" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Confirmar nueva contraseña</label>
-            <input v-model="pwForm.confirm" type="password" minlength="8" required class="field" />
-          </div>
+        <form class="w-full space-y-4 lg:w-1/2" @submit.prevent="savePassword">
+          <PasswordField
+            id="pw-current"
+            v-model="pwForm.current"
+            label="Contraseña actual"
+            required
+          />
+          <PasswordField
+            id="pw-next"
+            v-model="pwForm.next"
+            label="Nueva contraseña"
+            required
+            :minlength="8"
+          />
+          <PasswordField
+            id="pw-confirm"
+            v-model="pwForm.confirm"
+            label="Confirmar nueva contraseña"
+            required
+            :minlength="8"
+          />
 
           <p v-if="pwMsg" class="text-sm text-success-600 dark:text-success-400">{{ pwMsg }}</p>
           <p v-if="pwError" class="text-sm text-error-500">{{ pwError }}</p>
@@ -357,18 +382,20 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import FormCheckbox from '@/components/forms/FormCheckbox.vue'
+import EmailField from '@/components/forms/EmailField.vue'
+import PhoneField from '@/components/forms/PhoneField.vue'
+import PasswordField from '@/components/forms/PasswordField.vue'
+import SelectField from '@/components/forms/SelectField.vue'
 import { useAuthStore } from '@/stores/auth'
-import type { EntitlementModule } from '@/lib/entitlements'
 import {
   changePassword,
-  fetchBrandStats,
   fetchPreferences,
   resendEmailVerification,
   resendPhoneVerification,
   updatePreferences,
   updateProfile,
   verifyPhoneCode,
-  type BrandStats,
   type BusinessPreferences,
   type CutoffType,
   type UpdateBusinessPreferencesPayload,
@@ -411,54 +438,13 @@ function resolveCutoffDayForMonth(day: number, year: number, monthIndex0: number
 // ---------------------------------------------------------------------------
 // Resumen
 // ---------------------------------------------------------------------------
-const MODULE_LABELS: Partial<Record<EntitlementModule, string>> = {
-  dashboard: 'Dashboard',
-  brands: 'Marcas',
-  products: 'Productos',
-  stock: 'Stock',
-  productRequests: 'Órdenes',
-  agenda: 'Agenda',
-  caja: 'Caja',
-  sales: 'Ventas',
-  customers: 'Clientes',
-  giftCards: 'Tarjetas de regalo',
-  layaways: 'Apartados',
-  users: 'Usuarios',
-  preferences: 'Preferencias',
-  business: 'Negocio',
-  employees: 'Empleados',
-  expenses: 'Gastos',
-  commissions: 'Comisiones',
-  discounts: 'Descuentos',
-  cashRegisters: 'Cajas registradoras',
-  inventory: 'Inventario',
-  orders: 'Comandas',
-  cortes: 'Cortes',
-  mensualidad: 'Mensualidad',
-}
-
 const emailVerified = computed(() => !!auth.user?.emailVerifiedAt)
 const phoneVerified = computed(() => !!auth.user?.phoneVerifiedAt)
-const businessConfigured = computed(() => !!auth.user?.tenant?.onboardingComplete)
-
-const availableModules = computed(() => {
-  const mods = auth.user?.entitlements
-  if (!mods || mods.length === 0) return null
-  return mods.map((m) => MODULE_LABELS[m] ?? m)
-})
-
-const brandStats = ref<BrandStats | null>(null)
-// Todo tenant tiene siempre su "marca casa" (ver apps/api/src/lib/houseBrand.ts),
-// así que `total <= 1` significa que aún no registran marcas propias.
-const brandsConfigured = computed(() => (brandStats.value?.total ?? 0) > 1)
-
-async function loadBrandStats() {
-  try {
-    brandStats.value = await fetchBrandStats()
-  } catch {
-    brandStats.value = null
-  }
-}
+const businessConfigured = computed(
+  () => auth.user?.setupStatus?.businessConfigured ?? !!auth.user?.tenant?.onboardingComplete,
+)
+const hasHouseBrand = computed(() => !!auth.user?.setupStatus?.hasHouseBrand)
+const setupBrandCount = computed(() => auth.user?.setupStatus?.brandCount)
 
 const emailSending = ref(false)
 const emailMsg = ref<string | null>(null)
@@ -580,7 +566,7 @@ const prefsForm = reactive({
   labelHeightMm: '',
   flexibleInventory: false,
   printTickets: true,
-  ticketComments: true,
+  ticketFixedComment: '',
   chargeIva: false,
   usdEnabled: false,
   usdRateMode: '' as '' | UsdRateMode,
@@ -600,12 +586,18 @@ const weekdayOptions = [
   { value: 7, label: 'Dom' },
 ]
 
-const cutoffDayRanges = [
-  { label: '1–6', days: [1, 2, 3, 4, 5, 6] },
-  { label: '7–12', days: [7, 8, 9, 10, 11, 12] },
-  { label: '13–18', days: [13, 14, 15, 16, 17, 18] },
-  { label: '19–24', days: [19, 20, 21, 22, 23, 24] },
-  { label: '25–31', days: [25, 26, 27, 28, 29, 30, 31] },
+const cutoffDays = Array.from({ length: 31 }, (_, i) => i + 1)
+
+const timezoneOptions = [
+  { value: 'America/Mexico_City', label: 'Ciudad de México' },
+  { value: 'America/Cancun', label: 'Cancún' },
+  { value: 'America/Merida', label: 'Mérida' },
+  { value: 'America/Monterrey', label: 'Monterrey' },
+  { value: 'America/Chihuahua', label: 'Chihuahua' },
+  { value: 'America/Hermosillo', label: 'Hermosillo' },
+  { value: 'America/Mazatlan', label: 'Mazatlán' },
+  { value: 'America/Tijuana', label: 'Tijuana' },
+  { value: 'America/Bahia_Banderas', label: 'Bahía de Banderas' },
 ]
 
 const cutoffPreview = computed(() => {
@@ -633,7 +625,7 @@ function applyPreferences(data: BusinessPreferences) {
   prefsForm.labelHeightMm = data.labelHeightMm != null ? String(data.labelHeightMm) : ''
   prefsForm.flexibleInventory = data.flexibleInventory
   prefsForm.printTickets = data.printTickets
-  prefsForm.ticketComments = data.ticketComments
+  prefsForm.ticketFixedComment = data.ticketFixedComment || ''
   prefsForm.chargeIva = data.chargeIva
   prefsForm.usdEnabled = data.usdEnabled
   prefsForm.usdRateMode = data.usdRateMode ?? ''
@@ -691,7 +683,7 @@ async function savePreferences() {
       labelHeightMm: intOrNull(prefsForm.labelHeightMm),
       flexibleInventory: prefsForm.flexibleInventory,
       printTickets: prefsForm.printTickets,
-      ticketComments: prefsForm.ticketComments,
+      ticketFixedComment: prefsForm.ticketFixedComment?.trim() || null,
       chargeIva: prefsForm.chargeIva,
       usdEnabled: prefsForm.usdEnabled,
       usdRateMode: prefsForm.usdRateMode || null,
@@ -751,7 +743,7 @@ async function savePassword() {
 onMounted(async () => {
   await auth.fetchMe()
   applyProfileFromAuth()
-  await Promise.all([loadPreferences(), loadBrandStats()])
+  await Promise.all([loadPreferences()])
 })
 </script>
 

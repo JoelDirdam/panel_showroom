@@ -19,8 +19,8 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'ADMIN' | 'BRAND'
-  tenantId?: string
+  role: 'BUSINESS' | 'BRAND' | 'SUPER_ADMIN'
+  tenantId?: string | null
   brandId: string | null
   mustChangePassword?: boolean
   brand?: { id: string; name: string } | null
@@ -37,6 +37,15 @@ export interface User {
     status: 'TRIALING' | 'ACTIVE' | 'EXPIRED' | 'CANCELED'
     trialEndsAt: string
     promoCodeUsed: string | null
+    paymentDeferred?: boolean
+    currentPeriodEndsAt?: string | null
+    paymentProvider?: string | null
+  } | null
+  setupStatus?: {
+    businessConfigured: boolean
+    hasHouseBrand: boolean
+    brandCount: number
+    houseBrandId: string | null
   } | null
   /**
    * Resto del shape de `buildMeResponse` (ver `apps/api/src/lib/meShape.ts`),
@@ -63,7 +72,7 @@ export interface User {
     address: string | null
     logoUrl: string | null
     onboardingComplete: boolean
-  }
+  } | null
   preferences?: BusinessPreferences | null
 }
 
@@ -92,7 +101,7 @@ export async function fetchCurrentTerms(): Promise<TermsDocument> {
 export interface RegisterPayload {
   name: string
   email: string
-  phone?: string
+  phone: string
   password: string
   signedName: string
   termsVersion: string
@@ -138,6 +147,12 @@ export async function selectPlan(
   return data
 }
 
+/** Stub de pago: continúa con prueba gratis (Stripe/MP pendiente). */
+export async function skipPayment(): Promise<{ ok: boolean; user: User }> {
+  const { data } = await api.post<{ ok: boolean; user: User }>('/onboarding/skip-payment')
+  return data
+}
+
 export interface CreateBusinessPayload {
   name: string
   rfc?: string | null
@@ -174,7 +189,7 @@ export interface BusinessPreferences {
   labelHeightMm: number | null
   flexibleInventory: boolean
   printTickets: boolean
-  ticketComments: boolean
+  ticketFixedComment: string | null
   chargeIva: boolean
   usdEnabled: boolean
   usdRateMode: UsdRateMode | null
@@ -195,7 +210,7 @@ export interface UpdateBusinessPreferencesPayload {
   labelHeightMm?: number | null
   flexibleInventory?: boolean
   printTickets?: boolean
-  ticketComments?: boolean
+  ticketFixedComment?: string | null
   chargeIva?: boolean
   usdEnabled?: boolean
   usdRateMode?: UsdRateMode | null
@@ -274,6 +289,79 @@ export interface DashboardStats {
   }>
 }
 
+export interface DashboardAnalytics {
+  kpis: {
+    revenueMonth: number
+    revenueChangePct: number
+    customersMonth: number
+    customersChangePct: number
+    avgTicketMonth: number
+    avgTicketChangePct: number
+    lowStockCount: number
+    totalStockUnits: number
+  }
+  sparkline: {
+    layawaysOpen: number
+    layawayWeekDelta: number
+    salesWeekCount: number
+    salesWeekChangePct: number
+    salesLast7Days: number[]
+    revenueLast7Days: number[]
+  }
+  salesByBrandMonthly: {
+    months: string[]
+    series: Array<{ name: string; data: number[] }>
+  }
+  weekly: {
+    days: string[]
+    revenueByDay: number[]
+    avgDailySales: number
+    avgDailyChangePct: number
+    topProducts: Array<{ name: string; qty: number; changeDir: 'up' | 'down' | 'flat' }>
+  }
+  recentSales: Array<{
+    id: string
+    ticketNumber: number
+    soldAt: string
+    total: number
+    paymentMethod: string
+    customerName: string | null
+    attendantName: string | null
+  }>
+  activities: Array<{
+    id: string
+    type: 'sale' | 'product_request' | 'appointment'
+    actorName: string
+    action: string
+    reference: string
+    at: string
+  }>
+  lowStockItems: DashboardStats['lowStockItems']
+}
+
+export interface HomeSummary {
+  salesTodayCount: number
+  salesTodayTotal: number
+  totalProducts: number
+  totalBrands: number
+  lowStockCount: number
+  setupStatus: {
+    businessConfigured: boolean
+    hasHouseBrand: boolean
+    houseBrandId: string | null
+  }
+}
+
+export async function fetchHomeSummary(): Promise<HomeSummary> {
+  const { data } = await api.get<HomeSummary>('/dashboard/home-summary')
+  return data
+}
+
+export async function fetchDashboardAnalytics(): Promise<DashboardAnalytics> {
+  const { data } = await api.get<DashboardAnalytics>('/dashboard/analytics')
+  return data
+}
+
 export type CommissionFeePayer = 'BRAND' | 'CLIENT' | 'BUSINESS'
 
 export interface Brand {
@@ -345,6 +433,13 @@ export async function importBrandsCsv(csv: string): Promise<BrandImportResult> {
   return data
 }
 
+export async function importBrandsRows(
+  rows: Array<Record<string, string | number | null | undefined>>,
+): Promise<BrandImportResult> {
+  const { data } = await api.post<BrandImportResult>('/brands/import', { rows })
+  return data
+}
+
 export async function bulkDeleteBrands(
   ids: string[],
 ): Promise<{ deleted: number; deactivated: number; skipped: Array<{ id: string; reason: string }> }> {
@@ -398,6 +493,25 @@ export async function uploadProductImage(file: File): Promise<string> {
 
 export async function bulkDeleteProducts(ids: string[]): Promise<{ deleted: number; skipped: number }> {
   const { data } = await api.post('/products/bulk-delete', { ids })
+  return data
+}
+
+export interface ProductImportResult {
+  createdCount: number
+  errorCount: number
+  errors: Array<{ row: number; name?: string; error: string }>
+}
+
+export async function downloadProductsTemplate(): Promise<Blob> {
+  const { data } = await api.get('/products/template', { responseType: 'blob' })
+  return data
+}
+
+export async function importProductsRows(
+  rows: Array<Record<string, string | number | null | undefined>>,
+  brandId?: string,
+): Promise<ProductImportResult> {
+  const { data } = await api.post<ProductImportResult>('/products/import', { rows, brandId })
   return data
 }
 
@@ -573,7 +687,108 @@ export interface TenantUser {
   id: string
   name: string
   email: string
-  role: 'ADMIN' | 'BRAND'
+  role: 'BUSINESS' | 'BRAND'
+}
+
+export interface Employee {
+  id: string
+  tenantId: string
+  name: string
+  email: string | null
+  phone: string | null
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export async function fetchEmployees(activeOnly = false): Promise<Employee[]> {
+  const { data } = await api.get<Employee[]>('/employees', {
+    params: activeOnly ? { active: true } : undefined,
+  })
+  return data
+}
+
+export async function createEmployee(payload: {
+  name: string
+  email?: string | null
+  phone?: string | null
+}): Promise<Employee> {
+  const { data } = await api.post<Employee>('/employees', payload)
+  return data
+}
+
+export async function updateEmployee(
+  id: string,
+  payload: Partial<{ name: string; email: string | null; phone: string | null; active: boolean }>,
+): Promise<Employee> {
+  const { data } = await api.patch<Employee>(`/employees/${id}`, payload)
+  return data
+}
+
+export async function deactivateEmployee(id: string): Promise<Employee> {
+  const { data } = await api.delete<Employee>(`/employees/${id}`)
+  return data
+}
+
+export interface PlatformStats {
+  tenants: number
+  brands: number
+  products: number
+  sales: number
+  employees: number
+  salesTotalSum: number
+  salesLast30Days: number
+  salesLast30Sum: number
+  trialingTenants: number
+  activeSubscriptions: number
+  expiredSubscriptions: number
+}
+
+export interface PlatformTenantRow {
+  id: string
+  name: string
+  slug: string
+  active: boolean
+  rfc: string | null
+  onboardingComplete: boolean
+  createdAt: string
+  subscription: {
+    planType: string
+    status: string
+    trialEndsAt: string
+  } | null
+  counts: {
+    users: number
+    brands: number
+    sales: number
+    employees: number
+    products: number
+  }
+}
+
+export async function fetchPlatformStats(): Promise<PlatformStats> {
+  const { data } = await api.get<PlatformStats>('/platform/stats')
+  return data
+}
+
+export async function fetchPlatformTenants(): Promise<PlatformTenantRow[]> {
+  const { data } = await api.get<PlatformTenantRow[]>('/platform/tenants')
+  return data
+}
+
+export async function fetchPlatformTenant(id: string): Promise<Record<string, unknown>> {
+  const { data } = await api.get(`/platform/tenants/${id}`)
+  return data
+}
+
+export async function deletePlatformTenant(
+  id: string,
+  confirmSlug: string,
+): Promise<{ ok: boolean; deletedId: string; slug: string }> {
+  const { data } = await api.delete(`/platform/tenants/${id}`, {
+    params: { confirm: confirmSlug },
+  })
+  return data
 }
 
 export interface GiftCardPreview {
@@ -622,6 +837,7 @@ export interface Sale {
   createdAt: string
   createdBy?: { id: string; name: string } | null
   attendedBy?: { id: string; name: string; role?: string } | null
+  attendedByUser?: { id: string; name: string } | null
   customer?: Customer | null
   payments?: SalePayment[]
   lines: SaleLine[]
@@ -634,6 +850,7 @@ export interface CreateSalePayload {
   applyTax?: boolean
   taxRate?: number
   attendedById?: string | null
+  attendedByUserId?: string | null
   customerId?: string | null
   giftCardCode?: string | null
   payments?: Array<{ method: SplitPaymentMethod; amount: number }>

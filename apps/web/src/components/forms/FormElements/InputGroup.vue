@@ -72,7 +72,7 @@
         </div>
         <input
           v-model="phoneNumber"
-          placeholder="+1 (555) 000-0000"
+          placeholder="+52 55 1234 5678"
           type="tel"
           class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent py-3 pl-[84px] pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
         />
@@ -118,7 +118,7 @@
         </div>
         <input
           v-model="phoneNumber2"
-          placeholder="+1 (555) 000-0000"
+          placeholder="+52 55 1234 5678"
           type="tel"
           class="dark:bg-dark-900 h-11 w-full p-3 rounded-lg border border-gray-300 bg-transparent py-3 pr-[84px] text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
         />
@@ -184,19 +184,17 @@
 import { ref } from 'vue'
 
 const email = ref('')
-const selectedCountry = ref('US')
-const selectedCountry2 = ref('US')
-const phoneNumber = ref('')
-const phoneNumber2 = ref('')
+const selectedCountry = ref('MX')
+const selectedCountry2 = ref('MX')
+const phoneNumber = ref('+52')
+const phoneNumber2 = ref('+52')
 const url = ref('')
 const website = ref('www.tailadmin.com')
 const copyText = ref('Copy')
 
 const countryCodes = {
+  MX: '+52',
   US: '+1',
-  GB: '+44',
-  CA: '+1',
-  AU: '+61',
 }
 
 const updatePhoneNumber = () => {

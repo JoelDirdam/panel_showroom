@@ -21,7 +21,7 @@
       ]"
     >
       <router-link
-        to="/"
+        to="/home"
         class="font-semibold text-gray-800 dark:text-white"
       >
         <span
@@ -221,11 +221,13 @@ import {
   Box,
   CalendarDays,
   Goal,
+  House,
   Store,
-  Settings,
+  Users,
 } from "lucide-vue-next";
 import { BoxesIcon, ChevronDownIcon, HorizontalDots, BookOpenPesoIcon } from "../../icons";
 import { useSidebar } from "@/composables/useSidebar";
+import { planInfo } from "@/lib/plans";
 
 const route = useRoute();
 const auth = useAuthStore();
@@ -233,18 +235,31 @@ const productRequests = useProductRequestsStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
+const menuSectionTitle = computed(() => {
+  const type = auth.user?.subscription?.planType
+  if (type === 'NEGOCIO') return 'Negocio'
+  if (type === 'CLINICA') return 'Clínica'
+  if (type === 'RESTAURANTE') return 'Restaurante'
+  if (type === 'MARCA') return 'Marca'
+  return planInfo(type)?.name ?? 'Negocio'
+})
+
 // `moduleId` prepara el filtrado por plan (ver apps/web/src/lib/entitlements.ts).
-// Hoy `auth.canAccess` siempre regresa `true` porque `/auth/me` todavía no
-// envía `entitlements`, así que este filtro no cambia nada del showroom
-// actual — queda listo para cuando el plan del tenant viaje en la sesión.
 const menuGroups = computed(() => [
   {
-    title: "Showroom",
+    title: menuSectionTitle.value,
     items: [
+      {
+        icon: House,
+        name: "Home",
+        path: "/home",
+        tourKey: "sidebar-home",
+        moduleId: "dashboard",
+      },
       {
         icon: LayoutDashboard,
         name: "Dashboard",
-        path: "/",
+        path: "/dashboard",
         tourKey: "sidebar-dashboard",
         moduleId: "dashboard",
       },
@@ -295,6 +310,13 @@ const menuGroups = computed(() => [
               tourKey: "sidebar-caja",
               moduleId: "caja",
             },
+            {
+              icon: Users,
+              name: "Empleados",
+              path: "/employees",
+              tourKey: "sidebar-employees",
+              moduleId: "employees",
+            },
           ]
         : []),
       {
@@ -304,17 +326,6 @@ const menuGroups = computed(() => [
         tourKey: "sidebar-sales",
         moduleId: "sales",
       },
-      ...(auth.isAdmin
-        ? [
-            {
-              icon: Settings,
-              name: "Preferencias",
-              path: "/preferences",
-              tourKey: "sidebar-preferences",
-              moduleId: "preferences",
-            },
-          ]
-        : []),
     ].filter((item) => auth.canAccess(item.moduleId)),
   },
 ]);

@@ -14,7 +14,7 @@ const preferencesSchema = z.object({
   labelHeightMm: z.number().int().positive().nullable().optional(),
   flexibleInventory: z.boolean().optional(),
   printTickets: z.boolean().optional(),
-  ticketComments: z.boolean().optional(),
+  ticketFixedComment: z.string().max(1000).nullable().optional(),
   chargeIva: z.boolean().optional(),
   usdEnabled: z.boolean().optional(),
   usdRateMode: z.enum(['FIXED', 'AUTOMATIC']).nullable().optional(),
@@ -24,7 +24,7 @@ const preferencesSchema = z.object({
   cutoffDaySlots: z.array(z.number().int().min(1).max(31)).optional(),
 })
 
-router.use(authenticate, authorize('ADMIN'))
+router.use(authenticate, authorize('BUSINESS'))
 
 router.get('/', async (req, res) => {
   const preferences = await prisma.businessPreferences.upsert({

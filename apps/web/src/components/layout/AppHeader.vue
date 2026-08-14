@@ -67,7 +67,6 @@
             />
           </svg>
         </button>
-        <SearchBar />
       </div>
 
       <div
@@ -89,7 +88,6 @@
 import { ref } from 'vue'
 import { useSidebar } from '@/composables/useSidebar'
 import ThemeToggler from '../common/ThemeToggler.vue'
-import SearchBar from './header/SearchBar.vue'
 import HeaderLogo from './header/HeaderLogo.vue'
 // import NotificationMenu from './header/NotificationMenu.vue'
 import UserMenu from './header/UserMenu.vue'

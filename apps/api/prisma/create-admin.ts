@@ -23,7 +23,7 @@ async function main() {
     const hash = await bcrypt.hash(password, 10)
     await prisma.user.update({
       where: { email },
-      data: { password: hash, name, role: Role.ADMIN, brandId: null },
+      data: { password: hash, name, role: Role.BUSINESS, brandId: null },
     })
     const tenant = await prisma.tenant.findUniqueOrThrow({ where: { id: existingUser.tenantId } })
     const house = await ensureHouseBrand(prisma, tenant, email)
@@ -48,7 +48,7 @@ async function main() {
       email,
       password: hash,
       name,
-      role: Role.ADMIN,
+      role: Role.BUSINESS,
       tenantId: tenant.id,
     },
   })

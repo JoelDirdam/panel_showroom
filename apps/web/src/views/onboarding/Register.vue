@@ -1,11 +1,13 @@
 <template>
   <FullScreenLayout>
     <div class="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0">
-      <div class="relative flex flex-col justify-center w-full min-h-screen lg:flex-row dark:bg-gray-900">
+      <div
+        class="relative flex flex-col justify-center w-full min-h-screen lg:flex-row dark:bg-gray-900"
+      >
         <div class="flex flex-col flex-1 w-full lg:w-1/2">
           <div class="w-full max-w-md pt-10 mx-auto">
             <router-link
-              to="/planes"
+              to="/"
               class="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
             >
               <ArrowLeft class="mr-1.5 h-4 w-4" />
@@ -53,11 +55,13 @@
 
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Teléfono (opcional)
+                    Teléfono<span class="text-error-500">*</span>
                   </label>
                   <input
                     v-model="phone"
                     type="tel"
+                    required
+                    minlength="7"
                     placeholder="10 dígitos"
                     class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                   />
@@ -93,39 +97,12 @@
                 </div>
 
                 <div>
-                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Firma (nombre completo)<span class="text-error-500">*</span>
-                  </label>
-                  <input
-                    v-model="signedName"
-                    type="text"
-                    required
-                    placeholder="Escribe tu nombre completo como firma"
-                    class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                  />
-                  <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-                    Esta firma queda registrada como tu aceptación de los términos vigentes.
-                  </p>
-                </div>
-
-                <div>
-                  <label class="flex items-start text-sm font-normal text-gray-700 cursor-pointer select-none dark:text-gray-400">
-                    <div class="relative">
-                      <input v-model="agreeToTerms" type="checkbox" required class="sr-only" />
-                      <div
-                        :class="agreeToTerms ? 'border-brand-500 bg-brand-500' : 'bg-transparent border-gray-300 dark:border-gray-700'"
-                        class="mr-3 flex h-5 w-5 items-center justify-center rounded-md border-[1.25px]"
-                      >
-                        <CheckIcon v-if="agreeToTerms" class="h-3.5 w-3.5 text-white" />
-                      </div>
-                    </div>
-                    <p class="inline-block font-normal text-gray-500 dark:text-gray-400">
-                      Acepto los
-                      <router-link to="/terms" target="_blank" class="text-brand-500 hover:text-brand-600">
-                        Términos y Condiciones{{ terms ? ` (v${terms.version})` : '' }}
-                      </router-link>
-                    </p>
-                  </label>
+                  <FormCheckbox v-model="agreeToTerms" required align="start">
+                    Acepto los
+                    <router-link to="/terms" target="_blank" class="text-brand-500 hover:text-brand-600">
+                      Términos y Condiciones{{ terms ? ` (v${terms.version})` : '' }}
+                    </router-link>
+                  </FormCheckbox>
                 </div>
 
                 <p v-if="validationError" class="text-sm text-error-500">{{ validationError }}</p>
@@ -152,17 +129,18 @@
           </div>
         </div>
 
-        <div class="relative items-center hidden w-full h-full lg:w-1/2 bg-brand-950 dark:bg-white/5 lg:grid">
-          <div class="flex items-center justify-center z-1">
-            <common-grid-shape />
-            <div class="flex flex-col items-center max-w-xs">
-              <p class="text-center text-lg font-medium text-white">
-                Prueba gratis 15 días — hasta 30 con código promocional
-              </p>
-              <p class="mt-3 text-center text-gray-300 dark:text-white/60">
-                Marcas, productos, stock, ventas, caja y agenda en un solo panel.
-              </p>
-            </div>
+        <div
+          class="relative hidden w-full bg-brand-950 dark:bg-white/5 lg:flex lg:w-1/2 lg:items-center lg:justify-center"
+        >
+          <common-grid-shape />
+          <div class="relative z-1 flex max-w-xs flex-col items-center px-6">
+            <router-link to="/" class="mb-4 block text-center">
+              <span class="text-2xl font-semibold tracking-tight text-white">Punto Maneki</span>
+            </router-link>
+            <p class="text-center text-gray-400 dark:text-white/60">
+              Prueba nuestras funciones por 15 días gratis. Marcas, productos, stock, ventas, caja y
+              agenda en un solo panel.
+            </p>
           </div>
         </div>
       </div>
@@ -172,13 +150,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ArrowLeft, CheckIcon } from 'lucide-vue-next'
+import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft } from 'lucide-vue-next'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import CommonGridShape from '@/components/common/CommonGridShape.vue'
+import FormCheckbox from '@/components/forms/FormCheckbox.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 const name = ref('')
@@ -186,13 +166,20 @@ const email = ref('')
 const phone = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const signedName = ref('')
 const agreeToTerms = ref(false)
 const validationError = ref<string | null>(null)
 
 const terms = computed(() => auth.terms)
 
 onMounted(async () => {
+  const plan = typeof route.query.plan === 'string' ? route.query.plan : null
+  if (plan) {
+    try {
+      sessionStorage.setItem('pendingPlanType', plan)
+    } catch {
+      /* ignore */
+    }
+  }
   try {
     await auth.fetchTerms()
   } catch {
@@ -204,6 +191,15 @@ async function handleSubmit() {
   validationError.value = null
   auth.error = null
 
+  const fullName = name.value.trim()
+  if (!fullName) {
+    validationError.value = 'El nombre completo es obligatorio'
+    return
+  }
+  if (!phone.value.trim() || phone.value.trim().length < 7) {
+    validationError.value = 'El teléfono es obligatorio'
+    return
+  }
   if (password.value !== confirmPassword.value) {
     validationError.value = 'Las contraseñas no coinciden'
     return
@@ -214,11 +210,11 @@ async function handleSubmit() {
   }
 
   const ok = await auth.register({
-    name: name.value.trim(),
+    name: fullName,
     email: email.value.trim(),
-    phone: phone.value.trim() || undefined,
+    phone: phone.value.trim(),
     password: password.value,
-    signedName: signedName.value.trim(),
+    signedName: fullName,
     termsVersion: auth.terms?.version ?? '',
   })
 

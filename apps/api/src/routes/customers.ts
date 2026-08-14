@@ -12,7 +12,7 @@ const createCustomerSchema = z.object({
 
 router.use(authenticate)
 
-router.get('/', authorize('ADMIN'), async (req, res) => {
+router.get('/', authorize('BUSINESS'), async (req, res) => {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : ''
   const customers = await prisma.customer.findMany({
     where: {
@@ -32,7 +32,7 @@ router.get('/', authorize('ADMIN'), async (req, res) => {
   return res.json(customers)
 })
 
-router.post('/', authorize('ADMIN'), async (req, res) => {
+router.post('/', authorize('BUSINESS'), async (req, res) => {
   const parsed = createCustomerSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })

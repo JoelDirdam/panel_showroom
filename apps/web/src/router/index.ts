@@ -21,10 +21,15 @@ const router = createRouter({
     },
     // --- Landing / marketing público ---------------------------------
     {
-      path: '/planes',
+      path: '/',
       name: 'LandingPlanes',
       component: () => import('../views/marketing/LandingPlanes.vue'),
       meta: { title: 'Planes', public: true },
+    },
+    {
+      // Compat: la landing vivía en /planes
+      path: '/planes',
+      redirect: '/',
     },
     {
       path: '/terms',
@@ -64,6 +69,12 @@ const router = createRouter({
       meta: { title: 'Confirma tu plan' },
     },
     {
+      path: '/onboarding/payment',
+      name: 'OnboardingPayment',
+      component: () => import('../views/onboarding/PaymentPending.vue'),
+      meta: { title: 'Pago del plan' },
+    },
+    {
       path: '/onboarding/create-business',
       name: 'OnboardingCreateBusiness',
       component: () => import('../views/onboarding/CreateBusiness.vue'),
@@ -76,7 +87,13 @@ const router = createRouter({
       meta: { title: 'Módulos de tu negocio' },
     },
     {
-      path: '/',
+      path: '/home',
+      name: 'Home',
+      component: () => import('../views/showroom/Home.vue'),
+      meta: { title: 'Home' },
+    },
+    {
+      path: '/dashboard',
       name: 'Dashboard',
       component: () => import('../views/showroom/Dashboard.vue'),
       meta: { title: 'Dashboard' },
@@ -108,8 +125,26 @@ const router = createRouter({
     {
       path: '/brands/:id/products/new',
       name: 'BrandProductNew',
-      component: () => import('../views/showroom/brands/BrandProductNew.vue'),
-      meta: { title: 'Nuevo producto de marca', adminOnly: true },
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Nuevo producto de marca' },
+    },
+    {
+      path: '/brands/:id/products/add-stock',
+      name: 'BrandProductAddStock',
+      component: () => import('../views/showroom/products/ProductStockPage.vue'),
+      meta: { title: 'Agregar stock' },
+    },
+    {
+      path: '/brands/:id/products/withdraw',
+      name: 'BrandProductWithdraw',
+      component: () => import('../views/showroom/products/ProductWithdrawPage.vue'),
+      meta: { title: 'Solicitar retiro' },
+    },
+    {
+      path: '/brands/:id/products/:productId/edit',
+      name: 'BrandProductEdit',
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Editar producto de marca' },
     },
     {
       path: '/brands/:id/products',
@@ -122,6 +157,30 @@ const router = createRouter({
       name: 'BrandDetail',
       component: () => import('../views/showroom/brands/BrandDetail.vue'),
       meta: { title: 'Resumen de marca', adminOnly: true },
+    },
+    {
+      path: '/products/new',
+      name: 'ProductNew',
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Agregar producto' },
+    },
+    {
+      path: '/products/add-stock',
+      name: 'ProductAddStock',
+      component: () => import('../views/showroom/products/ProductStockPage.vue'),
+      meta: { title: 'Agregar stock' },
+    },
+    {
+      path: '/products/withdraw',
+      name: 'ProductWithdraw',
+      component: () => import('../views/showroom/products/ProductWithdrawPage.vue'),
+      meta: { title: 'Solicitar retiro' },
+    },
+    {
+      path: '/products/:productId/edit',
+      name: 'ProductEdit',
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Editar producto' },
     },
     {
       path: '/products',
@@ -158,6 +217,24 @@ const router = createRouter({
       name: 'Caja',
       component: () => import('../views/showroom/Caja.vue'),
       meta: { title: 'Caja', adminOnly: true },
+    },
+    {
+      path: '/employees',
+      name: 'Employees',
+      component: () => import('../views/showroom/Employees.vue'),
+      meta: { title: 'Empleados', adminOnly: true },
+    },
+    {
+      path: '/platform',
+      name: 'PlatformDashboard',
+      component: () => import('../views/platform/PlatformDashboard.vue'),
+      meta: { title: 'Plataforma', platformOnly: true },
+    },
+    {
+      path: '/platform/tenants/:id',
+      name: 'PlatformTenantDetail',
+      component: () => import('../views/platform/PlatformTenantDetail.vue'),
+      meta: { title: 'Negocio', platformOnly: true },
     },
     {
       path: '/preferences',
@@ -218,6 +295,7 @@ const ONBOARDING_PATHS = new Set([
   '/onboarding/verify-email',
   '/onboarding/select-plan',
   '/onboarding/confirm-plan',
+  '/onboarding/payment',
   '/onboarding/create-business',
 ])
 
@@ -225,18 +303,37 @@ router.beforeEach(async (to, _from, next) => {
   document.title = `${to.meta.title || 'Panel'} | PuntoManeki`
 
   const auth = useAuthStore()
+  const appHome = '/home'
 
   if (!to.meta.public && !auth.isAuthenticated) {
     return next('/login')
   }
 
+  // Con sesión, "/" (landing) va al Home del panel
+  if (to.path === '/' && auth.isAuthenticated) {
+    if (auth.mustChangePassword) return next('/change-password')
+    if (auth.isSuperAdmin) return next('/platform')
+    return next(appHome)
+  }
+
   if (to.path === '/login' && auth.isAuthenticated) {
     if (auth.mustChangePassword) return next('/change-password')
-    return next('/')
+    if (auth.isSuperAdmin) return next('/platform')
+    return next(appHome)
   }
 
   if (!auth.user && auth.isAuthenticated) {
     await auth.fetchMe()
+  }
+
+  if (auth.isAuthenticated && auth.isSuperAdmin) {
+    if (!to.path.startsWith('/platform') && to.path !== '/login' && to.path !== '/change-password') {
+      return next('/platform')
+    }
+  }
+
+  if (to.meta.platformOnly && !auth.isSuperAdmin) {
+    return next(appHome)
   }
 
   if (auth.isAuthenticated && auth.mustChangePassword && !to.meta.allowMustChangePassword) {
@@ -244,7 +341,12 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (to.path === '/change-password' && auth.isAuthenticated && !auth.mustChangePassword) {
-    return next('/')
+    return next(auth.isSuperAdmin ? '/platform' : appHome)
+  }
+
+  // SUPER_ADMIN omite términos/onboarding del showroom
+  if (auth.isAuthenticated && auth.isSuperAdmin) {
+    return next()
   }
 
   // Mientras deba cambiar contraseña, no se evalúan términos/onboarding
@@ -258,25 +360,27 @@ router.beforeEach(async (to, _from, next) => {
       return next('/onboarding/accept-terms')
     }
     if (to.path === '/onboarding/accept-terms' && auth.termsAccepted) {
-      return next('/')
+      return next(appHome)
     }
 
     // Onboarding: confina al usuario al paso pendiente hasta llegar a DONE.
     if (auth.user && auth.onboardingStep !== 'DONE') {
       const target = ONBOARDING_STEP_ROUTE[auth.onboardingStep]
       const allowed =
-        to.path === target || (auth.onboardingStep === 'PLAN_SELECTED' && to.path === '/onboarding/create-business')
+        to.path === target ||
+        (auth.onboardingStep === 'PLAN_SELECTED' &&
+          (to.path === '/onboarding/create-business' || to.path === '/onboarding/payment'))
       if (target && !allowed) {
         return next(target)
       }
     } else if (ONBOARDING_PATHS.has(to.path)) {
       // Ya completó el onboarding: no tiene sentido volver a esas vistas.
-      return next('/onboarding/hub')
+      return next(appHome)
     }
   }
 
-  if (to.meta.adminOnly && auth.user?.role !== 'ADMIN') {
-    return next('/')
+  if (to.meta.adminOnly && auth.user?.role !== 'BUSINESS') {
+    return next(appHome)
   }
 
   // `subscription.planType` viene de `/auth/me` (ver meShape.ts). Si el
@@ -284,7 +388,7 @@ router.beforeEach(async (to, _from, next) => {
   const planRequired = to.meta.planRequired as string | undefined
   const currentPlan = auth.user?.subscription?.planType
   if (planRequired && currentPlan && currentPlan !== planRequired) {
-    return next('/')
+    return next(appHome)
   }
 
   next()

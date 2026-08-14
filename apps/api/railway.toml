@@ -1,7 +1,10 @@
+# Use Dockerfile CMD (migrate + node). Do not set startCommand here —
+# Railway dashboard overrides can break `$PORT` expansion and shell chaining.
 [build]
-buildCommand = "npx prisma generate && npm run build"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npx prisma migrate deploy && node dist/index.js"
 healthcheckPath = "/health"
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

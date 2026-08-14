@@ -14,4 +14,4 @@ me = requests.get(f"{BASE}/api/auth/me", headers={**__AUTH_HEADERS__}, timeout=3
 assert me.status_code == 200, me.text
 user = me.json()
 assert user.get("email") == "admin@showroom.com"
-assert user.get("role") == "ADMIN"
+assert user.get("role") == "BUSINESS"

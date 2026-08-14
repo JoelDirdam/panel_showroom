@@ -1,7 +1,7 @@
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, type Ref } from 'vue'
 import type { PaymentMethod, Product, SplitPaymentMethod } from '@/services/api'
 
-export const USD_RATE = 18
+export const DEFAULT_USD_RATE = 18
 export const MAX_CAJAS = 10
 const STORAGE_KEY = 'puntomaneki.caja.tabs.v1'
 
@@ -33,17 +33,26 @@ export interface CajaTabState {
   converterPesos: number
 }
 
+export interface CajaSessionOptions {
+  defaultAttendedById: () => string
+  defaultApplyTax?: () => boolean
+}
+
 function newId() {
   return `caja-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-export function emptyTab(index: number, attendedById = ''): CajaTabState {
+export function emptyTab(
+  index: number,
+  attendedById = '',
+  applyTax = false,
+): CajaTabState {
   return {
     id: newId(),
     label: `Caja ${index}`,
     lines: [],
     paymentMethod: 'EFECTIVO',
-    applyTax: false,
+    applyTax,
     ticketComment: '',
     attendedById,
     customerId: null,
@@ -68,14 +77,23 @@ function loadTabs(): { tabs: CajaTabState[]; activeId: string } | null {
   }
 }
 
-export function useCajaSession(defaultAttendedById: () => string) {
+export function useCajaSession(options: CajaSessionOptions | (() => string)) {
+  const opts: CajaSessionOptions =
+    typeof options === 'function' ? { defaultAttendedById: options } : options
+  const defaultAttendedById = opts.defaultAttendedById
+  const defaultApplyTax = opts.defaultApplyTax || (() => false)
+
   const saved = loadTabs()
   const tabs = ref<CajaTabState[]>(
-    saved?.tabs?.length ? saved.tabs : [emptyTab(1, defaultAttendedById())],
+    saved?.tabs?.length
+      ? saved.tabs
+      : [emptyTab(1, defaultAttendedById(), defaultApplyTax())],
   )
-  const activeId = ref(saved?.activeId && tabs.value.some((t) => t.id === saved.activeId)
-    ? saved.activeId
-    : tabs.value[0].id)
+  const activeId = ref(
+    saved?.activeId && tabs.value.some((t) => t.id === saved.activeId)
+      ? saved.activeId
+      : tabs.value[0].id,
+  )
 
   const activeTab = computed(() => tabs.value.find((t) => t.id === activeId.value) ?? tabs.value[0])
 
@@ -92,7 +110,7 @@ export function useCajaSession(defaultAttendedById: () => string) {
 
   function addTab() {
     if (tabs.value.length >= MAX_CAJAS) return
-    const tab = emptyTab(tabs.value.length + 1, defaultAttendedById())
+    const tab = emptyTab(tabs.value.length + 1, defaultAttendedById(), defaultApplyTax())
     tabs.value.push(tab)
     activeId.value = tab.id
     renumber()
@@ -122,7 +140,11 @@ export function useCajaSession(defaultAttendedById: () => string) {
     const idx = tabs.value.findIndex((t) => t.id === id)
     if (idx < 0) return
     const label = tabs.value[idx].label
-    tabs.value[idx] = { ...emptyTab(idx + 1, defaultAttendedById()), id, label }
+    tabs.value[idx] = {
+      ...emptyTab(idx + 1, defaultAttendedById(), defaultApplyTax()),
+      id,
+      label,
+    }
   }
 
   function selectTab(id: string) {
@@ -167,7 +189,12 @@ export function useCajaSession(defaultAttendedById: () => string) {
   )
 
   const subtotalWithDiscount = computed(() =>
-    round2(activeTab.value.lines.reduce((s, l) => s + Math.max(0, l.unitPrice * l.quantity - l.discount), 0)),
+    round2(
+      activeTab.value.lines.reduce(
+        (s, l) => s + Math.max(0, l.unitPrice * l.quantity - l.discount),
+        0,
+      ),
+    ),
   )
 
   const taxAmount = computed(() =>
@@ -217,6 +244,9 @@ export function useCajaSession(defaultAttendedById: () => string) {
   }
 }
 
+/** @deprecated Use DEFAULT_USD_RATE or prefs-derived rate */
+export const USD_RATE = DEFAULT_USD_RATE
+
 export function round2(value: number): number {
   return Math.round(value * 100) / 100
 }
@@ -224,3 +254,5 @@ export function round2(value: number): number {
 export function formatMoney(value: number): string {
   return value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
+
+export type { Ref }

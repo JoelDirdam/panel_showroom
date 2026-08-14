@@ -2,6 +2,48 @@
   <admin-layout>
     <page-breadcrumb page-title="Marcas" />
 
+    <div
+      class="mb-6 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
+    >
+      <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        Módulos disponibles
+      </p>
+      <ul class="mt-3 space-y-2 text-sm">
+        <li class="flex items-center gap-2">
+          <span
+            class="h-2.5 w-2.5 rounded-full"
+            :class="setup?.businessConfigured ? 'bg-success-500' : 'bg-gray-300 dark:bg-gray-600'"
+          />
+          {{ setup?.businessConfigured ? 'Negocio configurado' : 'Negocio pendiente' }}
+        </li>
+        <li class="flex items-center gap-2">
+          <span
+            class="h-2.5 w-2.5 rounded-full"
+            :class="setup?.hasHouseBrand ? 'bg-success-500' : 'bg-gray-300 dark:bg-gray-600'"
+          />
+          {{ setup?.hasHouseBrand ? 'Marca propia registrada' : 'Marca no registrada' }}
+        </li>
+      </ul>
+      <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        Estas opciones habilitan preferencias adicionales dentro de tu perfil.
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <router-link
+          v-if="!setup?.hasHouseBrand"
+          to="/brands/new?house=1"
+          class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
+        >
+          Registrar mi marca
+        </router-link>
+        <router-link
+          to="/brands/new"
+          class="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:text-gray-200 dark:ring-gray-700"
+        >
+          Agregar otra marca
+        </router-link>
+      </div>
+    </div>
+
     <div v-if="stats" class="mb-6 grid grid-cols-12 gap-4 md:gap-6">
       <div class="col-span-12 sm:col-span-6 xl:col-span-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -45,9 +87,9 @@
             :disabled="importing"
             @click="triggerImport"
           >
-            {{ importing ? 'Importando…' : 'Importar' }}
+            {{ importing ? 'Leyendo…' : 'Importar' }}
           </button>
-          <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
+          <input ref="importInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="onImportFile" />
           <button
             data-tour="brands-create"
             type="button"
@@ -253,6 +295,16 @@
         </div>
       </div>
     </div>
+
+    <ImportPreviewPanel
+      v-if="importPreview"
+      title="Previsualizar marcas"
+      :columns="brandImportColumns"
+      :rows="importPreview"
+      :saving="importSaving"
+      @cancel="importPreview = null"
+      @confirm="confirmImport"
+    />
   </admin-layout>
 </template>
 
@@ -262,6 +314,7 @@ import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import ImportPreviewPanel from '@/components/import/ImportPreviewPanel.vue'
 import api, {
   type Brand,
   type BrandImportResult,
@@ -269,10 +322,14 @@ import api, {
   bulkDeleteBrands,
   downloadBrandsTemplate,
   fetchBrandStats,
-  importBrandsCsv,
+  importBrandsRows,
 } from '@/services/api'
+import { parseSpreadsheetFile, type ImportColumn } from '@/composables/useXlsxImport'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const auth = useAuthStore()
+const setup = computed(() => auth.user?.setupStatus)
 
 const brands = ref<Brand[]>([])
 const stats = ref<BrandStats | null>(null)
@@ -283,8 +340,23 @@ const banner = ref<string | null>(null)
 const bannerType = ref<'success' | 'error'>('success')
 
 const importing = ref(false)
+const importSaving = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
 const importResult = ref<BrandImportResult | null>(null)
+const importPreview = ref<Record<string, string>[] | null>(null)
+
+const brandImportColumns: ImportColumn[] = [
+  { key: 'name', label: 'Nombre', required: true },
+  { key: 'monthlyRent', label: 'Renta mensual' },
+  { key: 'assignedSpace', label: 'Espacio' },
+  { key: 'phone', label: 'Teléfono' },
+  { key: 'cutoffDate', label: 'Fecha corte' },
+  { key: 'commissionPercent', label: '% Comisión' },
+  { key: 'cardFeePayer', label: 'Fee tarjeta' },
+  { key: 'transferFeePayer', label: 'Fee transferencia' },
+  { key: 'contactEmail', label: 'Email' },
+  { key: 'whatsapp', label: 'WhatsApp' },
+]
 
 const deleteTarget = ref<Brand | null>(null)
 const deleteConfirmation = ref('')
@@ -412,14 +484,42 @@ async function onImportFile(event: Event) {
   importing.value = true
   importResult.value = null
   try {
-    const text = await file.text()
-    const result = await importBrandsCsv(text)
+    const { rows } = await parseSpreadsheetFile(file)
+    const mapped = rows.map((row) => ({
+      name: row.name || '',
+      monthlyRent: row.monthlyrent || '',
+      assignedSpace: row.assignedspace || '',
+      phone: row.phone || '',
+      cutoffDate: row.cutoffdate || '',
+      commissionPercent: row.commissionpercent || '',
+      cardFeePayer: row.cardfeepayer || '',
+      transferFeePayer: row.transferfeepayer || '',
+      contactEmail: row.contactemail || '',
+      whatsapp: row.whatsapp || '',
+    }))
+    if (!mapped.length) {
+      showBanner('El archivo no tiene filas de datos', 'error')
+      return
+    }
+    importPreview.value = mapped
+  } catch (e: unknown) {
+    showBanner(apiError(e, 'No se pudo leer el archivo'), 'error')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function confirmImport(rows: Record<string, string>[]) {
+  importSaving.value = true
+  try {
+    const result = await importBrandsRows(rows)
     importResult.value = result
+    importPreview.value = null
     await load()
   } catch (e: unknown) {
     showBanner(apiError(e, 'No se pudo importar el archivo'), 'error')
   } finally {
-    importing.value = false
+    importSaving.value = false
   }
 }
 
@@ -428,7 +528,7 @@ async function onDownloadTemplate() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'plantilla-marcas.csv'
+  link.download = 'plantilla-marcas.xlsx'
   link.click()
   URL.revokeObjectURL(url)
 }

@@ -1,8 +1,8 @@
 <template>
   <div class="min-h-screen bg-white dark:bg-gray-900">
-    <header class="border-b border-gray-200 dark:border-gray-800">
+    <header class="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-        <router-link to="/planes" class="text-lg font-semibold text-gray-800 dark:text-white">
+        <router-link to="/" class="text-lg font-semibold text-gray-800 dark:text-white">
           PuntoManeki
         </router-link>
         <div class="flex items-center gap-3">
@@ -10,13 +10,13 @@
             to="/login"
             class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
           >
-            Iniciar sesión
+            Ingresar
           </router-link>
           <router-link
-            to="/register"
+            to="/register?plan=NEGOCIO"
             class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
           >
-            Registrarme
+            Registrarse
           </router-link>
         </div>
       </div>
@@ -37,10 +37,10 @@
       </p>
       <div class="mt-8 flex items-center justify-center gap-3">
         <router-link
-          to="/register"
+          to="/register?plan=NEGOCIO"
           class="rounded-lg bg-brand-500 px-6 py-3.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
         >
-          Crear mi cuenta gratis
+          Empezar con Plan Negocio
         </router-link>
         <router-link
           to="/terms"
@@ -52,9 +52,9 @@
     </section>
 
     <section class="mx-auto max-w-7xl px-6 pb-20">
-      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <div
-          v-for="plan in plans"
+          v-for="plan in displayPlans"
           :key="plan.type"
           class="relative flex flex-col rounded-2xl border p-6"
           :class="
@@ -67,7 +67,7 @@
             v-if="plan.available"
             class="absolute -top-3 left-6 rounded-full bg-brand-500 px-3 py-1 text-xs font-semibold text-white"
           >
-            Destacado
+            Disponible
           </span>
           <span
             v-else
@@ -76,7 +76,7 @@
             Próximamente
           </span>
 
-          <h3 class="mt-2 text-lg font-semibold text-gray-800 dark:text-white">{{ plan.name }}</h3>
+          <h3 class="mt-2 text-lg font-semibold text-gray-800 dark:text-white">Plan {{ plan.name }}</h3>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ plan.description }}</p>
 
           <ul class="mt-5 flex-1 space-y-2.5">
@@ -91,23 +91,27 @@
           </ul>
 
           <router-link
-            to="/register"
-            class="mt-6 flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium transition"
-            :class="
-              plan.available
-                ? 'bg-brand-500 text-white hover:bg-brand-600'
-                : 'bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700'
-            "
+            v-if="plan.available"
+            :to="`/register?plan=${plan.type}`"
+            class="mt-6 flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
           >
-            {{ plan.available ? 'Registrarme' : 'Me interesa' }}
+            Registrarme
           </router-link>
+          <button
+            v-else
+            type="button"
+            disabled
+            class="mt-6 flex cursor-not-allowed items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-400 ring-1 ring-inset ring-gray-200 dark:bg-gray-800 dark:ring-gray-700"
+          >
+            Próximamente
+          </button>
         </div>
       </div>
 
       <p class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
         ¿Ya tienes cuenta?
         <router-link to="/login" class="font-medium text-brand-500 hover:text-brand-600">
-          Inicia sesión
+          Ingresar
         </router-link>
       </p>
     </section>
@@ -115,8 +119,10 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { CheckIcon } from 'lucide-vue-next'
 import { PLANS } from '@/lib/plans'
 
-const plans = PLANS
+/** Landing comercial: Negocio / Clínica / Restaurante (sin plan Marca). */
+const displayPlans = computed(() => PLANS.filter((p) => p.type !== 'MARCA'))
 </script>

@@ -96,7 +96,7 @@ export async function startTour(options?: { force?: boolean }): Promise<void> {
   if (!auth.user || auth.mustChangePassword) return
   if (!routerRef) return
 
-  const role: TourRole = auth.isAdmin ? 'ADMIN' : 'BRAND'
+  const role: TourRole = auth.isBusiness ? 'BUSINESS' : 'BRAND'
   const userId = auth.user.id
 
   if (!options?.force && isTourDone(userId, role)) return
@@ -107,7 +107,7 @@ export async function startTour(options?: { force?: boolean }): Promise<void> {
   }
 
   starting = true
-  const defs = role === 'ADMIN' ? getAdminTourSteps() : getBrandTourSteps()
+  const defs = role === 'BUSINESS' ? getAdminTourSteps() : getBrandTourSteps()
 
   try {
     await prepareStep(defs[0])
@@ -160,29 +160,19 @@ export async function startTour(options?: { force?: boolean }): Promise<void> {
   }
 }
 
+/** Auto-start after login disabled — tours only via replayTour() if wired to UI. */
 export async function maybeAutoStart(): Promise<void> {
-  const auth = useAuthStore()
-  if (!auth.user || auth.mustChangePassword) return
-  if (!routerRef) return
-  if (routerRef.currentRoute.value.path !== '/') return
-
-  const role: TourRole = auth.isAdmin ? 'ADMIN' : 'BRAND'
-  if (isTourDone(auth.user.id, role)) return
-  if (activeDriver || starting) return
-
-  // Brief delay so layout/sidebar mount
-  await wait(400)
-  await startTour()
+  return
 }
 
 export async function replayTour(): Promise<void> {
   const auth = useAuthStore()
   if (!auth.user) return
-  const role: TourRole = auth.isAdmin ? 'ADMIN' : 'BRAND'
+  const role: TourRole = auth.isBusiness ? 'BUSINESS' : 'BRAND'
   clearTourDone(auth.user.id, role)
   stopTour()
   if (routerRef && routerRef.currentRoute.value.path !== '/') {
-    await routerRef.push('/')
+    await routerRef.push('/home')
     await nextTick()
     await wait(200)
   }

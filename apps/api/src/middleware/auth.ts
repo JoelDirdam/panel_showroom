@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string
   name: string
   role: Role
+  /** Vacío (`''`) solo para SUPER_ADMIN; rutas de tenant usan `requireTenantId`. */
   tenantId: string
   brandId: string | null
 }
@@ -20,7 +21,26 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me'
+function resolveJwtSecret(): string {
+  const fromEnv = process.env.JWT_SECRET?.trim()
+  const isProd = process.env.NODE_ENV === 'production'
+  if (isProd) {
+    if (!fromEnv || fromEnv.length < 32) {
+      console.error(
+        'FATAL: JWT_SECRET must be set to a strong secret (≥32 chars) when NODE_ENV=production',
+      )
+      process.exit(1)
+    }
+    return fromEnv
+  }
+  if (!fromEnv) {
+    console.warn('WARNING: JWT_SECRET unset; using insecure dev fallback. Do not use in production.')
+    return 'dev-secret-change-me'
+  }
+  return fromEnv
+}
+
+const JWT_SECRET = resolveJwtSecret()
 
 export function signToken(user: AuthUser): string {
   return jwt.sign(
@@ -68,12 +88,19 @@ export function authorize(...roles: Role[]) {
   }
 }
 
+export function requireTenantId(user: AuthUser): string {
+  if (!user.tenantId || user.role === 'SUPER_ADMIN') {
+    throw new Error('TENANT_REQUIRED')
+  }
+  return user.tenantId
+}
+
 export function tenantFilter(user: AuthUser): { tenantId: string } {
-  return { tenantId: user.tenantId }
+  return { tenantId: requireTenantId(user) }
 }
 
 export function brandFilter(user: AuthUser): Prisma.ProductWhereInput {
-  const tenantScope = { brand: { tenantId: user.tenantId } }
+  const tenantScope = { brand: { tenantId: requireTenantId(user) } }
   if (user.role === 'BRAND' && user.brandId) {
     return { brandId: user.brandId, ...tenantScope }
   }
@@ -103,6 +130,7 @@ function isAllowlisted(req: Request): boolean {
  * Bloquea el acceso a rutas protegidas si el usuario autenticado no ha aceptado
  * la versión vigente de TermsDocument. No rechaza si no hay token: se delega
  * en `authenticate` (montado en cada router) para exigir el 401 correspondiente.
+ * SUPER_ADMIN queda exento (plataforma interna).
  */
 export async function requireTerms(req: Request, res: Response, next: NextFunction) {
   if (isAllowlisted(req)) return next()
@@ -110,6 +138,8 @@ export async function requireTerms(req: Request, res: Response, next: NextFuncti
   const user = req.user ?? verifyToken(req)
   if (!user) return next()
   req.user = req.user ?? user
+
+  if (user.role === 'SUPER_ADMIN') return next()
 
   const current = await prisma.termsDocument.findFirst({ orderBy: { publishedAt: 'desc' } })
   if (!current) return next()
@@ -131,6 +161,7 @@ export async function requireTerms(req: Request, res: Response, next: NextFuncti
 /**
  * Bloquea el acceso a rutas protegidas si el tenant/usuario no terminó el
  * onboarding (a menos que la ruta esté en el allowlist de onboarding/auth/terms).
+ * También marca/bloquea suscripción vencida (`SUBSCRIPTION_EXPIRED`).
  */
 export async function requireOnboarding(req: Request, res: Response, next: NextFunction) {
   if (isAllowlisted(req)) return next()
@@ -139,18 +170,33 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
   if (!user) return next()
   req.user = req.user ?? user
 
+  if (user.role === 'SUPER_ADMIN') return next()
+
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { onboardingStep: true, tenant: { select: { onboardingComplete: true } } },
+    select: { onboardingStep: true, tenant: { select: { id: true, onboardingComplete: true } } },
   })
   if (!dbUser) return next()
 
-  if (dbUser.onboardingStep !== 'DONE' && !dbUser.tenant.onboardingComplete) {
+  if (dbUser.onboardingStep !== 'DONE' && !dbUser.tenant?.onboardingComplete) {
     return res.status(403).json({
       error: 'Debes completar la configuración inicial de tu negocio para continuar',
       code: 'ONBOARDING_REQUIRED',
       onboardingStep: dbUser.onboardingStep,
     })
+  }
+
+  if (dbUser.tenant?.id) {
+    const { assertSubscriptionActive } = await import('../lib/subscription.js')
+    const gate = await assertSubscriptionActive(dbUser.tenant.id)
+    if (!gate.ok) {
+      return res.status(402).json({
+        error: 'Tu prueba o suscripción ha vencido. Renueva tu plan para continuar.',
+        code: 'SUBSCRIPTION_EXPIRED',
+        trialEndsAt: gate.subscription.trialEndsAt,
+        status: gate.subscription.status,
+      })
+    }
   }
 
   next()

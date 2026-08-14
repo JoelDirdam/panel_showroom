@@ -16,7 +16,7 @@ def test_brand_request_is_accepted_by_admin():
     admin = {**__AUTH_HEADERS__}
     stamp = int(time.time())
     slug = f"req-brand-{stamp}"
-    email = f"{slug}@example.com"
+    email = f"qa-{slug}@example.com"
     password = f"Temp{stamp}Aa!"
 
     brand_res = requests.post(

@@ -16,6 +16,35 @@ def fetch_current_terms() -> dict:
     return body
 
 
+def cleanup_qa_tenant(tenant_id: str, slug: str) -> None:
+    """Best-effort teardown: borra el tenant de QA via SUPER_ADMIN, si hay credenciales."""
+    email = os.environ.get("SUPER_ADMIN_EMAIL")
+    password = os.environ.get("SUPER_ADMIN_PASSWORD")
+    if not email or not password:
+        print(f"[QA cleanup skipped] tenant={tenant_id} slug={slug} — set SUPER_ADMIN_EMAIL/SUPER_ADMIN_PASSWORD")
+        return
+    try:
+        login = requests.post(f"{API}/auth/login", json={"email": email, "password": password}, timeout=30)
+        if login.status_code != 200:
+            print(f"[QA cleanup] login SUPER_ADMIN fallo ({login.status_code}): {login.text}")
+            return
+        token = login.json().get("token")
+        if not token:
+            return
+        r = requests.delete(
+            f"{API}/platform/tenants/{tenant_id}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"confirm": slug},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            print(f"[QA cleanup] tenant borrado: {tenant_id} ({slug})")
+        else:
+            print(f"[QA cleanup] fallo al borrar tenant {tenant_id} ({r.status_code}): {r.text}")
+    except requests.RequestException as exc:
+        print(f"[QA cleanup] error al borrar tenant {tenant_id}: {exc}")
+
+
 def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
     terms = fetch_current_terms()
     version = terms["version"]
@@ -47,6 +76,9 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
     assert user["terms"]["acceptedVersion"] == version
     assert user["emailVerifiedAt"] is None
 
+    tenant_id = user["tenant"]["id"]
+    tenant_slug = user["tenant"]["slug"]
+
     headers = {"Authorization": f"Bearer {body['token']}"}
 
     # --- Registrar el mismo correo de nuevo debe rechazarse ---
@@ -55,6 +87,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
         json={
             "name": "Duplicado",
             "email": email,
+            "phone": "5215500000001",
             "password": password,
             "signedName": "Duplicado",
             "termsVersion": version,
@@ -69,6 +102,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
         json={
             "name": "QA Stale Terms",
             "email": f"qa-register-stale-{stamp}@example.com",
+            "phone": "5215500000002",
             "password": password,
             "signedName": "QA Stale Terms",
             "termsVersion": f"{version}-obsoleta",
@@ -92,6 +126,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
         )
         assert wrong.status_code == 400, wrong.text
         print("SKIP-INFO: devCode no expuesto (NODE_ENV=production); no se valida el happy path de verify-email")
+        cleanup_qa_tenant(tenant_id, tenant_slug)
         return
 
     bad_code = requests.post(
@@ -116,6 +151,9 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
     me = requests.get(f"{API}/auth/me", headers=headers, timeout=30)
     assert me.status_code == 200, me.text
     assert me.json()["onboardingStep"] == "EMAIL_VERIFIED"
+
+    # Teardown: todos los asserts pasaron, se limpia el tenant de QA creado.
+    cleanup_qa_tenant(tenant_id, tenant_slug)
 
 
 test_register_accepts_terms_and_verify_email_completes_onboarding_step()

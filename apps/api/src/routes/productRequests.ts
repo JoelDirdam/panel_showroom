@@ -318,7 +318,7 @@ router.post('/', authorize('BRAND'), async (req, res) => {
   return res.status(201).json(request)
 })
 
-router.post('/accept', authorize('ADMIN'), async (req, res) => {
+router.post('/accept', authorize('BUSINESS'), async (req, res) => {
   const parsed = acceptRequestsSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Selecciona al menos una solicitud válida' })
@@ -464,7 +464,7 @@ router.post('/accept', authorize('ADMIN'), async (req, res) => {
   }
 })
 
-router.post('/reject', authorize('ADMIN'), async (req, res) => {
+router.post('/reject', authorize('BUSINESS'), async (req, res) => {
   const parsed = rejectRequestsSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Selecciona al menos una solicitud válida' })

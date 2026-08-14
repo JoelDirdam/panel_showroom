@@ -17,19 +17,14 @@
           >{{ terms.content }}</div>
 
           <form class="mt-5 space-y-4" @submit.prevent="handleAccept">
-            <div>
-              <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                Firma (nombre completo)<span class="text-error-500">*</span>
-              </label>
-              <input
-                v-model="signedName"
-                type="text"
-                required
-                placeholder="Escribe tu nombre completo"
-                class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
-              />
-            </div>
+            <FormCheckbox v-model="agreeToTerms" required align="start">
+              Acepto los Términos y Condiciones (v{{ terms.version }}).
+              Mi nombre registrado
+              <strong class="font-medium text-gray-800 dark:text-white">{{ signerName }}</strong>
+              queda como firma de aceptación.
+            </FormCheckbox>
 
+            <p v-if="formError" class="text-sm text-error-500">{{ formError }}</p>
             <p v-if="auth.error" class="text-sm text-error-500">{{ auth.error }}</p>
 
             <button
@@ -55,9 +50,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
+import FormCheckbox from '@/components/forms/FormCheckbox.vue'
 import { useAuthStore } from '@/stores/auth'
 import { fetchCurrentTerms, extractApiError, type TermsDocument } from '@/services/api'
 
@@ -66,7 +62,10 @@ const auth = useAuthStore()
 
 const terms = ref<TermsDocument | null>(null)
 const loading = ref(true)
-const signedName = ref('')
+const agreeToTerms = ref(false)
+const formError = ref<string | null>(null)
+
+const signerName = computed(() => auth.user?.name?.trim() || '')
 
 onMounted(async () => {
   try {
@@ -80,10 +79,19 @@ onMounted(async () => {
 })
 
 async function handleAccept() {
+  formError.value = null
   if (!terms.value) return
-  const ok = await auth.acceptTerms(signedName.value.trim(), terms.value.version)
+  if (!agreeToTerms.value) {
+    formError.value = 'Debes aceptar los Términos y Condiciones'
+    return
+  }
+  if (!signerName.value) {
+    formError.value = 'No se encontró tu nombre registrado para firmar la aceptación'
+    return
+  }
+  const ok = await auth.acceptTerms(signerName.value, terms.value.version)
   if (ok) {
-    router.push('/')
+    router.push('/home')
   }
 }
 </script>

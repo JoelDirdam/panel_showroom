@@ -55,7 +55,7 @@ async function nextLayawayCode(tx: Prisma.TransactionClient, tenantId: string): 
 
 router.use(authenticate)
 
-router.get('/', authorize('ADMIN'), async (req, res) => {
+router.get('/', authorize('BUSINESS'), async (req, res) => {
   const code = typeof req.query.code === 'string' ? req.query.code.trim() : ''
   const where = {
     ...tenantFilter(req.user!),
@@ -71,7 +71,7 @@ router.get('/', authorize('ADMIN'), async (req, res) => {
   return res.json(layaways)
 })
 
-router.get('/:code', authorize('ADMIN'), async (req, res) => {
+router.get('/:code', authorize('BUSINESS'), async (req, res) => {
   const code = String(req.params.code || '').trim()
   const layaway = await prisma.layaway.findFirst({
     where: {
@@ -86,7 +86,7 @@ router.get('/:code', authorize('ADMIN'), async (req, res) => {
   return res.json(layaway)
 })
 
-router.post('/', authorize('ADMIN'), async (req, res) => {
+router.post('/', authorize('BUSINESS'), async (req, res) => {
   const parsed = createLayawaySchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })

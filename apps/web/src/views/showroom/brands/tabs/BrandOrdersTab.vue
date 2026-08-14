@@ -1,9 +1,9 @@
 <template>
   <component-card title="Órdenes / solicitudes de la marca">
     <p class="text-sm text-gray-500 dark:text-gray-400">
-      Las solicitudes de alta, restock y retiro de productos de <strong>{{ brand.name }}</strong> se gestionan en el
-      módulo de Órdenes. Esta vista embebida es un enlace directo filtrado por marca; el detalle completo (aceptar,
-      rechazar, historial) se construye en el módulo de Órdenes.
+      Las solicitudes de alta, restock y <strong>retiro</strong> de productos de
+      <strong>{{ brand.name }}</strong> aparecen aquí para el negocio. Acepta o rechaza cada solicitud en el
+      módulo de Órdenes.
     </p>
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <p class="text-sm text-gray-600 dark:text-gray-300">

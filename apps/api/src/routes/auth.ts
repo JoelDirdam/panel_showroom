@@ -8,6 +8,7 @@ import { notify } from '../lib/notify.js'
 import { slugify } from '../lib/slug.js'
 import { buildMeResponse } from '../lib/meShape.js'
 import { advanceStep } from '../lib/onboarding.js'
+import { rateLimit } from '../lib/rateLimit.js'
 import {
   MAX_ATTEMPTS,
   codeExpiresAt,
@@ -17,6 +18,8 @@ import {
 } from '../lib/verification.js'
 
 const router = Router()
+
+const authRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, keyPrefix: 'auth' })
 
 const isDev = process.env.NODE_ENV !== 'production'
 
@@ -33,7 +36,7 @@ const changePasswordSchema = z.object({
 const registerSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email(),
-  phone: z.string().max(30).optional().nullable(),
+  phone: z.string().min(7).max(30),
   password: z.string().min(8),
   signedName: z.string().min(1).max(200),
   termsVersion: z.string().min(1),
@@ -63,13 +66,14 @@ const profileSchema = z.object({
   timezone: z.string().max(60).optional(),
 })
 
-router.post('/login', async (req, res) => {
+router.post('/login', authRateLimit, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos' })
   }
 
-  const { email, password } = parsed.data
+  const email = parsed.data.email.trim().toLowerCase()
+  const { password } = parsed.data
   const user = await prisma.user.findUnique({
     where: { email },
     include: { brand: true },
@@ -89,7 +93,7 @@ router.post('/login', async (req, res) => {
     email: user.email,
     name: user.name,
     role: user.role,
-    tenantId: user.tenantId,
+    tenantId: user.tenantId ?? '',
     brandId: user.brandId,
   }
 
@@ -104,11 +108,11 @@ router.post('/login', async (req, res) => {
 })
 
 /**
- * Alta de un nuevo negocio (tenant borrador) + usuario ADMIN. Deja el flujo
+ * Alta de un nuevo negocio (tenant borrador) + usuario BUSINESS. Deja el flujo
  * listo para continuar en /verify-email → /onboarding/select-plan →
  * /onboarding/create-business.
  */
-router.post('/register', async (req, res) => {
+router.post('/register', authRateLimit, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body)
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
@@ -155,8 +159,8 @@ router.post('/register', async (req, res) => {
         email,
         password: passwordHash,
         name,
-        phone: phone?.trim() || null,
-        role: 'ADMIN',
+        phone: phone.trim(),
+        role: 'BUSINESS',
         tenantId: tenant.id,
         onboardingStep: 'REGISTERED',
       },
@@ -189,7 +193,7 @@ router.post('/register', async (req, res) => {
     email: created.user.email,
     name: created.user.name,
     role: created.user.role,
-    tenantId: created.user.tenantId,
+    tenantId: created.user.tenantId ?? '',
     brandId: created.user.brandId,
   }
 

@@ -48,26 +48,26 @@
     <component-card title="Productos de la marca">
       <template #header-action>
         <div class="flex flex-wrap items-center gap-2">
-          <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
+          <input ref="importInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="onImportFile" />
           <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="downloadTemplate">
-            Plantilla Excel/CSV
+            Descargar plantilla
           </button>
           <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" :disabled="importing" @click="importInput?.click()">
-            {{ importing ? 'Importando…' : 'Importar' }}
+            {{ importing ? 'Leyendo…' : 'Importar' }}
           </button>
-          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" :disabled="selected.length === 0" @click="printLabels">
+          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" :disabled="selected.length === 0" @click="printSelectedLabels">
             Imprimir etiquetas
           </button>
-          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="openAddStock">
+          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="router.push(`/brands/${brand.id}/products/add-stock`)">
             Agregar stock
           </button>
-          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="openWithdraw">
+          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="router.push(`/brands/${brand.id}/products/withdraw`)">
             Solicitar retiro
           </button>
           <button type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600" @click="router.push(`/brands/${brand.id}/products/new`)">
             Agregar producto
           </button>
-          <button type="button" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-50" :disabled="selected.length === 0" @click="showDeleteModal = true">
+          <button type="button" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-50" :disabled="selected.length === 0" @click="openBulkDelete">
             Eliminar ({{ selected.length }})
           </button>
         </div>
@@ -101,7 +101,29 @@
               <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ product.stock?.minStock ?? 0 }}</td>
               <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ product.price ? `$${product.price}` : '—' }}</td>
               <td class="py-3">
-                <button class="text-brand-500 hover:underline" @click="openEdit(product)">Ver/Editar</button>
+                <div class="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    class="rounded-lg bg-success-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-success-600"
+                    @click="router.push(`/brands/${brand.id}/products/${product.id}/edit`)"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg bg-brand-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-600"
+                    @click="printOne(product)"
+                  >
+                    Imprimir
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg border border-error-300 bg-error-50 px-2.5 py-1 text-xs font-medium text-error-600 hover:bg-error-100 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400"
+                    @click="openSingleDelete(product)"
+                  >
+                    Eliminar
+                  </button>
+                </div>
               </td>
             </tr>
             <tr v-if="products.length === 0">
@@ -114,125 +136,11 @@
       </div>
     </component-card>
 
-    <!-- Ver/Editar producto -->
-    <div v-if="detail" class="fixed inset-0 z-99999 flex items-start justify-center overflow-y-auto bg-black/50 p-4" @click.self="detail = null">
-      <div class="mt-10 w-full max-w-2xl rounded-2xl bg-white p-6 dark:bg-gray-900">
-        <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Ver/Editar producto</h3>
-        <form class="space-y-4" @submit.prevent="saveDetail">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nombre</label>
-              <input v-model="detailForm.name" required class="field" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">SKU</label>
-              <input :value="detail.sku" disabled class="field opacity-60" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Categoría</label>
-              <select v-model="detailForm.categoryId" class="field">
-                <option value="">Sin categoría</option>
-                <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Precio</label>
-              <input v-model.number="detailForm.price" type="number" step="0.01" min="0" class="field" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Stock mínimo</label>
-              <input v-model.number="detailForm.minStock" type="number" min="0" class="field" />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cantidad actual</label>
-              <input :value="detail.stock?.quantity ?? 0" disabled class="field opacity-60" />
-            </div>
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Descripción</label>
-            <textarea v-model="detailForm.description" rows="2" class="field" />
-          </div>
-          <div class="flex justify-end gap-2">
-            <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600 dark:text-gray-400" @click="detail = null">Cerrar</button>
-            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">Guardar cambios</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Agregar stock -->
-    <div v-if="showStockModal" class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4" @click.self="showStockModal = false">
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-gray-900">
-        <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Agregar stock</h3>
-        <form class="space-y-4" @submit.prevent="saveStockEntry">
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Producto</label>
-            <select v-model="stockForm.productId" required class="field">
-              <option value="" disabled>Selecciona un producto</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">{{ p.sku }} — {{ p.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cantidad</label>
-            <input v-model.number="stockForm.quantity" type="number" min="1" required class="field" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Nota (opcional)</label>
-            <input v-model="stockForm.note" class="field" />
-          </div>
-          <p v-if="!auth.isAdmin" class="text-xs text-gray-500 dark:text-gray-400">
-            Se enviará como solicitud de restock para su aprobación.
-          </p>
-          <div class="flex justify-end gap-2">
-            <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600" @click="showStockModal = false">Cancelar</button>
-            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">
-              {{ auth.isAdmin ? 'Agregar' : 'Enviar solicitud' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Solicitar retiro -->
-    <div v-if="showWithdrawModal" class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4" @click.self="showWithdrawModal = false">
-      <div class="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-gray-900">
-        <h3 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Solicitar retiro</h3>
-        <form class="space-y-4" @submit.prevent="saveWithdraw">
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Producto</label>
-            <select v-model="withdrawForm.productId" required class="field">
-              <option value="" disabled>Selecciona un producto</option>
-              <option v-for="p in products" :key="p.id" :value="p.id">
-                {{ p.sku }} — {{ p.name }} (stock: {{ p.stock?.quantity ?? 0 }})
-              </option>
-            </select>
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cantidad a retirar</label>
-            <input v-model.number="withdrawForm.quantity" type="number" min="1" required class="field" />
-          </div>
-          <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Motivo / notas</label>
-            <textarea v-model="withdrawForm.notes" rows="2" class="field" />
-          </div>
-          <p v-if="withdrawError" class="text-sm text-error-500">{{ withdrawError }}</p>
-          <p v-if="!auth.isAdmin" class="text-xs text-gray-500 dark:text-gray-400">
-            Se enviará como solicitud de retiro para su aprobación.
-          </p>
-          <div class="flex justify-end gap-2">
-            <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600" @click="showWithdrawModal = false">Cancelar</button>
-            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white">
-              {{ auth.isAdmin ? 'Retirar' : 'Enviar solicitud' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Confirmar eliminación -->
     <div v-if="showDeleteModal" class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4">
       <div class="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-gray-900">
-        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Eliminar {{ selected.length }} producto(s)</h3>
+        <h3 class="text-lg font-semibold text-gray-800 dark:text-white">
+          Eliminar {{ deleteIds.length }} producto(s)
+        </h3>
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Esta acción no se puede deshacer.</p>
         <div class="mt-5 flex justify-end gap-2">
           <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600 dark:text-gray-300" :disabled="deleting" @click="showDeleteModal = false">Cancelar</button>
@@ -243,6 +151,16 @@
       </div>
     </div>
 
+    <ImportPreviewPanel
+      v-if="importPreview"
+      title="Previsualizar productos"
+      :columns="productImportColumns"
+      :rows="importPreview"
+      :saving="importSaving"
+      @cancel="importPreview = null"
+      @confirm="confirmImport"
+    />
+
     <LabelPrintModal v-model="showLabelModal" :items="labelItems" :default-size-id="defaultLabelSizeId" />
   </div>
 </template>
@@ -251,17 +169,19 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import ImportPreviewPanel from '@/components/import/ImportPreviewPanel.vue'
 import LabelPrintModal from '@/components/labels/LabelPrintModal.vue'
 import api, {
   bulkDeleteProducts,
-  fetchCategories,
+  downloadProductsTemplate,
+  extractApiError,
   fetchPreferences,
-  withdrawStock,
+  importProductsRows,
   type Brand,
-  type Category,
   type Product,
 } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { parseSpreadsheetFile, type ImportColumn } from '@/composables/useXlsxImport'
 import { matchLabelSizeFromMm, type LabelPrintItem, type LabelSizeId } from '@/utils/labelPdf'
 
 const props = defineProps<{ brand: Brand }>()
@@ -271,20 +191,28 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const products = ref<Product[]>([])
-const categories = ref<Category[]>([])
 const selected = ref<string[]>([])
-const detail = ref<Product | null>(null)
-const showStockModal = ref(false)
-const showWithdrawModal = ref(false)
 const showDeleteModal = ref(false)
+const deleteIds = ref<string[]>([])
 const deleting = ref(false)
 const importing = ref(false)
+const importSaving = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
+const importPreview = ref<Record<string, string>[] | null>(null)
 const banner = ref<string | null>(null)
 const bannerType = ref<'success' | 'error'>('success')
-const withdrawError = ref<string | null>(null)
 const showLabelModal = ref(false)
+const labelItems = ref<LabelPrintItem[]>([])
 const defaultLabelSizeId = ref<LabelSizeId | null>(null)
+
+const productImportColumns: ImportColumn[] = [
+  { key: 'name', label: 'Nombre', required: true },
+  { key: 'price', label: 'Precio', required: true },
+  { key: 'quantity', label: 'Stock' },
+  { key: 'sku', label: 'SKU' },
+  { key: 'minStock', label: 'Stock mín.' },
+  { key: 'description', label: 'Descripción' },
+]
 
 const filters = reactive({
   name: '',
@@ -296,10 +224,6 @@ const filters = reactive({
   sinStock: false,
 })
 
-const detailForm = reactive({ name: '', categoryId: '', price: null as number | null, minStock: 5, description: '' })
-const stockForm = reactive({ productId: '', quantity: 1, note: '' })
-const withdrawForm = reactive({ productId: '', quantity: 1, notes: '' })
-
 const allSelected = computed(() => products.value.length > 0 && products.value.every((p) => selected.value.includes(p.id)))
 
 function showBanner(message: string, type: 'success' | 'error' = 'success') {
@@ -308,10 +232,6 @@ function showBanner(message: string, type: 'success' | 'error' = 'success') {
   setTimeout(() => {
     if (banner.value === message) banner.value = null
   }, 5000)
-}
-
-function apiError(e: unknown, fallback: string): string {
-  return (e as { response?: { data?: { error?: string } } }).response?.data?.error || fallback
 }
 
 function buildParams() {
@@ -349,131 +269,58 @@ function toggleAll(event: Event) {
   selected.value = checked ? products.value.map((p) => p.id) : []
 }
 
-function openEdit(product: Product) {
-  detail.value = product
-  detailForm.name = product.name
-  detailForm.categoryId = product.categoryId || ''
-  detailForm.price = product.price ? Number(product.price) : null
-  detailForm.minStock = product.stock?.minStock ?? 5
-  detailForm.description = product.description || ''
+function openSingleDelete(product: Product) {
+  deleteIds.value = [product.id]
+  showDeleteModal.value = true
 }
 
-async function saveDetail() {
-  if (!detail.value) return
-  await api.patch(`/products/${detail.value.id}`, {
-    name: detailForm.name,
-    categoryId: detailForm.categoryId || null,
-    price: detailForm.price,
-    minStock: detailForm.minStock,
-    description: detailForm.description || null,
-  })
-  detail.value = null
-  await load()
-}
-
-function openAddStock() {
-  stockForm.productId = products.value[0]?.id || ''
-  stockForm.quantity = 1
-  stockForm.note = ''
-  showStockModal.value = true
-}
-
-async function saveStockEntry() {
-  if (auth.isAdmin) {
-    await api.post(`/stock/${stockForm.productId}/entries`, { quantity: stockForm.quantity, note: stockForm.note || null })
-    showBanner('Stock agregado correctamente.')
-  } else {
-    await api.post('/product-requests', {
-      type: 'RESTOCK',
-      productId: stockForm.productId,
-      quantity: stockForm.quantity,
-      notes: stockForm.note || null,
-    })
-    showBanner('Solicitud de restock enviada.')
-  }
-  showStockModal.value = false
-  await load()
-}
-
-function openWithdraw() {
-  withdrawForm.productId = products.value[0]?.id || ''
-  withdrawForm.quantity = 1
-  withdrawForm.notes = ''
-  withdrawError.value = null
-  showWithdrawModal.value = true
-}
-
-async function saveWithdraw() {
-  withdrawError.value = null
-  try {
-    if (auth.isAdmin) {
-      await withdrawStock(withdrawForm.productId, withdrawForm.quantity, withdrawForm.notes)
-      showBanner('Retiro de stock registrado.')
-    } else {
-      await api.post('/product-requests', {
-        type: 'WITHDRAWAL',
-        productId: withdrawForm.productId,
-        quantity: withdrawForm.quantity,
-        notes: withdrawForm.notes || null,
-      })
-      showBanner('Solicitud de retiro enviada.')
-    }
-    showWithdrawModal.value = false
-    await load()
-  } catch (e: unknown) {
-    withdrawError.value = apiError(e, 'No se pudo procesar el retiro')
-  }
+function openBulkDelete() {
+  deleteIds.value = [...selected.value]
+  showDeleteModal.value = true
 }
 
 async function confirmDelete() {
+  const ids = deleteIds.value.length ? deleteIds.value : selected.value
   deleting.value = true
   try {
-    const result = await bulkDeleteProducts(selected.value)
+    const result = await bulkDeleteProducts(ids)
     showBanner(`${result.deleted} producto(s) eliminado(s).`)
     selected.value = []
+    deleteIds.value = []
     showDeleteModal.value = false
     await load()
     emit('changed')
   } catch (e: unknown) {
-    showBanner(apiError(e, 'No se pudieron eliminar los productos'), 'error')
+    showBanner(extractApiError(e, 'No se pudieron eliminar los productos'), 'error')
   } finally {
     deleting.value = false
   }
 }
 
-const labelItems = computed<LabelPrintItem[]>(() =>
-  products.value
-    .filter((p) => selected.value.includes(p.id))
-    .map((p) => ({ sku: p.sku, name: p.name, price: p.price, quantity: 1 })),
-)
-
-function printLabels() {
+function printOne(product: Product) {
+  labelItems.value = [{ sku: product.sku, name: product.name, price: product.price, quantity: 1 }]
   showLabelModal.value = true
 }
 
-function downloadTemplate() {
-  const csv = 'Producto,Precio,Stock,sku\nProducto de ejemplo,199.00,10,\n'
-  const blob = new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'plantilla-productos.csv'
-  link.click()
-  URL.revokeObjectURL(url)
+function printSelectedLabels() {
+  labelItems.value = products.value
+    .filter((p) => selected.value.includes(p.id))
+    .map((p) => ({ sku: p.sku, name: p.name, price: p.price, quantity: 1 }))
+  showLabelModal.value = true
 }
 
-function parseCsv(text: string): Array<Record<string, string>> {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0)
-  if (lines.length < 2) return []
-  const header = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/^"|"$/g, ''))
-  return lines.slice(1).map((line) => {
-    const cells = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''))
-    const row: Record<string, string> = {}
-    header.forEach((key, idx) => {
-      row[key] = cells[idx] ?? ''
-    })
-    return row
-  })
+async function downloadTemplate() {
+  try {
+    const blob = await downloadProductsTemplate()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'plantilla-productos.xlsx'
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (e: unknown) {
+    showBanner(extractApiError(e, 'No se pudo descargar la plantilla'), 'error')
+  }
 }
 
 async function onImportFile(event: Event) {
@@ -481,57 +328,60 @@ async function onImportFile(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
-
   importing.value = true
   try {
-    const text = await file.text()
-    const rows = parseCsv(text)
-    let created = 0
-    let failed = 0
-    for (const row of rows) {
-      const name = row.producto || row.nombre
-      const price = Number(row.precio)
-      const quantity = Number(row.stock) || 0
-      const sku = row.sku?.trim() || undefined
-      if (!name || Number.isNaN(price)) {
-        failed += 1
-        continue
-      }
-      try {
-        if (auth.isAdmin) {
-          await api.post('/products', {
-            brandId: props.brand.id,
-            name,
-            sku,
-            price,
-            quantity,
-            minStock: 5,
-          })
-        } else {
-          await api.post('/product-requests', {
-            type: 'CREATE_PRODUCT',
-            name,
-            sku,
-            price,
-            quantity,
-            minStock: 5,
-          })
-        }
-        created += 1
-      } catch {
-        failed += 1
-      }
+    const { rows } = await parseSpreadsheetFile(file)
+    const mapped = rows.map((row) => ({
+      name: row.name || row.producto || row.nombre || '',
+      price: row.price || row.precio || '',
+      quantity: row.quantity || row.stock || '0',
+      sku: row.sku || '',
+      minStock: row.minstock || row.min_stock || '5',
+      description: row.description || row.descripcion || '',
+    }))
+    if (!mapped.length) {
+      showBanner('El archivo no tiene filas de datos', 'error')
+      return
     }
-    showBanner(`Importación: ${created} creado(s), ${failed} con error.`, failed > 0 ? 'error' : 'success')
-    await load()
+    importPreview.value = mapped
+  } catch (e: unknown) {
+    showBanner(e instanceof Error ? e.message : 'No se pudo leer el archivo', 'error')
   } finally {
     importing.value = false
   }
 }
 
+async function confirmImport(rows: Record<string, string>[]) {
+  importSaving.value = true
+  try {
+    const result = await importProductsRows(
+      rows.map((r) => ({
+        name: r.name,
+        price: Number(r.price),
+        quantity: Number(r.quantity) || 0,
+        sku: r.sku || undefined,
+        minStock: Number(r.minStock) || 5,
+        description: r.description || undefined,
+        brandId: props.brand.id,
+      })),
+      props.brand.id,
+    )
+    importPreview.value = null
+    showBanner(
+      `Importación: ${result.createdCount} creado(s), ${result.errorCount} con error.`,
+      result.errorCount > 0 ? 'error' : 'success',
+    )
+    await load()
+    emit('changed')
+  } catch (e: unknown) {
+    showBanner(extractApiError(e, 'No se pudo importar'), 'error')
+  } finally {
+    importSaving.value = false
+  }
+}
+
 onMounted(async () => {
-  const [, cats] = await Promise.all([load(), fetchCategories()])
-  categories.value = cats
+  await load()
   if (auth.isAdmin) {
     try {
       const prefs = await fetchPreferences()

@@ -31,18 +31,24 @@
         </span>
       </div>
 
-      <button
-        type="button"
+      <router-link
+        v-if="showPreferences"
+        to="/preferences"
+        data-tour="user-menu-preferences"
         class="flex items-center gap-3 px-3 py-2 mt-3 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-        @click="startTutorial"
+        @click="closeDropdown"
       >
-        Ver tutorial
-      </button>
+        <SettingsIcon
+          class="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+        />
+        Preferencias
+      </router-link>
 
       <button
         type="button"
         @click="signOut"
-        class="flex items-center gap-3 px-3 py-2 mt-1 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+        class="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+        :class="showPreferences ? 'mt-1' : 'mt-3'"
       >
         <LogoutIcon
           class="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
@@ -54,16 +60,21 @@
 </template>
 
 <script setup>
-import { ChevronDownIcon, LogoutIcon, UserCircleIcon } from '@/icons'
+import { ChevronDownIcon, LogoutIcon, SettingsIcon, UserCircleIcon } from '@/icons'
 import { useRouter } from 'vue-router'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { replayTour } from '@/tours/useTour'
 
 const auth = useAuthStore()
 const router = useRouter()
 const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
+
+// Misma regla que el ítem previo del sidebar y la ruta `/preferences`
+// (`adminOnly` + módulo `preferences` por entitlements).
+const showPreferences = computed(
+  () => auth.isAdmin && auth.canAccess('preferences'),
+)
 
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value
@@ -71,11 +82,6 @@ const toggleDropdown = () => {
 
 const closeDropdown = () => {
   dropdownOpen.value = false
-}
-
-const startTutorial = () => {
-  closeDropdown()
-  void replayTour()
 }
 
 const signOut = () => {
