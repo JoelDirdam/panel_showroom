@@ -87,9 +87,9 @@
             :disabled="importing"
             @click="triggerImport"
           >
-            {{ importing ? 'Importando…' : 'Importar' }}
+            {{ importing ? 'Leyendo…' : 'Importar' }}
           </button>
-          <input ref="importInput" type="file" accept=".csv" class="hidden" @change="onImportFile" />
+          <input ref="importInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="onImportFile" />
           <button
             data-tour="brands-create"
             type="button"
@@ -295,6 +295,16 @@
         </div>
       </div>
     </div>
+
+    <ImportPreviewPanel
+      v-if="importPreview"
+      title="Previsualizar marcas"
+      :columns="brandImportColumns"
+      :rows="importPreview"
+      :saving="importSaving"
+      @cancel="importPreview = null"
+      @confirm="confirmImport"
+    />
   </admin-layout>
 </template>
 
@@ -304,6 +314,7 @@ import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import ImportPreviewPanel from '@/components/import/ImportPreviewPanel.vue'
 import api, {
   type Brand,
   type BrandImportResult,
@@ -311,8 +322,9 @@ import api, {
   bulkDeleteBrands,
   downloadBrandsTemplate,
   fetchBrandStats,
-  importBrandsCsv,
+  importBrandsRows,
 } from '@/services/api'
+import { parseSpreadsheetFile, type ImportColumn } from '@/composables/useXlsxImport'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -328,8 +340,23 @@ const banner = ref<string | null>(null)
 const bannerType = ref<'success' | 'error'>('success')
 
 const importing = ref(false)
+const importSaving = ref(false)
 const importInput = ref<HTMLInputElement | null>(null)
 const importResult = ref<BrandImportResult | null>(null)
+const importPreview = ref<Record<string, string>[] | null>(null)
+
+const brandImportColumns: ImportColumn[] = [
+  { key: 'name', label: 'Nombre', required: true },
+  { key: 'monthlyRent', label: 'Renta mensual' },
+  { key: 'assignedSpace', label: 'Espacio' },
+  { key: 'phone', label: 'Teléfono' },
+  { key: 'cutoffDate', label: 'Fecha corte' },
+  { key: 'commissionPercent', label: '% Comisión' },
+  { key: 'cardFeePayer', label: 'Fee tarjeta' },
+  { key: 'transferFeePayer', label: 'Fee transferencia' },
+  { key: 'contactEmail', label: 'Email' },
+  { key: 'whatsapp', label: 'WhatsApp' },
+]
 
 const deleteTarget = ref<Brand | null>(null)
 const deleteConfirmation = ref('')
@@ -457,14 +484,42 @@ async function onImportFile(event: Event) {
   importing.value = true
   importResult.value = null
   try {
-    const text = await file.text()
-    const result = await importBrandsCsv(text)
+    const { rows } = await parseSpreadsheetFile(file)
+    const mapped = rows.map((row) => ({
+      name: row.name || '',
+      monthlyRent: row.monthlyrent || '',
+      assignedSpace: row.assignedspace || '',
+      phone: row.phone || '',
+      cutoffDate: row.cutoffdate || '',
+      commissionPercent: row.commissionpercent || '',
+      cardFeePayer: row.cardfeepayer || '',
+      transferFeePayer: row.transferfeepayer || '',
+      contactEmail: row.contactemail || '',
+      whatsapp: row.whatsapp || '',
+    }))
+    if (!mapped.length) {
+      showBanner('El archivo no tiene filas de datos', 'error')
+      return
+    }
+    importPreview.value = mapped
+  } catch (e: unknown) {
+    showBanner(apiError(e, 'No se pudo leer el archivo'), 'error')
+  } finally {
+    importing.value = false
+  }
+}
+
+async function confirmImport(rows: Record<string, string>[]) {
+  importSaving.value = true
+  try {
+    const result = await importBrandsRows(rows)
     importResult.value = result
+    importPreview.value = null
     await load()
   } catch (e: unknown) {
     showBanner(apiError(e, 'No se pudo importar el archivo'), 'error')
   } finally {
-    importing.value = false
+    importSaving.value = false
   }
 }
 
@@ -473,7 +528,7 @@ async function onDownloadTemplate() {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'plantilla-marcas.csv'
+  link.download = 'plantilla-marcas.xlsx'
   link.click()
   URL.revokeObjectURL(url)
 }

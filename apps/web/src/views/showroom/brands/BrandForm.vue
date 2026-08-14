@@ -25,8 +25,7 @@
             <input v-model="form.assignedSpace" placeholder="Ej. Pasillo A - Local 3" class="field" />
           </div>
           <div>
-            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Celular</label>
-            <input v-model="form.phone" type="tel" maxlength="30" placeholder="Ej. 5215512345678" class="field" />
+            <PhoneField v-model="form.phone" label="Celular" />
           </div>
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">
@@ -106,6 +105,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import PhoneField from '@/components/forms/PhoneField.vue'
 import api, { type Brand, type CommissionFeePayer } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 

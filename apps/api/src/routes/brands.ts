@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { randomInt } from 'node:crypto'
+import ExcelJS from 'exceljs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
@@ -138,45 +139,65 @@ router.get('/stats', authorize('BUSINESS'), async (req, res) => {
   })
 })
 
-/** Plantilla CSV para alta masiva de marcas. */
+/** Plantilla XLSX para alta masiva de marcas. */
 router.get('/template', authorize('BUSINESS'), async (_req, res) => {
-  const header =
-    'name,monthlyRent,assignedSpace,phone,cutoffDate,commissionPercent,cardFeePayer,transferFeePayer,contactEmail,whatsapp'
-  const example =
-    'Marca Ejemplo,3500,Pasillo A - Local 3,5215512345678,2026-08-01,15,BRAND,BUSINESS,contacto@marca.com,5215512345678'
-  const csv = `${header}\n${example}\n`
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet('Marcas')
+  const headers = [
+    'name',
+    'monthlyRent',
+    'assignedSpace',
+    'phone',
+    'cutoffDate',
+    'commissionPercent',
+    'cardFeePayer',
+    'transferFeePayer',
+    'contactEmail',
+    'whatsapp',
+  ]
+  sheet.addRow(headers)
+  sheet.addRow([
+    'Marca Ejemplo',
+    3500,
+    'Pasillo A - Local 3',
+    '5215512345678',
+    '2026-08-01',
+    15,
+    'BRAND',
+    'BUSINESS',
+    'contacto@marca.com',
+    '5215512345678',
+  ])
 
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8')
-  res.setHeader('Content-Disposition', 'attachment; filename="plantilla-marcas.csv"')
-  return res.send(csv)
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  res.setHeader('Content-Disposition', 'attachment; filename="plantilla-marcas.xlsx"')
+  await workbook.xlsx.write(res)
+  res.end()
 })
 
-/** Alta masiva desde CSV (mismas columnas que /brands/template). */
-router.post('/import', authorize('BUSINESS'), async (req, res) => {
-  const { csv } = req.body as { csv?: string }
-  if (!csv || typeof csv !== 'string' || !csv.trim()) {
-    return res.status(400).json({ error: 'Falta el contenido CSV' })
+type BrandImportRow = Record<string, unknown>
+
+function normalizeImportKey(key: string): string {
+  return key.trim().toLowerCase().replace(/\s+/g, '')
+}
+
+function rowToRecord(row: BrandImportRow): Record<string, string> {
+  const record: Record<string, string> = {}
+  for (const [key, value] of Object.entries(row)) {
+    record[normalizeImportKey(key)] = value == null ? '' : String(value).trim()
   }
+  return record
+}
 
-  const rows = parseCsv(csv)
-  if (rows.length < 2) {
-    return res.status(400).json({ error: 'El archivo no tiene filas de datos' })
-  }
-
-  const header = rows[0].map((h) => h.trim().toLowerCase())
-  const dataRows = rows.slice(1)
-  const tenantId = req.user!.tenantId
-
+async function createBrandsFromRecords(
+  tenantId: string,
+  dataRows: Record<string, string>[],
+): Promise<{ createdCount: number; errorCount: number; errors: Array<{ row: number; name?: string; error: string }> }> {
   const created: string[] = []
   const errors: Array<{ row: number; name?: string; error: string }> = []
 
   for (let i = 0; i < dataRows.length; i++) {
-    const cells = dataRows[i]
-    const record: Record<string, string> = {}
-    header.forEach((key, idx) => {
-      record[key] = cells[idx] ?? ''
-    })
-
+    const record = dataRows[i]
     const parsed = importRowSchema.safeParse({
       name: record.name,
       monthlyRent: record.monthlyrent || undefined,
@@ -225,7 +246,44 @@ router.post('/import', authorize('BUSINESS'), async (req, res) => {
     }
   }
 
-  return res.json({ createdCount: created.length, errorCount: errors.length, errors })
+  return { createdCount: created.length, errorCount: errors.length, errors }
+}
+
+/** Alta masiva desde filas JSON (preview) o CSV legacy. */
+router.post('/import', authorize('BUSINESS'), async (req, res) => {
+  const tenantId = req.user!.tenantId
+  const body = req.body as { rows?: BrandImportRow[]; csv?: string }
+
+  if (Array.isArray(body.rows)) {
+    if (body.rows.length === 0) {
+      return res.status(400).json({ error: 'No hay filas para importar' })
+    }
+    const dataRows = body.rows.map(rowToRecord)
+    const result = await createBrandsFromRecords(tenantId, dataRows)
+    return res.json(result)
+  }
+
+  const { csv } = body
+  if (!csv || typeof csv !== 'string' || !csv.trim()) {
+    return res.status(400).json({ error: 'Falta el contenido a importar' })
+  }
+
+  const rows = parseCsv(csv)
+  if (rows.length < 2) {
+    return res.status(400).json({ error: 'El archivo no tiene filas de datos' })
+  }
+
+  const header = rows[0].map((h) => normalizeImportKey(h))
+  const dataRows = rows.slice(1).map((cells) => {
+    const record: Record<string, string> = {}
+    header.forEach((key, idx) => {
+      record[key] = cells[idx] ?? ''
+    })
+    return record
+  })
+
+  const result = await createBrandsFromRecords(tenantId, dataRows)
+  return res.json(result)
 })
 
 /** Elimina (o desactiva si tiene historial) varias marcas a la vez. */

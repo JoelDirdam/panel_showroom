@@ -218,7 +218,7 @@ router.delete('/slots/:id', authorize('BUSINESS'), async (req, res) => {
 })
 
 router.get('/appointments', async (req, res) => {
-  const appointments = await prisma.appointment.findMany({
+  const appointments = await prisma.stockAppointment.findMany({
     where: {
       tenantId: req.user!.tenantId,
       ...(req.user!.role === 'BRAND' ? { brandId: req.user!.brandId ?? '__missing__' } : {}),
@@ -256,7 +256,7 @@ router.post('/appointments', authorize('BRAND'), async (req, res) => {
   if (!typeEnabled) return res.status(409).json({ error: 'Este tipo de cita está deshabilitado' })
 
   try {
-    const appointment = await prisma.appointment.create({
+    const appointment = await prisma.stockAppointment.create({
       data: {
         tenantId: req.user!.tenantId,
         brandId: req.user!.brandId,
@@ -274,7 +274,7 @@ router.post('/appointments', authorize('BRAND'), async (req, res) => {
 
 router.delete('/appointments/:id', async (req, res) => {
   const id = getParam(req.params.id)
-  const appointment = await prisma.appointment.findFirst({
+  const appointment = await prisma.stockAppointment.findFirst({
     where: {
       id,
       tenantId: req.user!.tenantId,
@@ -287,7 +287,7 @@ router.delete('/appointments/:id', async (req, res) => {
     return res.status(409).json({ error: 'No se puede cancelar una cita pasada' })
   }
 
-  await prisma.appointment.delete({ where: { id } })
+  await prisma.stockAppointment.delete({ where: { id } })
   return res.status(204).send()
 })
 

@@ -433,6 +433,13 @@ export async function importBrandsCsv(csv: string): Promise<BrandImportResult> {
   return data
 }
 
+export async function importBrandsRows(
+  rows: Array<Record<string, string | number | null | undefined>>,
+): Promise<BrandImportResult> {
+  const { data } = await api.post<BrandImportResult>('/brands/import', { rows })
+  return data
+}
+
 export async function bulkDeleteBrands(
   ids: string[],
 ): Promise<{ deleted: number; deactivated: number; skipped: Array<{ id: string; reason: string }> }> {
@@ -486,6 +493,25 @@ export async function uploadProductImage(file: File): Promise<string> {
 
 export async function bulkDeleteProducts(ids: string[]): Promise<{ deleted: number; skipped: number }> {
   const { data } = await api.post('/products/bulk-delete', { ids })
+  return data
+}
+
+export interface ProductImportResult {
+  createdCount: number
+  errorCount: number
+  errors: Array<{ row: number; name?: string; error: string }>
+}
+
+export async function downloadProductsTemplate(): Promise<Blob> {
+  const { data } = await api.get('/products/template', { responseType: 'blob' })
+  return data
+}
+
+export async function importProductsRows(
+  rows: Array<Record<string, string | number | null | undefined>>,
+  brandId?: string,
+): Promise<ProductImportResult> {
+  const { data } = await api.post<ProductImportResult>('/products/import', { rows, brandId })
   return data
 }
 

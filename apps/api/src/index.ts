@@ -19,6 +19,10 @@ import preferencesRoutes from './routes/preferences.js'
 import categoriesRoutes from './routes/categories.js'
 import employeesRoutes from './routes/employees.js'
 import platformRoutes from './routes/platform.js'
+import servicesRoutes from './routes/services.js'
+import businessHoursRoutes from './routes/businessHours.js'
+import appointmentsRoutes from './routes/appointments.js'
+import whatsappConfigRoutes from './routes/whatsappConfig.js'
 import { UPLOADS_ROOT } from './lib/storage.js'
 import { requireOnboarding, requireTerms } from './middleware/auth.js'
 
@@ -83,7 +87,7 @@ app.use(
 )
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'panel-bubbles-api' })
+  res.json({ ok: true, service: 'punto-maneki-api' })
 })
 
 // Guards globales: no bloquean rutas públicas ni /api/auth, /api/terms,
@@ -108,6 +112,10 @@ app.use('/api/preferences', preferencesRoutes)
 app.use('/api/categories', categoriesRoutes)
 app.use('/api/employees', employeesRoutes)
 app.use('/api/platform', platformRoutes)
+app.use('/api/v1/services', servicesRoutes)
+app.use('/api/v1/business-hours', businessHoursRoutes)
+app.use('/api/v1/appointments', appointmentsRoutes)
+app.use('/api/v1/whatsapp-config', whatsappConfigRoutes)
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on port ${PORT}`)

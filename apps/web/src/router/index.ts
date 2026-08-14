@@ -125,8 +125,26 @@ const router = createRouter({
     {
       path: '/brands/:id/products/new',
       name: 'BrandProductNew',
-      component: () => import('../views/showroom/brands/BrandProductNew.vue'),
-      meta: { title: 'Nuevo producto de marca', adminOnly: true },
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Nuevo producto de marca' },
+    },
+    {
+      path: '/brands/:id/products/add-stock',
+      name: 'BrandProductAddStock',
+      component: () => import('../views/showroom/products/ProductStockPage.vue'),
+      meta: { title: 'Agregar stock' },
+    },
+    {
+      path: '/brands/:id/products/withdraw',
+      name: 'BrandProductWithdraw',
+      component: () => import('../views/showroom/products/ProductWithdrawPage.vue'),
+      meta: { title: 'Solicitar retiro' },
+    },
+    {
+      path: '/brands/:id/products/:productId/edit',
+      name: 'BrandProductEdit',
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Editar producto de marca' },
     },
     {
       path: '/brands/:id/products',
@@ -139,6 +157,30 @@ const router = createRouter({
       name: 'BrandDetail',
       component: () => import('../views/showroom/brands/BrandDetail.vue'),
       meta: { title: 'Resumen de marca', adminOnly: true },
+    },
+    {
+      path: '/products/new',
+      name: 'ProductNew',
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Agregar producto' },
+    },
+    {
+      path: '/products/add-stock',
+      name: 'ProductAddStock',
+      component: () => import('../views/showroom/products/ProductStockPage.vue'),
+      meta: { title: 'Agregar stock' },
+    },
+    {
+      path: '/products/withdraw',
+      name: 'ProductWithdraw',
+      component: () => import('../views/showroom/products/ProductWithdrawPage.vue'),
+      meta: { title: 'Solicitar retiro' },
+    },
+    {
+      path: '/products/:productId/edit',
+      name: 'ProductEdit',
+      component: () => import('../views/showroom/products/ProductFormPage.vue'),
+      meta: { title: 'Editar producto' },
     },
     {
       path: '/products',

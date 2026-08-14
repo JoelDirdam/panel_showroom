@@ -30,7 +30,7 @@ export const LABEL_SIZE_OPTIONS: LabelSizeOption[] = [
     label: '58 × 13 mm',
     description: 'Rollo estándar de góndola: código de barras + SKU + nombre + precio.',
     minimal: false,
-    rollUrl: 'https://ejemplo.com/rollos-etiquetas/58x13',
+    rollUrl: 'https://listado.mercadolibre.com.mx/etiquetas-termicas-58x13',
   },
   {
     id: '38x25',
@@ -39,7 +39,7 @@ export const LABEL_SIZE_OPTIONS: LabelSizeOption[] = [
     label: '38 × 25 mm',
     description: 'Etiqueta chica: solo código de barras + precio.',
     minimal: true,
-    rollUrl: 'https://ejemplo.com/rollos-etiquetas/38x25',
+    rollUrl: 'https://listado.mercadolibre.com.mx/etiquetas-termicas-38x25',
   },
   {
     id: '27x13',
@@ -48,9 +48,22 @@ export const LABEL_SIZE_OPTIONS: LabelSizeOption[] = [
     label: '27 × 13 mm',
     description: 'Etiqueta mini (joyería / accesorios): solo código de barras + precio.',
     minimal: true,
-    rollUrl: 'https://ejemplo.com/rollos-etiquetas/27x13',
+    rollUrl: 'https://listado.mercadolibre.com.mx/etiquetas-termicas-27x13',
   },
 ]
+
+const PT_TO_MM = 25.4 / 72
+const PRINT_DPI = 300
+
+type PageOrientation = 'landscape' | 'portrait'
+
+function pageOrientation(size: LabelSizeOption): PageOrientation {
+  return size.widthMm >= size.heightMm ? 'landscape' : 'portrait'
+}
+
+function pageFormat(size: LabelSizeOption): [number, number] {
+  return [size.widthMm, size.heightMm]
+}
 
 export function findLabelSize(id: LabelSizeId): LabelSizeOption {
   return LABEL_SIZE_OPTIONS.find((option) => option.id === id) ?? LABEL_SIZE_OPTIONS[0]
@@ -70,19 +83,71 @@ function formatPrice(price?: string | number | null): string {
   return `$${value.toFixed(2)}`
 }
 
-function barcodeDataUrl(sku: string): string {
-  const canvas = document.createElement('canvas')
-  JsBarcode(canvas, sku || ' ', {
-    format: 'CODE128',
+function fontHeightMm(fontSizePt: number): number {
+  return fontSizePt * PT_TO_MM
+}
+
+function mmToPx(mm: number): number {
+  return Math.max(1, Math.round((mm / 25.4) * PRINT_DPI))
+}
+
+function barcodeDataUrl(sku: string, destWidthMm: number, destHeightMm: number): string {
+  const value = sku.trim() || '-'
+  const targetW = mmToPx(destWidthMm)
+  const targetH = mmToPx(destHeightMm)
+  const quiet = Math.max(4, Math.round(targetW * 0.04))
+  const baseOptions = {
+    format: 'CODE128' as const,
     displayValue: false,
-    margin: 0,
-    height: 120,
-    width: 2,
-  })
-  return canvas.toDataURL('image/png')
+    background: '#ffffff',
+    lineColor: '#000000',
+  }
+
+  const render = (text: string, width: number) => {
+    const canvas = document.createElement('canvas')
+    JsBarcode(canvas, text, {
+      ...baseOptions,
+      width,
+      height: Math.max(8, targetH - 2),
+      margin: 0,
+      marginLeft: quiet,
+      marginRight: quiet,
+      marginTop: 1,
+      marginBottom: 1,
+    })
+    return canvas
+  }
+
+  let canvas: HTMLCanvasElement
+  try {
+    const probe = document.createElement('canvas')
+    JsBarcode(probe, value, { ...baseOptions, margin: 0, width: 1, height: 10 })
+    const modules = Math.max(1, probe.width)
+    const usable = Math.max(1, targetW - quiet * 2)
+    const moduleWidth = Math.max(1, Math.floor(usable / modules))
+    canvas = render(value, moduleWidth)
+  } catch {
+    canvas = render('-', 2)
+  }
+
+  if (canvas.width === targetW && canvas.height === targetH) {
+    return canvas.toDataURL('image/png')
+  }
+
+  const fitted = document.createElement('canvas')
+  fitted.width = targetW
+  fitted.height = targetH
+  const ctx = fitted.getContext('2d')
+  if (!ctx) return canvas.toDataURL('image/png')
+  ctx.imageSmoothingEnabled = false
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, targetW, targetH)
+  ctx.drawImage(canvas, 0, 0, targetW, targetH)
+  return fitted.toDataURL('image/png')
 }
 
 function truncateForWidth(doc: jsPDF, text: string, maxWidthMm: number): string {
+  if (!text) return ''
   if (doc.getTextWidth(text) <= maxWidthMm) return text
   let truncated = text
   while (truncated.length > 1 && doc.getTextWidth(`${truncated}…`) > maxWidthMm) {
@@ -91,19 +156,29 @@ function truncateForWidth(doc: jsPDF, text: string, maxWidthMm: number): string 
   return `${truncated}…`
 }
 
+function addBarcodeImage(doc: jsPDF, dataUrl: string, x: number, y: number, w: number, h: number) {
+  doc.addImage(dataUrl, 'PNG', x, y, w, h, undefined, 'NONE')
+}
+
 function renderLabel(doc: jsPDF, item: LabelPrintItem, size: LabelSizeOption) {
-  const margin = 1
+  const pageW = size.widthMm
+  const pageH = size.heightMm
+  const pad = pageH <= 14 ? 0.5 : 0.8
+  const innerW = pageW - pad * 2
   const price = formatPrice(item.price)
-  const barcode = barcodeDataUrl(item.sku)
+  const sku = item.sku || ''
 
   if (size.minimal) {
-    const barcodeW = size.widthMm - margin * 2
-    const barcodeH = size.heightMm * (price ? 0.6 : 0.8)
-    doc.addImage(barcode, 'PNG', margin, margin, barcodeW, barcodeH)
+    const pricePt = pageH <= 14 ? 5 : Math.min(8, pageW / 5)
+    const priceH = price ? fontHeightMm(pricePt) + 0.15 : 0
+    const gap = price ? 0.3 : 0
+    const barcodeH = Math.max(2.5, pageH - pad * 2 - priceH - gap)
+    const barcode = barcodeDataUrl(sku, innerW, barcodeH)
+    addBarcodeImage(doc, barcode, pad, pad, innerW, barcodeH)
     if (price) {
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(Math.max(6, Math.min(9, size.widthMm / 4.5)))
-      doc.text(price, size.widthMm / 2, size.heightMm - margin * 0.4, {
+      doc.setFontSize(pricePt)
+      doc.text(truncateForWidth(doc, price, innerW), pageW / 2, pageH - pad, {
         align: 'center',
         baseline: 'bottom',
       })
@@ -111,31 +186,40 @@ function renderLabel(doc: jsPDF, item: LabelPrintItem, size: LabelSizeOption) {
     return
   }
 
-  let y = margin + 1.8
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(5.5)
-  const name = truncateForWidth(doc, item.name || '', size.widthMm - margin * 2)
-  doc.text(name, size.widthMm / 2, y, { align: 'center' })
+  const namePt = 4.5
+  const footerPt = 5.5
+  const nameH = fontHeightMm(namePt) + 0.15
+  const footerH = fontHeightMm(footerPt) + 0.15
+  const gap = 0.25
+  const barcodeH = Math.max(3, pageH - pad * 2 - nameH - footerH - gap * 2)
 
-  y += 0.6
-  const barcodeW = size.widthMm - margin * 2
-  const barcodeH = size.heightMm * 0.42
-  doc.addImage(barcode, 'PNG', margin, y, barcodeW, barcodeH)
-  y += barcodeH + 2.4
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(namePt)
+  doc.text(truncateForWidth(doc, item.name || '', innerW), pageW / 2, pad, {
+    align: 'center',
+    baseline: 'top',
+  })
+
+  const barcodeY = pad + nameH + gap
+  const barcode = barcodeDataUrl(sku, innerW, barcodeH)
+  addBarcodeImage(doc, barcode, pad, barcodeY, innerW, barcodeH)
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(5.5)
-  doc.text(item.sku || '', margin, y)
+  doc.setFontSize(footerPt)
+  const priceW = price ? doc.getTextWidth(price) + 1.2 : 0
+  const skuMax = Math.max(4, innerW - priceW)
+  doc.text(truncateForWidth(doc, sku, skuMax), pad, pageH - pad, { baseline: 'bottom' })
   if (price) {
-    doc.text(price, size.widthMm - margin, y, { align: 'right' })
+    doc.text(price, pageW - pad, pageH - pad, { align: 'right', baseline: 'bottom' })
   }
 }
 
 /** Genera un PDF con una página por etiqueta (multiplicada por `quantity`). */
 export function generateLabelsPdf(items: LabelPrintItem[], sizeId: LabelSizeId): Blob {
   const size = findLabelSize(sizeId)
-  const format: [number, number] = [size.widthMm, size.heightMm]
-  const doc = new jsPDF({ unit: 'mm', format })
+  const format = pageFormat(size)
+  const orientation = pageOrientation(size)
+  const doc = new jsPDF({ unit: 'mm', format, orientation, compress: false })
 
   const expanded: LabelPrintItem[] = []
   for (const item of items) {
@@ -145,7 +229,7 @@ export function generateLabelsPdf(items: LabelPrintItem[], sizeId: LabelSizeId):
   if (expanded.length === 0) expanded.push({ sku: '', name: '', price: null })
 
   expanded.forEach((item, index) => {
-    if (index > 0) doc.addPage(format)
+    if (index > 0) doc.addPage(format, orientation)
     renderLabel(doc, item, size)
   })
 
@@ -159,8 +243,10 @@ export function printPdfBlob(blob: Blob) {
   iframe.style.position = 'fixed'
   iframe.style.right = '0'
   iframe.style.bottom = '0'
-  iframe.style.width = '0'
-  iframe.style.height = '0'
+  iframe.style.width = '1px'
+  iframe.style.height = '1px'
+  iframe.style.opacity = '0'
+  iframe.style.pointerEvents = 'none'
   iframe.style.border = 'none'
   iframe.src = url
   document.body.appendChild(iframe)
@@ -183,6 +269,8 @@ export function downloadPdfBlob(blob: Blob, filename: string) {
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  document.body.appendChild(link)
   link.click()
-  URL.revokeObjectURL(url)
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 2000)
 }

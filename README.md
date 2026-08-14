@@ -1,4 +1,4 @@
-# Panel Bubbles — Showroom Admin
+# PuntoManeki — Showroom Admin
 
 Panel administrativo para que las marcas gestionen sus productos y stock en el showroom.
 
@@ -154,7 +154,7 @@ En Railway Dashboard → cada servicio → Settings:
 ## Estructura
 
 ```
-panel-bubbles/
+punto-maneki/
 ├── apps/
 │   ├── api/          # REST API + Prisma
 │   └── web/          # Vue admin panel

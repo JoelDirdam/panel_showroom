@@ -348,7 +348,7 @@ router.get('/analytics', async (req, res) => {
         product: { select: { name: true } },
       },
     }),
-    prisma.appointment.findMany({
+    prisma.stockAppointment.findMany({
       where: {
         tenantId,
         ...(brandId ? { brandId } : {}),
