@@ -30,7 +30,7 @@
       <div class="mt-3 flex flex-wrap gap-2">
         <router-link
           v-if="!setup?.hasHouseBrand"
-          to="/brands/new?house=1"
+          to="/brands/mine"
           class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
         >
           Registrar mi marca

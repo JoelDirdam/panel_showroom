@@ -61,19 +61,6 @@
           </div>
         </div>
 
-        <label
-          v-if="!isEditing && !houseBrandLocked"
-          class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300"
-        >
-          <input v-model="form.isHouseBrand" type="checkbox" class="mt-1" />
-          <span>
-            Esta es la marca propia de mi negocio
-            <span class="block text-xs text-gray-500 dark:text-gray-400">
-              Úsala para productos de tu negocio (showroom, boutique, cafetería, etc.).
-            </span>
-          </span>
-        </label>
-
         <label v-if="isEditing" class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
           <input v-model="form.active" type="checkbox" />
           Marca activa
@@ -115,7 +102,6 @@ const auth = useAuthStore()
 
 const brandId = computed(() => (typeof route.params.id === 'string' ? route.params.id : null))
 const isEditing = computed(() => !!brandId.value)
-const houseBrandLocked = computed(() => !!auth.user?.setupStatus?.hasHouseBrand)
 
 const saving = ref(false)
 const formError = ref<string | null>(null)
@@ -130,7 +116,6 @@ const form = reactive({
   cardFeePayer: 'BRAND' as CommissionFeePayer,
   transferFeePayer: 'BRAND' as CommissionFeePayer,
   active: true,
-  isHouseBrand: false,
 })
 
 function toDateInputValue(value: string | null): string {
@@ -140,7 +125,9 @@ function toDateInputValue(value: string | null): string {
 
 async function loadBrand() {
   if (!brandId.value) {
-    form.isHouseBrand = route.query.house === '1' && !houseBrandLocked.value
+    if (route.query.house === '1') {
+      router.replace('/brands/mine')
+    }
     return
   }
   const { data } = await api.get<Brand>(`/brands/${brandId.value}`)
@@ -153,7 +140,6 @@ async function loadBrand() {
   form.cardFeePayer = data.cardFeePayer
   form.transferFeePayer = data.transferFeePayer
   form.active = data.active
-  form.isHouseBrand = data.isHouseBrand
 }
 
 function validate(): string | null {
@@ -185,7 +171,7 @@ async function save() {
     commissionPercent: form.commissionPercent,
     cardFeePayer: form.cardFeePayer,
     transferFeePayer: form.transferFeePayer,
-    ...(isEditing.value ? { active: form.active } : { isHouseBrand: form.isHouseBrand }),
+    ...(isEditing.value ? { active: form.active } : {}),
   }
 
   saving.value = true
@@ -196,7 +182,7 @@ async function save() {
     } else {
       const { data } = await api.post<Brand>('/brands', payload)
       await auth.fetchMe()
-      router.push(form.isHouseBrand ? `/brands/${data.id}` : `/brands/${data.id}/owner`)
+      router.push(`/brands/${data.id}/owner`)
     }
   } catch (e: unknown) {
     const err = e as { response?: { data?: { error?: string } } }

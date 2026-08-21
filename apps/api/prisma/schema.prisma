@@ -95,6 +95,11 @@ enum AppointmentStatus {
   COMPLETED
 }
 
+enum ConversationRole {
+  USER
+  ASSISTANT
+}
+
 model Tenant {
   id                 String               @id @default(cuid())
   name               String
@@ -118,6 +123,8 @@ model Tenant {
   scheduleSlots      ScheduleSlot[]
   stockAppointments  StockAppointment[]
   appointments       Appointment[]
+  sucursales         Sucursal[]
+  conversations      Conversation[]
   whatsappConfig     WhatsappConfig?
   services           Service[]
   businessHours      BusinessHour[]
@@ -514,6 +521,8 @@ model WhatsappConfig {
   isActive           Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+
+  @@index([phoneNumberId])
 }
 
 model Service {
@@ -546,11 +555,59 @@ model BusinessHour {
   @@index([tenantId])
 }
 
+model Sucursal {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name          String
+  address       String?
+  isActive      Boolean        @default(true)
+  appointments  Appointment[]
+  conversations Conversation[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, isActive])
+}
+
+model Conversation {
+  id                 String                 @id @default(cuid())
+  tenantId           String
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerPhone      String
+  customerName       String?
+  aiEnabled          Boolean                @default(true)
+  selectedSucursalId String?
+  selectedSucursal   Sucursal?              @relation(fields: [selectedSucursalId], references: [id], onDelete: SetNull)
+  humanRequestedAt   DateTime?
+  humanRequestReason String?
+  messages           ConversationMessage[]
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  @@unique([tenantId, customerPhone])
+  @@index([tenantId])
+}
+
+model ConversationMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ConversationRole
+  content        String           @db.Text
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
 /// Citas a clientes (WhatsApp / clínica). Tabla nueva, sin brandId/slotId/bookedById.
 model Appointment {
   id            String            @id @default(cuid())
   tenantId      String
   tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sucursalId    String?
+  sucursal      Sucursal?         @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
   serviceId     String?
   service       Service?          @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   customerName  String
@@ -564,6 +621,7 @@ model Appointment {
 
   @@index([tenantId, startTime])
   @@index([tenantId, status])
+  @@index([sucursalId])
 }
 
 model TermsDocument {

@@ -100,7 +100,7 @@ router.get('/home-summary', async (req, res) => {
   const filter = brandFilter(req.user!)
   const isAdmin = req.user!.role === 'BUSINESS'
 
-  const [salesToday, salesAgg, totalProducts, totalBrands, lowStockCount, houseBrand] =
+  const [salesToday, salesAgg, totalProducts, totalBrands, lowStockCount, houseBrand, totalEmployees] =
     await Promise.all([
       prisma.sale.count({
         where: { tenantId, soldAt: { gte: startOfDayNow } },
@@ -123,6 +123,7 @@ router.get('/home-summary', async (req, res) => {
         where: { tenantId, isHouseBrand: true, active: true },
         select: { id: true },
       }),
+      isAdmin ? prisma.employee.count({ where: { tenantId, active: true } }) : Promise.resolve(0),
     ])
 
   const tenant = await prisma.tenant.findUnique({
@@ -135,6 +136,7 @@ router.get('/home-summary', async (req, res) => {
     salesTodayTotal: Number(salesAgg._sum.total ?? 0),
     totalProducts,
     totalBrands,
+    totalEmployees,
     lowStockCount,
     setupStatus: {
       businessConfigured: Boolean(tenant?.onboardingComplete),

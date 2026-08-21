@@ -344,6 +344,7 @@ export interface HomeSummary {
   salesTodayTotal: number
   totalProducts: number
   totalBrands: number
+  totalEmployees: number
   lowStockCount: number
   setupStatus: {
     businessConfigured: boolean

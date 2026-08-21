@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, authorize } from '../middleware/auth.js'
 import { buildMeResponse } from '../lib/meShape.js'
 import { advanceStep } from '../lib/onboarding.js'
+import { ensurePrincipalSucursal } from '../lib/sucursal.js'
 import { storage } from '../lib/storage.js'
 import { imageUpload, safeImageOriginalName } from '../lib/upload.js'
 
@@ -149,6 +150,8 @@ router.post('/create-business', (req, res, next) => {
       ...(logoUrl ? { logoUrl } : {}),
     },
   })
+
+  await ensurePrincipalSucursal(tenantId)
 
   await prisma.businessPreferences.upsert({
     where: { tenantId },

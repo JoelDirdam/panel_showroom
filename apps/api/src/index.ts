@@ -23,8 +23,13 @@ import servicesRoutes from './routes/services.js'
 import businessHoursRoutes from './routes/businessHours.js'
 import appointmentsRoutes from './routes/appointments.js'
 import whatsappConfigRoutes from './routes/whatsappConfig.js'
+import chatRoutes from './routes/chat.js'
+import { whatsappWebhookRoutes } from './modules/whatsapp/index.js'
+import { registerInboundAiHandler } from './modules/ai/index.js'
 import { UPLOADS_ROOT } from './lib/storage.js'
 import { requireOnboarding, requireTerms } from './middleware/auth.js'
+
+registerInboundAiHandler()
 
 const app = express()
 const PORT = Number(process.env.PORT) || 3000
@@ -116,6 +121,22 @@ app.use('/api/v1/services', servicesRoutes)
 app.use('/api/v1/business-hours', businessHoursRoutes)
 app.use('/api/v1/appointments', appointmentsRoutes)
 app.use('/api/v1/whatsapp-config', whatsappConfigRoutes)
+app.use('/api/v1/whatsapp', whatsappWebhookRoutes)
+app.use('/api/chat', chatRoutes)
+
+app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const path = req.path || ''
+  const isWebhookPost =
+    req.method === 'POST' && (path === '/api/v1/whatsapp/webhook' || path.startsWith('/api/v1/whatsapp/'))
+  if (isWebhookPost) {
+    console.error('[whatsapp.webhook] request error; ACK 200 to avoid Meta retries', err)
+    if (!res.headersSent) {
+      res.status(200).send('EVENT_RECEIVED')
+    }
+    return
+  }
+  next(err)
+})
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on port ${PORT}`)

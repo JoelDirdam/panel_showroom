@@ -111,6 +111,12 @@ const router = createRouter({
       meta: { title: 'Nueva marca', adminOnly: true },
     },
     {
+      path: '/brands/mine',
+      name: 'HouseBrandCreate',
+      component: () => import('../views/showroom/brands/HouseBrandForm.vue'),
+      meta: { title: 'Mi marca', adminOnly: true },
+    },
+    {
       path: '/brands/:id/edit',
       name: 'BrandEdit',
       component: () => import('../views/showroom/brands/BrandForm.vue'),

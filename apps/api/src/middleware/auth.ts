@@ -119,7 +119,14 @@ export function brandWhereFilter(user: AuthUser): Prisma.BrandWhereInput {
  * Rutas que deben quedar exentas de los guards de términos/onboarding porque
  * son precisamente las que permiten completar esos pasos (o son públicas).
  */
-const GUARD_ALLOWLIST_PREFIXES = ['/api/auth', '/api/terms', '/api/onboarding', '/uploads', '/health']
+const GUARD_ALLOWLIST_PREFIXES = [
+  '/api/auth',
+  '/api/terms',
+  '/api/onboarding',
+  '/api/v1/whatsapp',
+  '/uploads',
+  '/health',
+]
 
 function isAllowlisted(req: Request): boolean {
   const p = req.path
