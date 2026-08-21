@@ -60,19 +60,24 @@
             </p>
           </div>
 
-          <div>
+          <div class="sm:col-span-2">
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">
-              Fecha de corte
+              Días de corte
             </label>
-            <FormCheckbox v-model="noCutoffDate" class="mb-2" align="center">
-              Sin fecha de corte (marca propia)
+            <FormCheckbox v-model="noCutoffDate" class="mb-2" align="center" :disabled="cutoffLocked">
+              Sin días de corte (marca propia)
             </FormCheckbox>
-            <input
-              v-if="!noCutoffDate"
-              v-model="form.cutoffDate"
-              type="date"
-              class="field"
+            <CutoffDaySlotsPicker
+              v-if="!noCutoffDate || cutoffLocked"
+              v-model="form.cutoffDaySlots"
+              :max-selectable="2"
+              :disabled="cutoffLocked || noCutoffDate"
+              :hint="cutoffHint"
             />
+            <p v-if="cutoffLocked" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Definido en
+              <router-link to="/preferences" class="text-brand-500 underline">Preferencias</router-link>.
+            </p>
           </div>
 
           <div>
@@ -148,8 +153,10 @@ import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import PhoneField from '@/components/forms/PhoneField.vue'
 import FormCheckbox from '@/components/forms/FormCheckbox.vue'
-import api, { type Brand, type CommissionFeePayer } from '@/services/api'
+import CutoffDaySlotsPicker from '@/components/brands/CutoffDaySlotsPicker.vue'
+import api, { fetchPreferences, type Brand, type CommissionFeePayer } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { formatCutoffSlotsPreview } from '@/utils/cutoffDays'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -163,15 +170,24 @@ const formError = ref<string | null>(null)
 const useAccountPhone = ref(false)
 const noCutoffDate = ref(true)
 const noCommission = ref(true)
+const cutoffLocked = ref(false)
 
 const form = reactive({
   name: '',
   assignedSpace: '',
   phone: '',
-  cutoffDate: '',
+  cutoffDaySlots: [] as number[],
   commissionPercent: 0 as number | null,
   cardFeePayer: 'BUSINESS' as CommissionFeePayer,
   transferFeePayer: 'BUSINESS' as CommissionFeePayer,
+})
+
+const cutoffHint = computed(() => {
+  if (noCutoffDate.value && !cutoffLocked.value) return ''
+  const preview = formatCutoffSlotsPreview(form.cutoffDaySlots)
+  const base =
+    'Elige 1 o 2 días del mes. Si marcas 29, 30 o 31 en un mes más corto, el corte se recorre al último día real.'
+  return preview ? `${base} Este mes: día(s) ${preview}.` : base
 })
 
 watch(useAccountPhone, (enabled) => {
@@ -180,10 +196,14 @@ watch(useAccountPhone, (enabled) => {
   }
 })
 
+watch(noCutoffDate, (enabled) => {
+  if (enabled && !cutoffLocked.value) form.cutoffDaySlots = []
+})
+
 function validate(): string | null {
   if (!form.name.trim()) return 'El nombre de la marca es obligatorio'
-  if (!noCutoffDate.value && !form.cutoffDate) {
-    return 'Indica la fecha de corte o marca “Sin fecha de corte”'
+  if (!noCutoffDate.value && !cutoffLocked.value && form.cutoffDaySlots.length === 0) {
+    return 'Indica los días de corte o marca “Sin días de corte”'
   }
   if (
     !noCommission.value &&
@@ -212,7 +232,7 @@ async function save() {
     monthlyRent: 0,
     assignedSpace: form.assignedSpace.trim() || null,
     phone: form.phone.trim() || null,
-    cutoffDate: noCutoffDate.value ? null : form.cutoffDate,
+    cutoffDaySlots: noCutoffDate.value && !cutoffLocked.value ? [] : form.cutoffDaySlots,
     commissionPercent: noCommission.value ? 0 : form.commissionPercent,
     cardFeePayer: form.cardFeePayer,
     transferFeePayer: form.transferFeePayer,
@@ -232,11 +252,22 @@ async function save() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (alreadyHasHouseBrand.value) {
     const houseBrandId = auth.user?.setupStatus?.houseBrandId
     router.replace(houseBrandId ? `/brands/${houseBrandId}` : '/brands')
     return
+  }
+
+  try {
+    const prefs = await fetchPreferences()
+    if (prefs.cutoffType === 'MONTHLY_FIXED' && prefs.cutoffDaySlots.length > 0) {
+      cutoffLocked.value = true
+      noCutoffDate.value = false
+      form.cutoffDaySlots = [...prefs.cutoffDaySlots].sort((a, b) => a - b)
+    }
+  } catch {
+    cutoffLocked.value = false
   }
 
   if (businessName.value) {

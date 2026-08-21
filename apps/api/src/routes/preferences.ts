@@ -97,12 +97,28 @@ router.patch('/', async (req, res) => {
       return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
     }
 
+    const tenantId = req.user!.tenantId
     const preferences = await prisma.businessPreferences.upsert({
-      where: { tenantId: req.user!.tenantId },
+      where: { tenantId },
       update: parsed.data,
-      create: { tenantId: req.user!.tenantId, cutoffDaySlots: [], ...parsed.data },
+      create: { tenantId, cutoffDaySlots: [], ...parsed.data },
     })
-    return res.json(preferences)
+
+    let brandsAligned = 0
+    const shouldAlign =
+      preferences.cutoffType === 'MONTHLY_FIXED' && preferences.cutoffDaySlots.length > 0
+    if (shouldAlign) {
+      const slots = [...new Set(preferences.cutoffDaySlots.filter((d) => d >= 1 && d <= 31))].sort(
+        (a, b) => a - b,
+      )
+      const result = await prisma.brand.updateMany({
+        where: { tenantId },
+        data: { cutoffDaySlots: slots },
+      })
+      brandsAligned = result.count
+    }
+
+    return res.json({ ...preferences, brandsAligned })
   } catch (e) {
     return sendError(res, e)
   }

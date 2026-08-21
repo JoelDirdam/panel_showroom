@@ -77,19 +77,10 @@
           <button
             type="button"
             class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-            @click="onDownloadTemplate"
+            @click="router.push('/brands/import')"
           >
-            Descargar plantilla
+            Importar
           </button>
-          <button
-            type="button"
-            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-            :disabled="importing"
-            @click="triggerImport"
-          >
-            {{ importing ? 'Leyendo…' : 'Importar' }}
-          </button>
-          <input ref="importInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="onImportFile" />
           <button
             data-tour="brands-create"
             type="button"
@@ -295,16 +286,6 @@
         </div>
       </div>
     </div>
-
-    <ImportPreviewPanel
-      v-if="importPreview"
-      title="Previsualizar marcas"
-      :columns="brandImportColumns"
-      :rows="importPreview"
-      :saving="importSaving"
-      @cancel="importPreview = null"
-      @confirm="confirmImport"
-    />
   </admin-layout>
 </template>
 
@@ -314,17 +295,13 @@ import { useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
-import ImportPreviewPanel from '@/components/import/ImportPreviewPanel.vue'
 import api, {
   type Brand,
   type BrandImportResult,
   type BrandStats,
   bulkDeleteBrands,
-  downloadBrandsTemplate,
   fetchBrandStats,
-  importBrandsRows,
 } from '@/services/api'
-import { parseSpreadsheetFile, type ImportColumn } from '@/composables/useXlsxImport'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -339,24 +316,7 @@ const selected = ref<string[]>([])
 const banner = ref<string | null>(null)
 const bannerType = ref<'success' | 'error'>('success')
 
-const importing = ref(false)
-const importSaving = ref(false)
-const importInput = ref<HTMLInputElement | null>(null)
 const importResult = ref<BrandImportResult | null>(null)
-const importPreview = ref<Record<string, string>[] | null>(null)
-
-const brandImportColumns: ImportColumn[] = [
-  { key: 'name', label: 'Nombre', required: true },
-  { key: 'monthlyRent', label: 'Renta mensual' },
-  { key: 'assignedSpace', label: 'Espacio' },
-  { key: 'phone', label: 'Teléfono' },
-  { key: 'cutoffDate', label: 'Fecha corte' },
-  { key: 'commissionPercent', label: '% Comisión' },
-  { key: 'cardFeePayer', label: 'Fee tarjeta' },
-  { key: 'transferFeePayer', label: 'Fee transferencia' },
-  { key: 'contactEmail', label: 'Email' },
-  { key: 'whatsapp', label: 'WhatsApp' },
-]
 
 const deleteTarget = ref<Brand | null>(null)
 const deleteConfirmation = ref('')
@@ -471,67 +431,17 @@ async function confirmBulkDelete() {
   }
 }
 
-function triggerImport() {
-  importInput.value?.click()
-}
-
-async function onImportFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-
-  importing.value = true
-  importResult.value = null
-  try {
-    const { rows } = await parseSpreadsheetFile(file)
-    const mapped = rows.map((row) => ({
-      name: row.name || '',
-      monthlyRent: row.monthlyrent || '',
-      assignedSpace: row.assignedspace || '',
-      phone: row.phone || '',
-      cutoffDate: row.cutoffdate || '',
-      commissionPercent: row.commissionpercent || '',
-      cardFeePayer: row.cardfeepayer || '',
-      transferFeePayer: row.transferfeepayer || '',
-      contactEmail: row.contactemail || '',
-      whatsapp: row.whatsapp || '',
-    }))
-    if (!mapped.length) {
-      showBanner('El archivo no tiene filas de datos', 'error')
-      return
-    }
-    importPreview.value = mapped
-  } catch (e: unknown) {
-    showBanner(apiError(e, 'No se pudo leer el archivo'), 'error')
-  } finally {
-    importing.value = false
+function consumeImportResultFromHistory() {
+  const state = window.history.state as { importResult?: BrandImportResult } | null
+  if (state?.importResult) {
+    importResult.value = state.importResult
+    const { importResult: _removed, ...rest } = state
+    window.history.replaceState(rest, '')
   }
 }
 
-async function confirmImport(rows: Record<string, string>[]) {
-  importSaving.value = true
-  try {
-    const result = await importBrandsRows(rows)
-    importResult.value = result
-    importPreview.value = null
-    await load()
-  } catch (e: unknown) {
-    showBanner(apiError(e, 'No se pudo importar el archivo'), 'error')
-  } finally {
-    importSaving.value = false
-  }
-}
-
-async function onDownloadTemplate() {
-  const blob = await downloadBrandsTemplate()
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'plantilla-marcas.xlsx'
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
-onMounted(load)
+onMounted(() => {
+  consumeImportResultFromHistory()
+  void load()
+})
 </script>

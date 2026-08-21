@@ -1,6 +1,19 @@
 <template>
-  <div class="fixed inset-0 z-99999 flex items-start justify-center overflow-y-auto bg-black/50 p-4" @click.self="emit('cancel')">
-    <div class="mt-8 w-full max-w-5xl rounded-2xl bg-white p-6 dark:bg-gray-900">
+  <div
+    :class="
+      variant === 'modal'
+        ? 'fixed inset-0 z-99999 flex items-start justify-center overflow-y-auto bg-black/50 p-4'
+        : 'w-full'
+    "
+    @click.self="variant === 'modal' ? emit('cancel') : undefined"
+  >
+    <div
+      :class="
+        variant === 'modal'
+          ? 'mt-8 w-full max-w-5xl rounded-2xl bg-white p-6 dark:bg-gray-900'
+          : 'w-full'
+      "
+    >
       <h3 class="text-lg font-semibold text-gray-800 dark:text-white">{{ title }}</h3>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
         Revisa y edita los datos antes de guardar. {{ localRows.length }} fila(s).
@@ -22,8 +35,17 @@
             <tr v-for="(row, idx) in localRows" :key="idx" class="border-b border-gray-100 dark:border-gray-800">
               <td class="py-2 pr-2 text-gray-400">{{ idx + 1 }}</td>
               <td v-for="col in columns" :key="col.key" class="py-2 pr-2">
+                <CutoffDaySlotsPicker
+                  v-if="col.type === 'day-slots'"
+                  compact
+                  :model-value="parseSlots(row[col.key])"
+                  :max-selectable="col.maxSelectable ?? 2"
+                  :disabled="!!col.disabled"
+                  :invalid="rowError(idx, col.key)"
+                  @update:model-value="(slots) => (row[col.key] = serializeSlots(slots))"
+                />
                 <select
-                  v-if="col.type === 'select'"
+                  v-else-if="col.type === 'select'"
                   v-model="row[col.key]"
                   class="field"
                   :class="rowError(idx, col.key) ? 'border-error-500' : ''"
@@ -41,7 +63,9 @@
                 />
               </td>
               <td class="py-2">
-                <button type="button" class="text-xs text-error-500 hover:underline" @click="removeRow(idx)">Quitar</button>
+                <button type="button" class="text-xs text-error-500 hover:underline" @click="removeRow(idx)">
+                  Quitar
+                </button>
               </td>
             </tr>
           </tbody>
@@ -51,7 +75,12 @@
       <p v-if="validationError" class="mt-3 text-sm text-error-500">{{ validationError }}</p>
 
       <div class="mt-5 flex justify-end gap-2">
-        <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600" :disabled="saving" @click="emit('cancel')">
+        <button
+          type="button"
+          class="rounded-lg px-4 py-2 text-sm text-gray-600"
+          :disabled="saving"
+          @click="emit('cancel')"
+        >
           Cancelar
         </button>
         <button
@@ -70,13 +99,22 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { ImportColumn } from '@/composables/useXlsxImport'
+import CutoffDaySlotsPicker from '@/components/brands/CutoffDaySlotsPicker.vue'
+import { parseCutoffSlotsCsv, serializeCutoffSlots } from '@/utils/cutoffDays'
 
-const props = defineProps<{
-  title: string
-  columns: ImportColumn[]
-  rows: Record<string, string>[]
-  saving?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    title: string
+    columns: ImportColumn[]
+    rows: Record<string, string>[]
+    saving?: boolean
+    variant?: 'modal' | 'inline'
+  }>(),
+  {
+    saving: false,
+    variant: 'modal',
+  },
+)
 
 const emit = defineEmits<{
   cancel: []
@@ -97,6 +135,14 @@ watch(
   { immediate: true, deep: true },
 )
 
+function parseSlots(value: string | undefined) {
+  return parseCutoffSlotsCsv(value || '')
+}
+
+function serializeSlots(slots: number[]) {
+  return serializeCutoffSlots(slots)
+}
+
 function rowError(idx: number, key: string) {
   return invalidCells.value.has(`${idx}:${key}`)
 }
@@ -105,12 +151,19 @@ function removeRow(idx: number) {
   localRows.value.splice(idx, 1)
 }
 
+function isEmptyRequired(col: ImportColumn, value: string | undefined) {
+  if (col.type === 'day-slots') {
+    return parseCutoffSlotsCsv(value || '').length === 0
+  }
+  return !String(value ?? '').trim()
+}
+
 function confirm() {
   validationError.value = null
   const next = new Set<string>()
   for (let i = 0; i < localRows.value.length; i++) {
     for (const col of props.columns) {
-      if (col.required && !String(localRows.value[i][col.key] ?? '').trim()) {
+      if (col.required && isEmptyRequired(col, localRows.value[i][col.key])) {
         next.add(`${i}:${col.key}`)
       }
     }

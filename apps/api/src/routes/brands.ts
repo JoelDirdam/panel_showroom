@@ -12,6 +12,10 @@ const router = Router()
 
 const feePayerEnum = z.enum(['BRAND', 'CLIENT', 'BUSINESS'])
 
+const cutoffDaySlotsSchema = z
+  .array(z.number({ invalid_type_error: 'Día inválido' }).int().min(1).max(31))
+  .max(2, 'Máximo 2 días de corte')
+
 const brandCommonFields = {
   contactEmail: z.string().email().optional().nullable(),
   whatsapp: z.string().max(30).optional().nullable(),
@@ -19,7 +23,7 @@ const brandCommonFields = {
   active: z.boolean().optional(),
   monthlyRent: z.coerce.number().min(0).optional(),
   assignedSpace: z.string().max(120).optional().nullable(),
-  cutoffDate: z.union([z.coerce.date(), z.null()]).optional(),
+  cutoffDaySlots: cutoffDaySlotsSchema.optional(),
   commissionPercent: z.coerce.number().min(0).max(100).optional(),
   cardFeePayer: feePayerEnum.optional(),
   transferFeePayer: feePayerEnum.optional(),
@@ -67,7 +71,7 @@ const importRowSchema = z.object({
   monthlyRent: z.coerce.number().min(0).optional(),
   assignedSpace: z.string().optional(),
   phone: z.string().optional(),
-  cutoffDate: z.string().optional(),
+  cutoffDaySlots: cutoffDaySlotsSchema.optional(),
   commissionPercent: z.coerce.number().min(0).max(100).optional(),
   cardFeePayer: feePayerEnum.optional(),
   transferFeePayer: feePayerEnum.optional(),
@@ -79,6 +83,25 @@ const brandInclude = {
   _count: { select: { products: true, users: true } },
   owner: { select: { id: true, name: true, email: true } },
 } as const
+
+/** Preferencias con corte mensual configurado → slots globales del tenant; si no, null. */
+async function getTenantMonthlyCutoffSlots(tenantId: string): Promise<number[] | null> {
+  const prefs = await prisma.businessPreferences.findUnique({ where: { tenantId } })
+  if (!prefs || prefs.cutoffType !== 'MONTHLY_FIXED' || prefs.cutoffDaySlots.length === 0) {
+    return null
+  }
+  return [...new Set(prefs.cutoffDaySlots.filter((d) => d >= 1 && d <= 31))].sort((a, b) => a - b)
+}
+
+function parseCutoffSlotsFromRecord(raw: string | undefined): number[] | undefined {
+  if (raw == null || !String(raw).trim()) return undefined
+  const days = String(raw)
+    .split(/[,;\s]+/)
+    .map((p) => parseInt(p.trim(), 10))
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 31)
+  if (!days.length) return undefined
+  return [...new Set(days)].sort((a, b) => a - b).slice(0, 2)
+}
 
 async function uniqueSlug(tenantId: string, base: string, excludeId?: string): Promise<string> {
   const existing = await prisma.brand.findMany({
@@ -148,10 +171,7 @@ router.get('/template', authorize('BUSINESS'), async (_req, res) => {
     'monthlyRent',
     'assignedSpace',
     'phone',
-    'cutoffDate',
     'commissionPercent',
-    'cardFeePayer',
-    'transferFeePayer',
     'contactEmail',
     'whatsapp',
   ]
@@ -161,10 +181,7 @@ router.get('/template', authorize('BUSINESS'), async (_req, res) => {
     3500,
     'Pasillo A - Local 3',
     '5215512345678',
-    '2026-08-01',
     15,
-    'BRAND',
-    'BUSINESS',
     'contacto@marca.com',
     '5215512345678',
   ])
@@ -195,6 +212,7 @@ async function createBrandsFromRecords(
 ): Promise<{ createdCount: number; errorCount: number; errors: Array<{ row: number; name?: string; error: string }> }> {
   const created: string[] = []
   const errors: Array<{ row: number; name?: string; error: string }> = []
+  const globalSlots = await getTenantMonthlyCutoffSlots(tenantId)
 
   for (let i = 0; i < dataRows.length; i++) {
     const record = dataRows[i]
@@ -203,7 +221,9 @@ async function createBrandsFromRecords(
       monthlyRent: record.monthlyrent || undefined,
       assignedSpace: record.assignedspace || undefined,
       phone: record.phone || undefined,
-      cutoffDate: record.cutoffdate || undefined,
+      cutoffDaySlots: parseCutoffSlotsFromRecord(
+        record.cutoffdayslots || record.cutoffday || record.cutoffdate,
+      ),
       commissionPercent: record.commissionpercent || undefined,
       cardFeePayer: record.cardfeepayer ? record.cardfeepayer.toUpperCase() : undefined,
       transferFeePayer: record.transferfeepayer ? record.transferfeepayer.toUpperCase() : undefined,
@@ -222,6 +242,8 @@ async function createBrandsFromRecords(
       continue
     }
 
+    const cutoffDaySlots = globalSlots ?? parsed.data.cutoffDaySlots ?? []
+
     try {
       const slug = await uniqueSlug(tenantId, base)
       await prisma.brand.create({
@@ -237,7 +259,7 @@ async function createBrandsFromRecords(
           commissionPercent: parsed.data.commissionPercent ?? 0,
           cardFeePayer: parsed.data.cardFeePayer ?? 'BRAND',
           transferFeePayer: parsed.data.transferFeePayer ?? 'BRAND',
-          cutoffDate: parsed.data.cutoffDate ? new Date(parsed.data.cutoffDate) : null,
+          cutoffDaySlots,
         },
       })
       created.push(parsed.data.name)
@@ -480,6 +502,8 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
 
   const { createUser, password, userName, slug: requestedSlug, isHouseBrand, ...brandData } = parsed.data
   const tenantId = req.user!.tenantId
+  const globalSlots = await getTenantMonthlyCutoffSlots(tenantId)
+  const cutoffDaySlots = globalSlots ?? brandData.cutoffDaySlots ?? []
 
   if (isHouseBrand) {
     const existingHouse = await prisma.brand.findFirst({
@@ -535,7 +559,7 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
           isHouseBrand: Boolean(isHouseBrand),
           monthlyRent: brandData.monthlyRent ?? 0,
           assignedSpace: brandData.assignedSpace || null,
-          cutoffDate: brandData.cutoffDate ?? null,
+          cutoffDaySlots,
           commissionPercent: brandData.commissionPercent ?? 0,
           cardFeePayer: brandData.cardFeePayer ?? 'BRAND',
           transferFeePayer: brandData.transferFeePayer ?? 'BRAND',
@@ -631,10 +655,16 @@ router.patch('/:id', authorize('BUSINESS'), async (req, res) => {
   })
   if (!existing) return res.status(404).json({ error: 'Marca no encontrada' })
 
+  const globalSlots = await getTenantMonthlyCutoffSlots(req.user!.tenantId)
+  const data = { ...parsed.data }
+  if (globalSlots) {
+    data.cutoffDaySlots = globalSlots
+  }
+
   try {
     const brand = await prisma.brand.update({
       where: { id },
-      data: parsed.data,
+      data,
       include: brandInclude,
     })
     return res.json(brand)

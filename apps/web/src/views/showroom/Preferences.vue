@@ -323,6 +323,38 @@
           <p v-if="prefsMsg" class="text-sm text-success-600 dark:text-success-400">{{ prefsMsg }}</p>
           <p v-if="prefsError" class="text-sm text-error-500">{{ prefsError }}</p>
 
+          <div
+            v-if="showCutoffAlignConfirm"
+            class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4"
+            @click.self="showCutoffAlignConfirm = false"
+          >
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-gray-900">
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Alinear días de corte</h3>
+              <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Al guardar, todas las marcas usarán estos días de corte
+                ({{ prefsForm.cutoffDaySlots.join(', ') }}). ¿Continuar?
+              </p>
+              <div class="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  class="rounded-lg px-4 py-2 text-sm text-gray-600"
+                  :disabled="prefsSaving"
+                  @click="showCutoffAlignConfirm = false"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  :disabled="prefsSaving"
+                  @click="confirmSavePreferences"
+                >
+                  {{ prefsSaving ? 'Guardando…' : 'Sí, alinear marcas' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="flex justify-end">
             <button
               type="submit"
@@ -608,6 +640,8 @@ const prefsLoading = ref(true)
 const prefsSaving = ref(false)
 const prefsError = ref<string | null>(null)
 const prefsMsg = ref<string | null>(null)
+const showCutoffAlignConfirm = ref(false)
+const cutoffAlignConfirmed = ref(false)
 
 const prefsForm = reactive({
   primaryTerminalCommission: '',
@@ -760,6 +794,24 @@ async function savePreferences() {
     return
   }
 
+  const willAlignBrands =
+    prefsForm.cutoffType === 'MONTHLY_FIXED' && prefsForm.cutoffDaySlots.length > 0
+  if (willAlignBrands && !cutoffAlignConfirmed.value) {
+    showCutoffAlignConfirm.value = true
+    return
+  }
+
+  await persistPreferences()
+}
+
+async function confirmSavePreferences() {
+  cutoffAlignConfirmed.value = true
+  showCutoffAlignConfirm.value = false
+  await persistPreferences()
+  cutoffAlignConfirmed.value = false
+}
+
+async function persistPreferences() {
   prefsSaving.value = true
   try {
     const payload: UpdateBusinessPreferencesPayload = {
@@ -783,9 +835,11 @@ async function savePreferences() {
     }
     const data = await updatePreferences(payload)
     applyPreferences(data)
-    prefsMsg.value = 'Preferencias guardadas'
-    // Refresca `auth.user.preferences` para que otras vistas (p. ej. apartados
-    // de marca) reflejen de inmediato el nuevo `layawayDueDays`.
+    const aligned = data.brandsAligned ?? 0
+    prefsMsg.value =
+      aligned > 0
+        ? `Preferencias guardadas. Se alinearon ${aligned} marca(s) a estos días de corte.`
+        : 'Preferencias guardadas'
     try {
       await auth.fetchMe()
     } catch {

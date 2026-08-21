@@ -227,8 +227,11 @@ export async function fetchPreferences(): Promise<BusinessPreferences> {
 
 export async function updatePreferences(
   payload: UpdateBusinessPreferencesPayload,
-): Promise<BusinessPreferences> {
-  const { data } = await api.patch<BusinessPreferences>('/preferences', payload)
+): Promise<BusinessPreferences & { brandsAligned?: number }> {
+  const { data } = await api.patch<BusinessPreferences & { brandsAligned?: number }>(
+    '/preferences',
+    payload,
+  )
   return data
 }
 
@@ -376,7 +379,7 @@ export interface Brand {
   isHouseBrand: boolean
   monthlyRent: string
   assignedSpace: string | null
-  cutoffDate: string | null
+  cutoffDaySlots: number[]
   commissionPercent: string
   cardFeePayer: CommissionFeePayer
   transferFeePayer: CommissionFeePayer

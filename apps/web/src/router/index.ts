@@ -105,6 +105,12 @@ const router = createRouter({
       meta: { title: 'Marcas', adminOnly: true },
     },
     {
+      path: '/brands/import',
+      name: 'BrandsImport',
+      component: () => import('../views/showroom/brands/BrandsImport.vue'),
+      meta: { title: 'Importar marcas', adminOnly: true },
+    },
+    {
       path: '/brands/new',
       name: 'BrandCreate',
       component: () => import('../views/showroom/brands/BrandForm.vue'),

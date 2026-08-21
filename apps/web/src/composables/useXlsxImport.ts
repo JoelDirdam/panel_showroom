@@ -8,8 +8,11 @@ export interface ImportColumn {
   label: string
   required?: boolean
   /** When set to `select`, the preview renders a dropdown with `options`. */
-  type?: 'text' | 'select'
+  type?: 'text' | 'select' | 'day-slots'
   options?: ImportColumnOption[]
+  /** Max days for `day-slots` (default 2). */
+  maxSelectable?: number
+  disabled?: boolean
 }
 
 function normalizeHeader(value: string): string {
@@ -67,6 +70,38 @@ async function parseXlsxBuffer(buffer: ArrayBuffer): Promise<{ headers: string[]
     if (Object.values(record).some((v) => v.trim())) rows.push(record)
   })
   return { headers, rows }
+}
+
+/**
+ * Rejects non-.xlsx files and common spoofs (e.g. .exe renamed to .xlsx).
+ * XLSX is OOXML (ZIP); PE/EXE starts with MZ.
+ */
+export async function assertValidXlsxFile(file: File): Promise<void> {
+  const name = file.name.toLowerCase()
+  if (!name.endsWith('.xlsx')) {
+    throw new Error('Solo se aceptan archivos .xlsx')
+  }
+
+  const header = new Uint8Array(await file.slice(0, 4).arrayBuffer())
+  if (header.length < 2) {
+    throw new Error('El archivo está vacío o no es un Excel válido')
+  }
+
+  // PE/EXE magic
+  if (header[0] === 0x4d && header[1] === 0x5a) {
+    throw new Error('El archivo no es un Excel válido (parece un ejecutable)')
+  }
+
+  // ZIP / OOXML magic ("PK\x03\x04", empty archive, or spanned)
+  if (header[0] !== 0x50 || header[1] !== 0x4b) {
+    throw new Error('El archivo no es un Excel .xlsx válido')
+  }
+
+  try {
+    await parseXlsxBuffer(await file.arrayBuffer())
+  } catch {
+    throw new Error('No se pudo leer el archivo como Excel. Verifica que sea un .xlsx válido.')
+  }
 }
 
 export async function parseSpreadsheetFile(

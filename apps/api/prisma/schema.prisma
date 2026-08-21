@@ -199,7 +199,8 @@ model Brand {
   monthlyRent         Decimal            @default(0) @db.Decimal(12, 2)
   assignedSpace       String?
   phone               String?
-  cutoffDate          DateTime?
+  /** Días del mes para corte (1–31). Si Preferencias tiene corte mensual, se alinean. */
+  cutoffDaySlots      Int[]              @default([])
   commissionPercent   Decimal            @default(0) @db.Decimal(5, 2)
   cardFeePayer        CommissionFeePayer @default(BRAND)
   transferFeePayer    CommissionFeePayer @default(BRAND)
