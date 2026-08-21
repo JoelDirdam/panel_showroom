@@ -214,20 +214,29 @@ async function confirmImport(rows: Record<string, string>[]) {
   importSaving.value = true
   errorBanner.value = null
   try {
-    const payload = rows.map((row) => ({
-      ...row,
-      cutoffDaySlots: cutoffLocked.value
-        ? globalCutoffSlots.value
+    const payload = rows.map((row) => {
+      const slots = cutoffLocked.value
+        ? (globalCutoffSlots.value ?? [])
         : row.cutoffDaySlots
             ?.split(/[,;\s]+/)
             .map((p) => parseInt(p, 10))
-            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 31) ?? [],
-    }))
-    const result = await importBrandsRows(payload)
-    await router.push({
-      path: '/brands',
-      state: { importResult: result },
+            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 31) ?? []
+      return {
+        name: row.name,
+        monthlyRent: row.monthlyRent,
+        assignedSpace: row.assignedSpace,
+        phone: row.phone,
+        commissionPercent: row.commissionPercent,
+        contactEmail: row.contactEmail,
+        whatsapp: row.whatsapp,
+        cardFeePayer: row.cardFeePayer,
+        transferFeePayer: row.transferFeePayer,
+        cutoffDaySlots: slots,
+      }
     })
+    const result = await importBrandsRows(payload)
+    sessionStorage.setItem('brandsImportResult', JSON.stringify(result))
+    await router.push('/brands')
   } catch (e: unknown) {
     errorBanner.value = apiError(e, 'No se pudo importar el archivo')
   } finally {

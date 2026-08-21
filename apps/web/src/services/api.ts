@@ -438,7 +438,7 @@ export async function importBrandsCsv(csv: string): Promise<BrandImportResult> {
 }
 
 export async function importBrandsRows(
-  rows: Array<Record<string, string | number | null | undefined>>,
+  rows: Array<Record<string, string | number | number[] | null | undefined>>,
 ): Promise<BrandImportResult> {
   const { data } = await api.post<BrandImportResult>('/brands/import', { rows })
   return data

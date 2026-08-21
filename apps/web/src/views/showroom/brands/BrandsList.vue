@@ -432,6 +432,16 @@ async function confirmBulkDelete() {
 }
 
 function consumeImportResultFromHistory() {
+  const raw = sessionStorage.getItem('brandsImportResult')
+  if (raw) {
+    try {
+      importResult.value = JSON.parse(raw) as BrandImportResult
+    } catch {
+      // ignore malformed payload
+    }
+    sessionStorage.removeItem('brandsImportResult')
+    return
+  }
   const state = window.history.state as { importResult?: BrandImportResult } | null
   if (state?.importResult) {
     importResult.value = state.importResult
