@@ -51,12 +51,8 @@
       <template #header-action>
         <div class="flex flex-wrap items-center gap-2">
           <template v-if="auth.isAdmin">
-            <input ref="importInput" type="file" accept=".xlsx,.xls,.csv" class="hidden" @change="onImportFile" />
-            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="downloadTemplate">
-              Descargar plantilla
-            </button>
-            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" :disabled="importing" @click="importInput?.click()">
-              {{ importing ? 'Leyendo…' : 'Importar' }}
+            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="router.push('/products/import')">
+              Importar
             </button>
             <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5" @click="router.push('/products/add-stock')">
               Agregar Stock
@@ -84,6 +80,16 @@
 
       <p v-if="banner" class="mb-4 rounded-lg border px-4 py-3 text-sm" :class="bannerType === 'error' ? 'border-error-200 bg-error-50 text-error-700' : 'border-success-200 bg-success-50 text-success-700'">
         {{ banner }}
+      </p>
+
+      <p v-if="importResult" class="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-gray-700 dark:bg-white/[0.02] dark:text-gray-300">
+        Importación: {{ importResult.createdCount }} creado(s), {{ importResult.errorCount }} con error.
+        <span v-if="importResult.errors.length">
+          <br />
+          <span v-for="err in importResult.errors" :key="err.row" class="block text-xs text-error-500">
+            Fila {{ err.row }} ({{ err.name || 'sin nombre' }}): {{ err.error }}
+          </span>
+        </span>
       </p>
 
       <div class="overflow-x-auto">
@@ -116,29 +122,34 @@
               <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ product.stock?.quantity ?? 0 }}</td>
               <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ product.price ? `$${product.price}` : '—' }}</td>
               <td class="py-3">
-                <div class="flex flex-wrap gap-1.5">
+                <div class="flex flex-wrap items-center gap-1">
+                  <router-link
+                    v-if="auth.isAdmin"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-success-600 hover:bg-success-50 dark:text-success-400 dark:hover:bg-success-500/10"
+                    :to="`/products/${product.id}/edit`"
+                    title="Editar"
+                    aria-label="Editar"
+                  >
+                    <Pencil class="h-4 w-4" />
+                  </router-link>
+                  <a
+                    href="#"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
+                    title="Imprimir"
+                    aria-label="Imprimir"
+                    @click.prevent="printOne(product)"
+                  >
+                    <Printer class="h-4 w-4" />
+                  </a>
                   <button
                     v-if="auth.isAdmin"
                     type="button"
-                    class="rounded-lg bg-success-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-success-600"
-                    @click="router.push(`/products/${product.id}/edit`)"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-lg bg-brand-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-brand-600"
-                    @click="printOne(product)"
-                  >
-                    Imprimir
-                  </button>
-                  <button
-                    v-if="auth.isAdmin"
-                    type="button"
-                    class="rounded-lg border border-error-300 bg-error-50 px-2.5 py-1 text-xs font-medium text-error-600"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+                    title="Eliminar"
+                    aria-label="Eliminar"
                     @click="openSingleDelete(product)"
                   >
-                    Eliminar
+                    <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
               </td>
@@ -166,16 +177,6 @@
       </div>
     </div>
 
-    <ImportPreviewPanel
-      v-if="importPreview"
-      title="Previsualizar productos"
-      :columns="productImportColumns"
-      :rows="importPreview"
-      :saving="importSaving"
-      @cancel="importPreview = null"
-      @confirm="confirmImport"
-    />
-
     <LabelPrintModal v-model="showLabelModal" :items="labelItems" :default-size-id="defaultLabelSizeId" />
   </admin-layout>
 </template>
@@ -183,60 +184,34 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { Pencil, Printer, Trash2 } from 'lucide-vue-next'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
-import ImportPreviewPanel from '@/components/import/ImportPreviewPanel.vue'
 import LabelPrintModal from '@/components/labels/LabelPrintModal.vue'
 import api, {
   bulkDeleteProducts,
-  downloadProductsTemplate,
   extractApiError,
   fetchPreferences,
-  importProductsRows,
-  type Brand,
   type Product,
+  type ProductImportResult,
 } from '@/services/api'
-import { parseSpreadsheetFile, type ImportColumn } from '@/composables/useXlsxImport'
 import { useAuthStore } from '@/stores/auth'
 import { matchLabelSizeFromMm, type LabelPrintItem, type LabelSizeId } from '@/utils/labelPdf'
 
 const router = useRouter()
 const auth = useAuthStore()
 const products = ref<Product[]>([])
-const brands = ref<Brand[]>([])
 const selected = ref<string[]>([])
 const showDeleteModal = ref(false)
 const deleteIds = ref<string[]>([])
 const deleting = ref(false)
-const importing = ref(false)
-const importSaving = ref(false)
-const importInput = ref<HTMLInputElement | null>(null)
-const importPreview = ref<Record<string, string>[] | null>(null)
 const banner = ref<string | null>(null)
 const bannerType = ref<'success' | 'error'>('success')
+const importResult = ref<ProductImportResult | null>(null)
 const showLabelModal = ref(false)
 const labelItems = ref<LabelPrintItem[]>([])
 const defaultLabelSizeId = ref<LabelSizeId | null>(null)
-
-const productImportColumns = computed<ImportColumn[]>(() => [
-  { key: 'name', label: 'Nombre', required: true },
-  { key: 'price', label: 'Precio', required: true },
-  { key: 'quantity', label: 'Stock' },
-  { key: 'sku', label: 'SKU' },
-  { key: 'minStock', label: 'Stock mín.' },
-  { key: 'description', label: 'Descripción' },
-  {
-    key: 'brandId',
-    label: 'Marca',
-    required: true,
-    type: 'select',
-    options: brands.value.map((b) => ({
-      value: b.id,
-      label: b.isHouseBrand ? `Propio — ${b.name}` : b.name,
-    })),
-  },
-])
 
 const filters = reactive({
   name: '',
@@ -262,6 +237,25 @@ function showBanner(message: string, type: 'success' | 'error' = 'success') {
   setTimeout(() => {
     if (banner.value === message) banner.value = null
   }, 5000)
+}
+
+function consumeImportResultFromHistory() {
+  const raw = sessionStorage.getItem('productsImportResult')
+  if (raw) {
+    try {
+      importResult.value = JSON.parse(raw) as ProductImportResult
+    } catch {
+      // ignore malformed payload
+    }
+    sessionStorage.removeItem('productsImportResult')
+    return
+  }
+  const state = window.history.state as { importResult?: ProductImportResult } | null
+  if (state?.importResult) {
+    importResult.value = state.importResult
+    const { importResult: _removed, ...rest } = state
+    window.history.replaceState(rest, '')
+  }
 }
 
 function buildFilterParams() {
@@ -337,98 +331,13 @@ function printOne(product: Product) {
   showLabelModal.value = true
 }
 
-async function downloadTemplate() {
-  try {
-    const blob = await downloadProductsTemplate()
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'plantilla-productos.xlsx'
-    link.click()
-    URL.revokeObjectURL(url)
-  } catch (e: unknown) {
-    showBanner(extractApiError(e, 'No se pudo descargar la plantilla'), 'error')
-  }
-}
-
-async function onImportFile(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  importing.value = true
-  try {
-    if (!brands.value.length) {
-      const { data } = await api.get<Brand[]>('/brands')
-      brands.value = data
-    }
-    const { rows } = await parseSpreadsheetFile(file)
-    const defaultBrandId = brands.value[0]?.id || ''
-    const mapped = rows.map((row) => {
-      const rawBrand = (row.brandid || row.marca || '').trim()
-      const matched =
-        brands.value.find((b) => b.id === rawBrand) ||
-        brands.value.find((b) => b.name.toLowerCase() === rawBrand.toLowerCase()) ||
-        brands.value.find((b) => b.slug.toLowerCase() === rawBrand.toLowerCase())
-      return {
-        name: row.name || row.producto || row.nombre || '',
-        price: row.price || row.precio || '',
-        quantity: row.quantity || row.stock || '0',
-        sku: row.sku || '',
-        minStock: row.minstock || '5',
-        description: row.description || row.descripcion || '',
-        brandId: matched?.id || defaultBrandId,
-      }
-    })
-    if (!mapped.length) {
-      showBanner('El archivo no tiene filas de datos', 'error')
-      return
-    }
-    importPreview.value = mapped
-  } catch (e: unknown) {
-    showBanner(e instanceof Error ? e.message : 'No se pudo leer el archivo', 'error')
-  } finally {
-    importing.value = false
-  }
-}
-
-async function confirmImport(rows: Record<string, string>[]) {
-  importSaving.value = true
-  try {
-    const result = await importProductsRows(
-      rows.map((r) => ({
-        name: r.name,
-        price: Number(r.price),
-        quantity: Number(r.quantity) || 0,
-        sku: r.sku || undefined,
-        minStock: Number(r.minStock) || 5,
-        description: r.description || undefined,
-        brandId: r.brandId,
-      })),
-    )
-    importPreview.value = null
-    showBanner(
-      `Importación: ${result.createdCount} creado(s), ${result.errorCount} con error.`,
-      result.errorCount > 0 ? 'error' : 'success',
-    )
-    await load()
-  } catch (e: unknown) {
-    showBanner(extractApiError(e, 'No se pudo importar'), 'error')
-  } finally {
-    importSaving.value = false
-  }
-}
-
 onMounted(async () => {
+  consumeImportResultFromHistory()
   await load()
   if (auth.isAdmin) {
     try {
-      const [prefs, brandsRes] = await Promise.all([
-        fetchPreferences(),
-        api.get<Brand[]>('/brands'),
-      ])
+      const prefs = await fetchPreferences()
       defaultLabelSizeId.value = matchLabelSizeFromMm(prefs.labelWidthMm, prefs.labelHeightMm)
-      brands.value = brandsRes.data
     } catch {
       defaultLabelSizeId.value = null
     }

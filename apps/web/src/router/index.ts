@@ -135,6 +135,12 @@ const router = createRouter({
       meta: { title: 'Propietario y accesos', adminOnly: true },
     },
     {
+      path: '/brands/:id/products/import',
+      name: 'BrandProductsImport',
+      component: () => import('../views/showroom/products/ProductsImport.vue'),
+      meta: { title: 'Importar productos', adminOnly: true },
+    },
+    {
       path: '/brands/:id/products/new',
       name: 'BrandProductNew',
       component: () => import('../views/showroom/products/ProductFormPage.vue'),
@@ -169,6 +175,12 @@ const router = createRouter({
       name: 'BrandDetail',
       component: () => import('../views/showroom/brands/BrandDetail.vue'),
       meta: { title: 'Resumen de marca', adminOnly: true },
+    },
+    {
+      path: '/products/import',
+      name: 'ProductsImport',
+      component: () => import('../views/showroom/products/ProductsImport.vue'),
+      meta: { title: 'Importar productos', adminOnly: true },
     },
     {
       path: '/products/new',

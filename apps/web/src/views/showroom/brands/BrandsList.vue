@@ -178,23 +178,40 @@
                 </span>
               </td>
               <td class="py-3">
-                <div class="flex flex-wrap gap-3">
-                  <router-link class="text-brand-500 hover:underline" :to="`/brands/${brand.id}/products`">
-                    Cargar
+                <div class="flex flex-wrap items-center gap-1">
+                  <router-link
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10"
+                    :to="`/brands/${brand.id}/products`"
+                    title="Cargar productos"
+                    aria-label="Cargar productos"
+                  >
+                    <Package class="h-4 w-4" />
                   </router-link>
-                  <router-link class="text-brand-500 hover:underline" :to="`/brands/${brand.id}/edit`">
-                    Editar
+                  <router-link
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-success-600 hover:bg-success-50 dark:text-success-400 dark:hover:bg-success-500/10"
+                    :to="`/brands/${brand.id}/edit`"
+                    title="Editar"
+                    aria-label="Editar"
+                  >
+                    <Pencil class="h-4 w-4" />
                   </router-link>
-                  <router-link class="text-gray-600 hover:underline dark:text-gray-300" :to="`/brands/${brand.id}`">
-                    Ver resumen
+                  <router-link
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
+                    :to="`/brands/${brand.id}`"
+                    title="Ver resumen"
+                    aria-label="Ver resumen"
+                  >
+                    <LayoutDashboard class="h-4 w-4" />
                   </router-link>
                   <button
                     v-if="!brand.isHouseBrand"
                     type="button"
-                    class="text-error-500 hover:underline"
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+                    title="Eliminar"
+                    aria-label="Eliminar"
                     @click="openDeleteModal(brand)"
                   >
-                    Eliminar
+                    <Trash2 class="h-4 w-4" />
                   </button>
                 </div>
               </td>
@@ -292,6 +309,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { LayoutDashboard, Package, Pencil, Trash2 } from 'lucide-vue-next'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'

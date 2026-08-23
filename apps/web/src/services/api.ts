@@ -385,6 +385,7 @@ export interface Brand {
   transferFeePayer: CommissionFeePayer
   inviteCodeExpiresAt: string | null
   ownerUserId: string | null
+  createdAt?: string
   owner?: { id: string; name: string; email: string } | null
   _count?: { products: number; users: number }
   temporaryPassword?: string
@@ -506,8 +507,11 @@ export interface ProductImportResult {
   errors: Array<{ row: number; name?: string; error: string }>
 }
 
-export async function downloadProductsTemplate(): Promise<Blob> {
-  const { data } = await api.get('/products/template', { responseType: 'blob' })
+export async function downloadProductsTemplate(brandId?: string): Promise<Blob> {
+  const { data } = await api.get('/products/template', {
+    responseType: 'blob',
+    params: brandId ? { brandId } : undefined,
+  })
   return data
 }
 
