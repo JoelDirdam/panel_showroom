@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: punto_maneki
+      POSTGRES_DB: cosdi
     ports:
       - '5433:5432'
     volumes:

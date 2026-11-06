@@ -124,6 +124,7 @@ const GUARD_ALLOWLIST_PREFIXES = [
   '/api/terms',
   '/api/onboarding',
   '/api/v1/whatsapp',
+  '/api/public',
   '/uploads',
   '/health',
 ]

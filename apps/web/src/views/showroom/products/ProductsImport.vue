@@ -51,10 +51,10 @@ const breadcrumbItems = computed(() => {
 const productImportColumns = computed<ImportColumn[]>(() => {
   const columns: ImportColumn[] = [
     { key: 'name', label: 'Nombre', required: true },
-    { key: 'price', label: 'Precio', required: true },
-    { key: 'quantity', label: 'Stock' },
+    { key: 'price', label: 'Precio', required: true, kind: 'number' },
+    { key: 'quantity', label: 'Stock', kind: 'integer' },
     { key: 'sku', label: 'SKU' },
-    { key: 'minStock', label: 'Stock mín.' },
+    { key: 'minStock', label: 'Stock mín.', kind: 'integer' },
     { key: 'description', label: 'Descripción' },
   ]
   if (!scopedBrandId.value) {

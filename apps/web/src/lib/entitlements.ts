@@ -7,7 +7,14 @@
  * (ver `apps/api/src/lib/meShape.ts`), calculados con este mismo mapa.
  */
 
-export type PlanType = 'NEGOCIO' | 'CLINICA' | 'RESTAURANTE' | 'MARCA'
+export type PlanType =
+  | 'NEGOCIO'
+  | 'CLINICA'
+  | 'RESTAURANTE'
+  | 'MARCA'
+  | 'CITAS_RECORDATORIOS'
+  | 'CITAS_PANEL'
+  | 'CITAS_IA'
 
 export type EntitlementModule =
   | 'dashboard'
@@ -35,6 +42,10 @@ export type EntitlementModule =
   | 'orders'
   | 'cortes'
   | 'mensualidad'
+  // Línea Citas (COSDI)
+  | 'appointments'
+  | 'servicesConfig'
+  | 'whatsappSettings'
 
 export type FeatureFlag =
   // CLINICA
@@ -45,6 +56,10 @@ export type FeatureFlag =
   | 'ordersKitchen'
   | 'ai'
   | 'sms'
+  // Línea Citas (COSDI)
+  | 'publicBooking'
+  | 'whatsappReminders'
+  | 'remindersApi'
 
 export const STUB_MODULES: EntitlementModule[] = [
   'employees',

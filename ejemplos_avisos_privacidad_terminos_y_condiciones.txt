@@ -1,0 +1,108 @@
+============================================= EJEMPLO POLITICA DE PRIVACIDAD STOCKPOINT =============================================
+Política de Privacidad de Stock Point
+Última actualización: 3 de abril de 2025
+
+En Stock Point, nos comprometemos a proteger la privacidad de nuestros usuarios. Esta Política de Privacidad explica cómo recopilamos, utilizamos, almacenamos y compartimos su información personal cuando utiliza nuestra plataforma y servicios asociados.
+
+1. Información que Recopilamos
+Podemos recopilar la siguiente información:
+
+Datos personales: nombre, correo electrónico, número de teléfono, contraseña.
+Información de negocio: nombre de negocio, productos, ventas, ingresos, gastos.
+Datos técnicos: dirección IP, navegador, sistema operativo, tipo de dispositivo.
+2. Uso de la Información
+La información recopilada se utiliza para:
+
+Crear y gestionar cuentas de usuario.
+Proporcionar los servicios de gestión de inventario, ventas y apartados.
+Personalizar la experiencia del usuario.
+Proteger la seguridad del sistema.
+Realizar mejoras técnicas, estadísticas y comerciales.
+3. Conservación de Datos
+Los datos se almacenan de forma segura mientras la cuenta esté activa o sea necesario para cumplir con nuestras obligaciones legales, resolver disputas y hacer cumplir nuestros acuerdos.
+
+4. Compartición de Información
+No compartimos información personal con terceros, salvo que:
+
+Tengamos su consentimiento explícito.
+Sea requerido por la ley o por orden judicial.
+Sea necesario para proteger nuestros derechos legales o prevenir fraudes.
+5. Seguridad de la Información
+Implementamos medidas técnicas, administrativas y físicas para proteger su información contra accesos no autorizados, pérdidas o alteraciones.
+
+6. Cookies y Tecnologías Similares
+Nuestro sistema puede usar cookies para mejorar la experiencia de usuario, guardar preferencias y realizar análisis del uso del sistema. Usted puede configurar su navegador para rechazar cookies, aunque esto puede afectar algunas funcionalidades.
+
+7. Derechos del Usuario
+Usted puede:
+
+Acceder a su información personal.
+Corregir o actualizar sus datos.
+Solicitar la eliminación de su cuenta y datos.
+Para ejercer estos derechos, contáctenos al correo: soporte@stockpoint.com.mx
+
+8. Cambios a esta Política
+Nos reservamos el derecho de modificar esta Política de Privacidad en cualquier momento. Notificaremos los cambios a través de nuestro sitio web o por medios de contacto registrados.
+
+9. Contacto
+Para cualquier duda sobre esta política, contáctenos a:
+Correo electrónico: soporte@stockpoint.com.mx
+
+Al utilizar nuestros servicios, usted acepta esta Política de Privacidad y nos autoriza a procesar sus datos conforme a lo establecido aquí.
+=======================================================================================================================================
+============================================= EJEMPLO TERMINOS Y CONDICIONES STOCKPOINT =============================================
+Términos y Condiciones de Uso de Stock Point
+Última actualización: 31 de marzo de 2025
+
+Estos términos y condiciones regulan la relación contractual entre usted ("Usuario") y Stock Point ("Empresa"), al hacer uso de nuestros servicios, plataforma, sitio web y aplicaciones asociadas (en conjunto, el "Sistema"). Al aceptar estos términos, usted manifiesta haber leído, comprendido y aceptado cada una de las cláusulas aquí descritas.
+
+Aceptación y Modificación de Términos
+La utilización del Sistema implica la aceptación plena de estos términos. La Empresa se reserva el derecho de modificar, añadir o eliminar partes de estos términos en cualquier momento. Dichas modificaciones serán efectivas inmediatamente después de su publicación.
+
+Uso del Sistema
+Stock Point proporciona un servicio de gestión de inventario y ventas dirigido a pequeños y medianos negocios. Usted acepta usar el Sistema exclusivamente para fines lícitos y relacionados directamente con la gestión y operación de su negocio.
+
+Registro y Seguridad
+Usted es responsable de mantener la confidencialidad de sus credenciales de acceso. Stock Point no será responsable por pérdidas o daños derivados del incumplimiento de esta obligación por parte del Usuario.
+
+Exclusión de Responsabilidad
+Stock Point no será responsable por pérdidas directas, indirectas, incidentales, consecuentes o punitivas derivadas del uso o la imposibilidad de uso del Sistema, fallos técnicos, errores de software, o pérdida de datos.
+
+Renuncia a Demandas y Reclamaciones Legales
+Al aceptar estos términos, usted renuncia explícitamente a iniciar demandas, reclamaciones, procedimientos legales o acciones judiciales contra Stock Point, sus empleados, colaboradores, socios, representantes, proveedores o cualquier persona o entidad asociada directa o indirectamente con la empresa o el Sistema. Esta renuncia incluye, pero no se limita a, acciones derivadas de errores técnicos, interrupciones del servicio, violación de privacidad, pérdida o corrupción de datos y cualquier otro daño potencial.
+
+Indemnización
+Usted se compromete a indemnizar y eximir de responsabilidad a Stock Point y todas las personas asociadas con la Empresa ante cualquier reclamo o demanda realizada por terceros debido al uso indebido o ilegal que usted haga del Sistema, o por el incumplimiento de estos términos y condiciones.
+
+Limitaciones del Servicio
+Stock Point se reserva el derecho de modificar, suspender temporalmente o interrumpir definitivamente el servicio en cualquier momento y sin previo aviso.
+
+Privacidad y Datos Personales
+Al utilizar el Sistema, usted acepta que Stock Point recopile, almacene y procese su información personal conforme a nuestra Política de Privacidad vigente.
+
+Propiedad Intelectual
+Todo el contenido del Sistema, incluyendo software, textos, gráficos, logotipos, nombres comerciales y marcas registradas son propiedad exclusiva de Stock Point. Usted no podrá copiar, reproducir, modificar o utilizar dicho contenido sin la autorización previa y por escrito de la Empresa.
+
+Legislación Aplicable y Jurisdicción
+Estos términos y condiciones se regirán e interpretarán conforme a las leyes vigentes en México. Cualquier controversia derivada del presente acuerdo será sometida exclusivamente a los tribunales competentes en Durango, Durango.
+
+Contacto
+Para consultas, aclaraciones o comentarios sobre estos términos y condiciones, puede comunicarse con nosotros al correo electrónico soporte@stockpoint.com.mx
+
+Al aceptar estos términos y condiciones, usted declara haberlos leído, comprendido y aceptado en su totalidad.
+=======================================================================================================================================
+============================================= EJEMPLO AVISO DE PRIVACIDAD VENTTI =============================================
+Aviso de Privacidad
+¿Quiénes somos?	Ventti®, con domicilio en calle AV. El Dorado 839, colonia Las Quintas, ciudad Culiacán, municipio de Culiacán, c.p. 80060, en el estado de Sinaloa, país México, y portal de internet https://ventti.mx, es el responsable del uso y protección de sus datos personales, y al respecto le informamos lo siguiente:
+¿Para qué fines utilizaremos sus datos personales?	De manera adicional, utilizaremos su información personal para las siguientes finalidades secundarias que no son necesarias para el servicio solicitado, pero que nos permiten y facilitan brindarle una mejor atención:
+Verificar y confirmar su correo electronico
+Mercadotecnia o publicitaria
+Prospección comercial
+En caso de que no desee que sus datos personales se utilicen para estos fines secundarios, indíquelo a continuación:
+No consiento que mis datos personales se utilicen para los siguientes fines:
+[ ] Verificar y confirmar su correo electronico
+[ ] Mercadotecnia o publicitaria
+[ ] Prospección comercial
+La negativa para el uso de sus datos personales para estas finalidades no podrá ser un motivo para que le neguemos los servicios y productos que solicita o contrata con nosotros.
+¿Dónde puedo consultar el aviso de privacidad integral?	Para conocer mayor información sobre los términos y condiciones en que serán tratados sus datos personales, como los terceros con quienes compartimos su información personal y la forma en que podrá ejercer sus derechos ARCO, puede consultar el aviso de privacidad integral en:
+https://ventti.mx/privacidad

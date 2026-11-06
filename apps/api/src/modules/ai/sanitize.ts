@@ -29,7 +29,7 @@ export function sanitizeOutgoingMessage(text: string): string {
     out = out.replace(pattern, '[omitido]')
   }
   out = out.replace(PATH_PATTERN, '[ruta omitida]')
-  out = out.replace(/\bPuntoManeki\b/gi, 'el negocio')
+  out = out.replace(/\b(?:PuntoManeki|manekidgo|COSDI)\b/gi, 'el negocio')
   out = out.slice(0, ASSISTANT_MESSAGE_MAX).trim()
   return out
 }

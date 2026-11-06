@@ -241,6 +241,7 @@ const menuSectionTitle = computed(() => {
   if (type === 'CLINICA') return 'Clínica'
   if (type === 'RESTAURANTE') return 'Restaurante'
   if (type === 'MARCA') return 'Marca'
+  if (type === 'CITAS_PANEL' || type === 'CITAS_IA' || type === 'CITAS_RECORDATORIOS') return 'Citas'
   return planInfo(type)?.name ?? 'Negocio'
 })
 
@@ -293,6 +294,20 @@ const menuGroups = computed(() => [
               ? "99+"
               : String(productRequests.pendingCount)
             : undefined,
+      },
+      {
+        icon: CalendarDays,
+        name: "Citas",
+        path: "/appointments",
+        tourKey: "sidebar-appointments",
+        moduleId: "appointments",
+      },
+      {
+        icon: Goal,
+        name: "Servicios y horarios",
+        path: "/appointments/config",
+        tourKey: "sidebar-services-config",
+        moduleId: "servicesConfig",
       },
       {
         icon: CalendarDays,

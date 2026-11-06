@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { PaymentMethod, Prisma, SplitPaymentMethod } from '@prisma/client'
 import { z } from 'zod'
+import { allocateTicketNumber } from '../lib/saleTicket.js'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
 import { authenticate, authorize, tenantFilter } from '../middleware/auth.js'
@@ -306,8 +307,11 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
         paymentRows = [{ method: toSplitMethod(paymentMethod), amount: saleTotal }]
       }
 
+      const ticketNumber = await allocateTicketNumber(tx, req.user!.tenantId!)
+
       const created = await tx.sale.create({
         data: {
+          ticketNumber,
           paymentMethod,
           soldAt: soldAt ? new Date(soldAt) : undefined,
           tenantId: req.user!.tenantId!,

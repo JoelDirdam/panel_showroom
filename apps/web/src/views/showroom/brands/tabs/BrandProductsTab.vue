@@ -54,9 +54,6 @@
           <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" :disabled="selected.length === 0" @click="printSelectedLabels">
             Imprimir etiquetas
           </button>
-          <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="router.push(`/brands/${brand.id}/products/add-stock`)">
-            Agregar stock
-          </button>
           <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="router.push(`/brands/${brand.id}/products/withdraw`)">
             Solicitar retiro
           </button>
@@ -108,6 +105,14 @@
               <td class="py-3 pr-4 text-gray-800 dark:text-white">{{ product.price ? `$${product.price}` : '—' }}</td>
               <td class="py-3">
                 <div class="flex flex-wrap items-center gap-1">
+                  <router-link
+                    class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10"
+                    :to="`/brands/${brand.id}/products/add-stock?productId=${product.id}`"
+                    title="Agregar stock"
+                    aria-label="Agregar stock"
+                  >
+                    <PackagePlus class="h-4 w-4" />
+                  </router-link>
                   <router-link
                     class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-success-600 hover:bg-success-50 dark:text-success-400 dark:hover:bg-success-500/10"
                     :to="`/brands/${brand.id}/products/${product.id}/edit`"
@@ -169,7 +174,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Pencil, Printer, Trash2 } from 'lucide-vue-next'
+import { PackagePlus, Pencil, Printer, Trash2 } from 'lucide-vue-next'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import LabelPrintModal from '@/components/labels/LabelPrintModal.vue'
 import api, {

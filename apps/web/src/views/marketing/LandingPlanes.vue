@@ -3,7 +3,7 @@
     <header class="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
         <router-link to="/" class="text-lg font-semibold text-gray-800 dark:text-white">
-          PuntoManeki
+          COSDI
         </router-link>
         <div class="flex items-center gap-3">
           <router-link

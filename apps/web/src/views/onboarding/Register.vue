@@ -135,11 +135,14 @@
           <common-grid-shape />
           <div class="relative z-1 flex max-w-xs flex-col items-center px-6">
             <router-link to="/" class="mb-4 block text-center">
-              <span class="text-2xl font-semibold tracking-tight text-white">Punto Maneki</span>
+              <span class="text-2xl font-semibold tracking-tight text-white">COSDI</span>
             </router-link>
             <p class="text-center text-gray-400 dark:text-white/60">
               Prueba nuestras funciones por 15 días gratis. Marcas, productos, stock, ventas, caja y
               agenda en un solo panel.
+            </p>
+            <p class="mt-3 text-center text-sm italic text-gray-400 dark:text-white/50">
+              Te ofrecemos una solución tecnológica a tu negocio, si no la tenemos te la creamos.
             </p>
           </div>
         </div>

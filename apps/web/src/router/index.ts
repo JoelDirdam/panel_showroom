@@ -225,6 +225,30 @@ const router = createRouter({
       meta: { title: 'Solicitudes de productos' },
     },
     {
+      path: '/appointments',
+      name: 'Appointments',
+      component: () => import('../views/appointments/AppointmentsView.vue'),
+      meta: { title: 'Citas', adminOnly: true },
+    },
+    {
+      path: '/appointments/config',
+      name: 'ServicesConfig',
+      component: () => import('../views/appointments/ServicesConfigView.vue'),
+      meta: { title: 'Servicios y horarios', adminOnly: true },
+    },
+    {
+      path: '/reservar/:slug',
+      name: 'PublicBooking',
+      component: () => import('../views/appointments/PublicBooking.vue'),
+      meta: { title: 'Agendar cita', public: true },
+    },
+    {
+      path: '/suscripcion-vencida',
+      name: 'SubscriptionExpired',
+      component: () => import('../views/appointments/SubscriptionExpired.vue'),
+      meta: { title: 'Cuenta pausada' },
+    },
+    {
       path: '/agenda',
       name: 'Agenda',
       component: () => import('../views/showroom/Agenda.vue'),
@@ -324,7 +348,7 @@ const ONBOARDING_PATHS = new Set([
 ])
 
 router.beforeEach(async (to, _from, next) => {
-  document.title = `${to.meta.title || 'Panel'} | PuntoManeki`
+  document.title = `${to.meta.title || 'Panel'} | COSDI`
 
   const auth = useAuthStore()
   const appHome = '/home'
@@ -401,6 +425,11 @@ router.beforeEach(async (to, _from, next) => {
       // Ya completó el onboarding: no tiene sentido volver a esas vistas.
       return next(appHome)
     }
+  }
+
+  // Plan de Citas: el panel de inicio es la agenda, no el showroom.
+  if (to.path === '/home' && auth.user?.subscription?.planType?.startsWith('CITAS_')) {
+    return next('/appointments')
   }
 
   if (to.meta.adminOnly && auth.user?.role !== 'BUSINESS') {

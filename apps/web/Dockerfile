@@ -3,8 +3,10 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-ARG VITE_API_URL=https://api-panelshowroom-3c0c.up.railway.app/api
+ARG VITE_API_URL=https://api.cosdi.mx/api
+ARG VITE_SUPPORT_WHATSAPP=52 6182923010
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SUPPORT_WHATSAPP=$VITE_SUPPORT_WHATSAPP
 RUN npm run build
 
 FROM node:22-bookworm-slim

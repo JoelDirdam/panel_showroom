@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { PaymentMethod, PrismaClient, Role } from '@prisma/client'
 import { ensureHouseBrand } from '../src/lib/houseBrand.js'
+import { allocateTicketNumber } from '../src/lib/saleTicket.js'
 import { TERMS_CONTENT, TERMS_TITLE, TERMS_VERSION } from './terms-content.js'
 
 const prisma = new PrismaClient()
@@ -23,10 +24,10 @@ async function main() {
   })
 
   await prisma.promoCode.upsert({
-    where: { code: 'MANEKI30' },
+    where: { code: 'COSDI30' },
     update: {},
     create: {
-      code: 'MANEKI30',
+      code: 'COSDI30',
       extraTrialDays: 15,
       active: true,
     },
@@ -247,29 +248,33 @@ async function main() {
       const customer = customers[i % customers.length]
       const method = methods[i % methods.length]
 
-      await prisma.sale.create({
-        data: {
-          tenantId: tenant.id,
-          paymentMethod: method,
-          soldAt,
-          ticketComment: 'seed-demo',
-          subtotal: lineTotal,
-          total: lineTotal,
-          createdById: adminUser.id,
-          attendedByUserId: adminUser.id,
-          customerId: customer.id,
-          lines: {
-            create: [
-              {
-                productId: item.productId,
-                quantity: qty,
-                unitPrice,
-                subtotal: lineTotal,
-                total: lineTotal,
-              },
-            ],
+      await prisma.$transaction(async (tx) => {
+        const ticketNumber = await allocateTicketNumber(tx, tenant.id)
+        await tx.sale.create({
+          data: {
+            tenantId: tenant.id,
+            ticketNumber,
+            paymentMethod: method,
+            soldAt,
+            ticketComment: 'seed-demo',
+            subtotal: lineTotal,
+            total: lineTotal,
+            createdById: adminUser.id,
+            attendedByUserId: adminUser.id,
+            customerId: customer.id,
+            lines: {
+              create: [
+                {
+                  productId: item.productId,
+                  quantity: qty,
+                  unitPrice,
+                  subtotal: lineTotal,
+                  total: lineTotal,
+                },
+              ],
+            },
           },
-        },
+        })
       })
     }
   }

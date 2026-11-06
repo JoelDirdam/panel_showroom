@@ -32,6 +32,36 @@ export const PLANS: PlanInfo[] = [
     available: true,
   },
   {
+    type: 'CITAS_PANEL',
+    name: 'Citas',
+    tagline: 'Disponible hoy',
+    description:
+      'Tu agenda en línea: panel de citas, link para que tus clientes agenden y recordatorios por WhatsApp.',
+    features: [
+      'Panel para ver y crear citas',
+      'Link de citas para compartir en redes',
+      'Servicios, precios y horarios',
+      'Recordatorios por WhatsApp (próximamente)',
+    ],
+    available: true,
+  },
+  {
+    type: 'CITAS_IA',
+    name: 'Citas + IA',
+    tagline: 'Próximamente',
+    description: 'Todo el plan Citas, más un asistente de IA que atiende y agenda por WhatsApp.',
+    features: ['Todo lo del plan Citas', 'Asistente de IA en WhatsApp', 'Chats en tablero Kanban'],
+    available: false,
+  },
+  {
+    type: 'CITAS_RECORDATORIOS',
+    name: 'Recordatorios',
+    tagline: 'Próximamente',
+    description: 'Solo recordatorios de cita por WhatsApp, vía panel simple o API para desarrolladores.',
+    features: ['Recordatorios por WhatsApp', 'API para desarrolladores'],
+    available: false,
+  },
+  {
     type: 'CLINICA',
     name: 'Clínica',
     tagline: 'Próximamente',
@@ -62,4 +92,4 @@ export function planInfo(type: PlanType | null | undefined): PlanInfo | undefine
 }
 
 export const TRIAL_BASE_DAYS = 15
-export const PROMO_EXTRA_DAYS_CODE = 'MANEKI30'
+export const PROMO_EXTRA_DAYS_CODE = 'COSDI30'

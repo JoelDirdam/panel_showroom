@@ -19,6 +19,76 @@
       </div>
     </div>
 
+    <div
+      v-for="alert in cutoffAlerts"
+      :key="`cutoff-${alert.brandId}-${alert.daysUntil}`"
+      class="mb-4 rounded-2xl border border-brand-200 bg-brand-50 p-5 dark:border-brand-500/30 dark:bg-brand-500/10"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 class="text-base font-semibold text-gray-800 dark:text-white">
+            <template v-if="alert.daysUntil === 0">Hoy es el corte de {{ alert.brandName }}</template>
+            <template v-else-if="alert.daysUntil > 0">En {{ alert.daysUntil }} día(s) es el corte de {{ alert.brandName }}</template>
+            <template v-else>{{ alert.brandName }} tiene corte cerrado sin pagar</template>
+          </h2>
+          <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            <template v-if="alert.totalCut > 0">
+              ${{ formatMoney(alert.totalCut) }} en ventas del periodo
+              ({{ formatShortDate(alert.periodFrom) }} – {{ formatShortDate(alert.periodTo) }}).
+            </template>
+            <template v-if="alert.unpaidCut > 0">
+              <span v-if="alert.totalCut > 0"> · </span>
+              ${{ formatMoney(alert.unpaidCut) }} cerrado pendiente de pago a la marca.
+            </template>
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-if="alert.daysUntil >= 0 && alert.totalCut > 0"
+            type="button"
+            class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+            :disabled="cutoffActionLoading === alert.brandId"
+            @click="handleCloseCutoff(alert.brandId)"
+          >
+            Cerrar corte
+          </button>
+          <button
+            v-if="alert.unpaidCut > 0 && alert.settlementId"
+            type="button"
+            class="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50 dark:border-brand-500/40 dark:bg-transparent dark:text-brand-300"
+            :disabled="cutoffActionLoading === alert.settlementId"
+            @click="handleMarkCutoffPaid(alert.settlementId!)"
+          >
+            Marcar pagado
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="pendingRents.length"
+      class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-500/30 dark:bg-amber-500/10"
+    >
+      <h2 class="text-base font-semibold text-gray-800 dark:text-white">Rentas pendientes</h2>
+      <ul class="mt-3 space-y-2">
+        <li
+          v-for="rent in pendingRents"
+          :key="rent.paymentId"
+          class="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-700 dark:text-gray-300"
+        >
+          <span>{{ rent.brandName }} — ${{ formatMoney(rent.amount) }} (vence {{ formatShortDate(rent.dueDate) }})</span>
+          <button
+            type="button"
+            class="rounded-lg bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+            :disabled="rentActionLoading === rent.paymentId"
+            @click="handleMarkRentPaid(rent.paymentId)"
+          >
+            Marcar renta pagada
+          </button>
+        </li>
+      </ul>
+    </div>
+
     <div class="mb-6">
       <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">
         ¡Bienvenido{{ auth.user?.name ? `, ${auth.user.name.split(' ')[0]}` : '' }}!
@@ -107,6 +177,24 @@
       </div>
     </div>
 
+    <div v-if="auth.isAdmin" class="mb-8 flex flex-wrap items-start gap-4 md:gap-6">
+      <home-calendar :calendar="homeCalendar" @change-month="loadCalendar" />
+      <div class="min-w-[18rem] flex-1 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+          <h2 class="text-sm font-semibold text-gray-800 dark:text-white">Próximos cortes</h2>
+          <ul v-if="cutoffAlerts.length" class="mt-3 space-y-3 text-sm">
+            <li v-for="alert in cutoffAlerts" :key="alert.brandId" class="text-gray-700 dark:text-gray-300">
+              <span class="font-medium text-gray-800 dark:text-white">{{ alert.brandName }}</span>
+              —
+              <template v-if="alert.daysUntil === 0">hoy</template>
+              <template v-else-if="alert.daysUntil > 0">en {{ alert.daysUntil }} día(s)</template>
+              <template v-else>pendiente de pago</template>
+              <span v-if="alert.totalCut > 0"> · ${{ formatMoney(alert.totalCut) }}</span>
+            </li>
+          </ul>
+          <p v-else class="mt-3 text-sm text-gray-500 dark:text-gray-400">No hay cortes en los próximos días.</p>
+      </div>
+    </div>
+
     <div class="mb-4 flex items-center justify-between gap-3">
       <h2 class="text-sm font-semibold text-gray-800 dark:text-white">Módulos</h2>
       <router-link to="/dashboard" class="text-sm font-medium text-brand-500 hover:text-brand-600">
@@ -152,14 +240,72 @@ import { computed, onMounted, ref } from 'vue'
 import { X } from 'lucide-vue-next'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
+import HomeCalendar from '@/components/home/HomeCalendar.vue'
 import { useAuthStore } from '@/stores/auth'
 import { NEGOCIO_MODULE_LINKS } from '@/lib/modules'
-import { fetchHomeSummary, type HomeSummary } from '@/services/api'
+import {
+  closeBrandCutoff,
+  fetchHomeCalendar,
+  fetchHomeSummary,
+  markCutoffSettlementPaid,
+  patchRentPayment,
+  type HomeCalendar as HomeCalendarData,
+  type HomeSummary,
+} from '@/services/api'
 import { formatMoney } from '@/composables/useCajaSession'
 
 const auth = useAuthStore()
 const summary = ref<HomeSummary | null>(null)
+const homeCalendar = ref<HomeCalendarData | null>(null)
+const cutoffActionLoading = ref<string | null>(null)
+const rentActionLoading = ref<string | null>(null)
 const firstStepsDismissed = ref(false)
+
+const cutoffAlerts = computed(() => homeCalendar.value?.cutoffAlerts ?? [])
+const pendingRents = computed(() => homeCalendar.value?.rentEvents ?? [])
+
+function formatShortDate(value: string) {
+  return new Date(value).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+}
+
+async function loadCalendar(year?: number, month?: number) {
+  if (!auth.isAdmin) return
+  try {
+    homeCalendar.value = await fetchHomeCalendar(year, month)
+  } catch {
+    homeCalendar.value = null
+  }
+}
+
+async function handleCloseCutoff(brandId: string) {
+  cutoffActionLoading.value = brandId
+  try {
+    await closeBrandCutoff(brandId)
+    await loadCalendar(homeCalendar.value?.year, homeCalendar.value?.month)
+  } finally {
+    cutoffActionLoading.value = null
+  }
+}
+
+async function handleMarkCutoffPaid(settlementId: string) {
+  cutoffActionLoading.value = settlementId
+  try {
+    await markCutoffSettlementPaid(settlementId)
+    await loadCalendar(homeCalendar.value?.year, homeCalendar.value?.month)
+  } finally {
+    cutoffActionLoading.value = null
+  }
+}
+
+async function handleMarkRentPaid(paymentId: string) {
+  rentActionLoading.value = paymentId
+  try {
+    await patchRentPayment(paymentId, 'PAID')
+    await loadCalendar(homeCalendar.value?.year, homeCalendar.value?.month)
+  } finally {
+    rentActionLoading.value = null
+  }
+}
 
 const setup = computed(() => auth.user?.setupStatus)
 const prefsConfigured = computed(() => {
@@ -274,5 +420,6 @@ onMounted(async () => {
   } catch {
     summary.value = null
   }
+  await loadCalendar()
 })
 </script>

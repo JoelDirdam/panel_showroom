@@ -102,21 +102,21 @@ def test_select_plan_without_promo_grants_15_day_trial():
     cleanup_qa_tenant(tenant["tenant_id"], tenant["tenant_slug"])
 
 
-def test_select_plan_with_maneki30_extends_trial_to_30_days():
+def test_select_plan_with_cosdi30_extends_trial_to_30_days():
     tenant = register_fresh_tenant("con-promo")
 
     r = requests.post(
         f"{API}/onboarding/select-plan",
         headers=tenant["headers"],
-        json={"planType": "NEGOCIO", "promoCode": "maneki30"},
+        json={"planType": "NEGOCIO", "promoCode": "cosdi30"},
         timeout=30,
     )
     assert r.status_code == 200, r.text
     user = r.json()["user"]
     sub = user["subscription"]
-    assert sub["promoCodeUsed"] == "MANEKI30", sub
+    assert sub["promoCodeUsed"] == "COSDI30", sub
     days = trial_days(sub["trialEndsAt"])
-    assert 29 <= days <= 30, f"esperaba ~30 dias con MANEKI30, obtuve {days}"
+    assert 29 <= days <= 30, f"esperaba ~30 dias con COSDI30, obtuve {days}"
 
     cleanup_qa_tenant(tenant["tenant_id"], tenant["tenant_slug"])
 
@@ -136,5 +136,5 @@ def test_select_plan_with_invalid_promo_code_is_rejected():
 
 
 test_select_plan_without_promo_grants_15_day_trial()
-test_select_plan_with_maneki30_extends_trial_to_30_days()
+test_select_plan_with_cosdi30_extends_trial_to_30_days()
 test_select_plan_with_invalid_promo_code_is_rejected()

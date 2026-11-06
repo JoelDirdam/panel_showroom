@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
 import { slugify } from '../lib/slug.js'
 import { authenticate, authorize, tenantFilter } from '../middleware/auth.js'
+import { computeBrandCut, ensureRentPaymentsForMonth } from '../services/cutoff.service.js'
 
 const router = Router()
 
@@ -420,74 +421,69 @@ router.get('/:id/summary', authorize('BUSINESS'), async (req, res) => {
   const from = typeof req.query.from === 'string' && req.query.from ? new Date(req.query.from) : defaultFrom
   const to = typeof req.query.to === 'string' && req.query.to ? new Date(req.query.to) : now
   const toInclusive = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999)
+  const tenantId = req.user!.tenantId!
+
+  const [totalCutResult, openCut, closedUnpaid, paidCut] = await Promise.all([
+    computeBrandCut(tenantId, id, from, toInclusive),
+    computeBrandCut(tenantId, id, from, toInclusive, { inSettlement: false }),
+    computeBrandCut(tenantId, id, from, toInclusive, { inSettlement: true, paid: false }),
+    computeBrandCut(tenantId, id, from, toInclusive, { paid: true }),
+  ])
 
   const sales = await prisma.sale.findMany({
     where: {
-      tenantId: req.user!.tenantId,
+      tenantId,
       soldAt: { gte: from, lte: toInclusive },
       lines: { some: { product: { brandId: id } } },
     },
     include: {
-      payments: true,
       lines: { where: { product: { brandId: id } }, select: { total: true } },
     },
     orderBy: { soldAt: 'asc' },
   })
 
-  const cutBreakdown = { EFECTIVO: 0, TARJETA: 0, TRANSFERENCIA: 0, OTRO: 0 }
   const dailyMap = new Map<string, number>()
-  let totalRevenue = 0
-
   for (const sale of sales) {
     const brandTotal = sale.lines.reduce((acc, line) => acc + Number(line.total), 0)
     if (brandTotal <= 0) continue
-
-    totalRevenue += brandTotal
     const dayKey = sale.soldAt.toISOString().slice(0, 10)
     dailyMap.set(dayKey, (dailyMap.get(dayKey) ?? 0) + brandTotal)
-
-    if (sale.paymentMethod === 'MIXTO' && sale.payments.length > 0) {
-      const saleTotal = sale.payments.reduce((acc, p) => acc + Number(p.amount), 0) || Number(sale.total) || 1
-      for (const payment of sale.payments) {
-        const ratio = Number(payment.amount) / saleTotal
-        const share = brandTotal * ratio
-        if (payment.method === 'TARJETA') cutBreakdown.TARJETA += share
-        else if (payment.method === 'TRANSFERENCIA') cutBreakdown.TRANSFERENCIA += share
-        else cutBreakdown.EFECTIVO += share
-      }
-    } else if (sale.paymentMethod === 'TARJETA') {
-      cutBreakdown.TARJETA += brandTotal
-    } else if (sale.paymentMethod === 'TRANSFERENCIA') {
-      cutBreakdown.TRANSFERENCIA += brandTotal
-    } else if (sale.paymentMethod === 'EFECTIVO') {
-      cutBreakdown.EFECTIVO += brandTotal
-    } else {
-      cutBreakdown.OTRO += brandTotal
-    }
   }
 
   const round2 = (n: number) => Math.round(n * 100) / 100
-  const monthsInRange = Math.max(
-    1,
-    (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()) + 1,
-  )
   const monthlyRent = Number(brand.monthlyRent)
+
+  await ensureRentPaymentsForMonth(tenantId)
+  const rentPayment = await prisma.brandRentPayment.findUnique({
+    where: {
+      brandId_year_month: {
+        brandId: id,
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+      },
+    },
+  })
 
   return res.json({
     brandId: id,
     from: from.toISOString(),
     to: toInclusive.toISOString(),
     rent: round2(monthlyRent),
-    // Placeholder: no existe un modelo de pagos de mensualidad todavía, se
-    // estima como renta mensual × meses cubiertos por el rango filtrado.
-    accruedRent: round2(monthlyRent * monthsInRange),
-    cutBreakdown: {
-      efectivo: round2(cutBreakdown.EFECTIVO),
-      tarjeta: round2(cutBreakdown.TARJETA),
-      transferencia: round2(cutBreakdown.TRANSFERENCIA),
-      otro: round2(cutBreakdown.OTRO),
-    },
-    totalCut: round2(totalRevenue),
+    accruedRent: round2(monthlyRent),
+    rentPayment: rentPayment
+      ? {
+          id: rentPayment.id,
+          status: rentPayment.status,
+          amount: Number(rentPayment.amount),
+          dueDate: rentPayment.dueDate.toISOString(),
+          paidAt: rentPayment.paidAt?.toISOString() ?? null,
+        }
+      : null,
+    cutBreakdown: totalCutResult.cutBreakdown,
+    totalCut: totalCutResult.totalRevenue,
+    openCut: openCut.totalRevenue,
+    closedUnpaid: closedUnpaid.totalRevenue,
+    paidCut: paidCut.totalRevenue,
     dailySeries: [...dailyMap.entries()]
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, total]) => ({ date, total: round2(total) })),

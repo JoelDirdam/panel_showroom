@@ -23,7 +23,10 @@ import servicesRoutes from './routes/services.js'
 import businessHoursRoutes from './routes/businessHours.js'
 import appointmentsRoutes from './routes/appointments.js'
 import whatsappConfigRoutes from './routes/whatsappConfig.js'
+import cutoffsRoutes from './routes/cutoffs.js'
+import rentPaymentsRoutes from './routes/rentPayments.js'
 import chatRoutes from './routes/chat.js'
+import publicRoutes from './routes/public.js'
 import { whatsappWebhookRoutes } from './modules/whatsapp/index.js'
 import { registerInboundAiHandler } from './modules/ai/index.js'
 import { UPLOADS_ROOT } from './lib/storage.js'
@@ -92,7 +95,7 @@ app.use(
 )
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'punto-maneki-api' })
+  res.json({ ok: true, service: 'cosdi-api' })
 })
 
 // Guards globales: no bloquean rutas públicas ni /api/auth, /api/terms,
@@ -122,7 +125,10 @@ app.use('/api/v1/business-hours', businessHoursRoutes)
 app.use('/api/v1/appointments', appointmentsRoutes)
 app.use('/api/v1/whatsapp-config', whatsappConfigRoutes)
 app.use('/api/v1/whatsapp', whatsappWebhookRoutes)
+app.use('/api/cutoffs', cutoffsRoutes)
+app.use('/api/rent-payments', rentPaymentsRoutes)
 app.use('/api/chat', chatRoutes)
+app.use('/api/public', publicRoutes)
 
 app.use((err: unknown, req: express.Request, res: express.Response, next: express.NextFunction) => {
   const path = req.path || ''

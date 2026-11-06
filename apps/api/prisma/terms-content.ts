@@ -1,18 +1,18 @@
 /**
- * Texto legal vigente de Términos y Condiciones de PuntoManeki.
+ * Texto legal vigente de Términos y Condiciones de COSDI.
  * Usado por seed y por el script de publicación (`publish-terms.ts`).
  *
  * AVISO: Borrador profesional basado en la funcionalidad del producto.
  * Conviene revisión por asesoría legal antes de considerarlo definitivo.
  */
 export const TERMS_VERSION = '1.1'
-export const TERMS_TITLE = 'Términos y Condiciones de Uso — PuntoManeki'
+export const TERMS_TITLE = 'Términos y Condiciones de Uso — COSDI'
 
-export const TERMS_CONTENT = `TÉRMINOS Y CONDICIONES DE USO — PuntoManeki
+export const TERMS_CONTENT = `TÉRMINOS Y CONDICIONES DE USO — COSDI
 Versión ${TERMS_VERSION}
 Fecha de publicación: 3 de agosto de 2026
 
-Estos Términos y Condiciones (los “Términos”) regulan el acceso y uso de la plataforma PuntoManeki (la “Plataforma”, el “Servicio” o “nosotros”), un software como servicio (SaaS) orientado a la administración de negocios, marcas en consignación, inventario, punto de venta, ventas, agenda y módulos relacionados.
+Estos Términos y Condiciones (los “Términos”) regulan el acceso y uso de la plataforma COSDI (la “Plataforma”, el “Servicio” o “nosotros”), un software como servicio (SaaS) orientado a la administración de negocios, marcas en consignación, inventario, punto de venta, ventas, agenda y módulos relacionados.
 
 Al crear una cuenta, marcar la casilla de aceptación, continuar con el proceso de alta o utilizar el Servicio, usted (el “Usuario”, el “Cliente” o “usted”) declara haber leído, entendido y aceptado estos Términos. Si no está de acuerdo, no debe registrarse ni usar la Plataforma.
 
@@ -30,7 +30,7 @@ Al crear una cuenta, marcar la casilla de aceptación, continuar con el proceso 
 ────────────────────────────────────────
 2. DESCRIPCIÓN DEL SERVICIO
 ────────────────────────────────────────
-2.1. PuntoManeki ofrece herramientas digitales para, entre otras funciones según el Plan y permisos del Usuario:
+2.1. COSDI ofrece herramientas digitales para, entre otras funciones según el Plan y permisos del Usuario:
    a) Gestión de marcas propias y de terceros (consignación), propietarios y accesos.
    b) Catálogo de productos, categorías, stock e inventario.
    c) Solicitudes de productos (altas, restock, retiros) y flujo de órdenes.
@@ -76,7 +76,7 @@ Al crear una cuenta, marcar la casilla de aceptación, continuar con el proceso 
    b) El cumplimiento fiscal y de facturación de sus ventas (la Plataforma no sustituye asesoría contable ni emite necesariamente CFDI u otros comprobantes fiscales salvo que se indique expresamente una función específica).
    c) Las relaciones contractuales con marcas consignadas, empleados y clientes finales.
    d) El uso correcto de Caja, cortes, métodos de pago y políticas internas del negocio.
-6.3. PuntoManeki es una herramienta de gestión; no garantiza resultados comerciales ni la legalidad de las operaciones del Cliente frente a terceros.
+6.3. COSDI es una herramienta de gestión; no garantiza resultados comerciales ni la legalidad de las operaciones del Cliente frente a terceros.
 
 ────────────────────────────────────────
 7. DATOS PERSONALES Y PRIVACIDAD
@@ -105,7 +105,7 @@ e) Cargar contenido ilegal, difamatorio, obsceno o que infrinja propiedad intele
 ────────────────────────────────────────
 10. PROPIEDAD INTELECTUAL
 ────────────────────────────────────────
-10.1. La Plataforma, su código, diseño, marcas, textos y documentación son propiedad de PuntoManeki o de sus licenciantes.
+10.1. La Plataforma, su código, diseño, marcas, textos y documentación son propiedad de COSDI o de sus licenciantes.
 10.2. Estos Términos no transfieren al Cliente ningún derecho de propiedad sobre el software, salvo la licencia de uso limitada, no exclusiva e intransferible mientras exista una suscripción o prueba válida.
 
 ────────────────────────────────────────
@@ -118,8 +118,8 @@ e) Cargar contenido ilegal, difamatorio, obsceno o que infrinja propiedad intele
 ────────────────────────────────────────
 12. LIMITACIÓN DE RESPONSABILIDAD
 ────────────────────────────────────────
-12.1. En la máxima medida permitida por la ley aplicable, PuntoManeki no será responsable por: (i) lucro cesante, pérdida de datos del Cliente no recuperables pese a respaldos razonables, o daños indirectos; (ii) decisiones de negocio tomadas con base en información del panel; (iii) fallos de terceros (proveedores de hosting, pasarelas de pago, redes, dispositivos del Cliente).
-12.2. Nuestra responsabilidad agregada frente al Cliente por hechos derivados del Servicio, en un periodo de doce (12) meses, no excederá el monto efectivamente pagado por el Cliente a PuntoManeki en ese mismo periodo (o cero, si solo estuvo en Periodo de prueba gratuito), salvo dolo o negligencia inexcusable cuando la ley no permita limitar dicha responsabilidad.
+12.1. En la máxima medida permitida por la ley aplicable, COSDI no será responsable por: (i) lucro cesante, pérdida de datos del Cliente no recuperables pese a respaldos razonables, o daños indirectos; (ii) decisiones de negocio tomadas con base en información del panel; (iii) fallos de terceros (proveedores de hosting, pasarelas de pago, redes, dispositivos del Cliente).
+12.2. Nuestra responsabilidad agregada frente al Cliente por hechos derivados del Servicio, en un periodo de doce (12) meses, no excederá el monto efectivamente pagado por el Cliente a COSDI en ese mismo periodo (o cero, si solo estuvo en Periodo de prueba gratuito), salvo dolo o negligencia inexcusable cuando la ley no permita limitar dicha responsabilidad.
 
 ────────────────────────────────────────
 13. SUSPENSIÓN Y TERMINACIÓN
@@ -141,7 +141,7 @@ Salvo norma imperativa en contrario, estos Términos se rigen por las leyes de l
 ────────────────────────────────────────
 16. CONTACTO
 ────────────────────────────────────────
-Para consultas sobre estos Términos o el Servicio, utilice los canales de contacto publicados en la Plataforma o el correo de soporte indicado por PuntoManeki.
+Para consultas sobre estos Términos o el Servicio, utilice los canales de contacto publicados en la Plataforma o el correo de soporte indicado por COSDI.
 
 ────────────────────────────────────────
 17. DISPOSICIONES GENERALES

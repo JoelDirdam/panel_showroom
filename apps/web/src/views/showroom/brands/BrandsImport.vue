@@ -112,11 +112,11 @@ const globalCutoffHint = computed(() => {
 
 const brandImportColumns = computed<ImportColumn[]>(() => [
   { key: 'name', label: 'Nombre', required: true },
-  { key: 'monthlyRent', label: 'Renta mensual', required: true },
+  { key: 'monthlyRent', label: 'Renta mensual', required: true, kind: 'number' },
   { key: 'assignedSpace', label: 'Espacio' },
   { key: 'phone', label: 'Teléfono' },
-  { key: 'commissionPercent', label: '% Comisión', required: true },
-  { key: 'contactEmail', label: 'Email' },
+  { key: 'commissionPercent', label: '% Comisión', required: true, kind: 'percent' },
+  { key: 'contactEmail', label: 'Email', kind: 'email' },
   { key: 'whatsapp', label: 'WhatsApp' },
   {
     key: 'cutoffDaySlots',

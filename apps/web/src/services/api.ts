@@ -13,6 +13,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const data = error?.response?.data as { code?: string } | undefined
+    if (error?.response?.status === 402 && data?.code === 'SUBSCRIPTION_EXPIRED') {
+      const { default: router } = await import('@/router')
+      if (router.currentRoute.value.path !== '/suscripcion-vencida') {
+        void router.replace('/suscripcion-vencida')
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
 export default api
 
 export interface User {
@@ -361,6 +375,73 @@ export async function fetchHomeSummary(): Promise<HomeSummary> {
   return data
 }
 
+export interface CutBreakdown {
+  efectivo: number
+  tarjeta: number
+  transferencia: number
+  otro: number
+}
+
+export interface CutoffAlert {
+  brandId: string
+  brandName: string
+  cutoffDate: string
+  daysUntil: number
+  periodFrom: string
+  periodTo: string
+  totalCut: number
+  unpaidCut: number
+  cutBreakdown: CutBreakdown
+  settlementId?: string
+}
+
+export interface RentEvent {
+  brandId: string
+  brandName: string
+  dueDate: string
+  amount: number
+  status: 'PENDING' | 'PAID'
+  paymentId: string
+  year: number
+  month: number
+}
+
+export interface HomeCalendarDay {
+  date: string
+  cutoffs: string[]
+  rentsDue: Array<{ brandId: string; brandName: string; amount: number; paymentId: string }>
+}
+
+export interface HomeCalendar {
+  cutoffAlerts: CutoffAlert[]
+  rentEvents: RentEvent[]
+  calendarDays: HomeCalendarDay[]
+  year: number
+  month: number
+}
+
+export async function fetchHomeCalendar(year?: number, month?: number): Promise<HomeCalendar> {
+  const { data } = await api.get<HomeCalendar>('/dashboard/home-calendar', {
+    params: { ...(year ? { year } : {}), ...(month ? { month } : {}) },
+  })
+  return data
+}
+
+export async function closeBrandCutoff(brandId: string, note?: string) {
+  const { data } = await api.post(`/cutoffs/${brandId}/close`, { note: note ?? null })
+  return data
+}
+
+export async function markCutoffSettlementPaid(settlementId: string, note?: string) {
+  const { data } = await api.post(`/cutoffs/settlements/${settlementId}/mark-paid`, { note: note ?? null })
+  return data
+}
+
+export async function patchRentPayment(id: string, status: 'PENDING' | 'PAID', note?: string) {
+  const { data } = await api.patch(`/rent-payments/${id}`, { status, note: note ?? null })
+  return data
+}
+
 export async function fetchDashboardAnalytics(): Promise<DashboardAnalytics> {
   const { data } = await api.get<DashboardAnalytics>('/dashboard/analytics')
   return data
@@ -534,6 +615,13 @@ export interface BrandSummary {
   to: string
   rent: number
   accruedRent: number
+  rentPayment?: {
+    id: string
+    status: 'PENDING' | 'PAID'
+    amount: number
+    dueDate: string
+    paidAt: string | null
+  } | null
   cutBreakdown: {
     efectivo: number
     tarjeta: number
@@ -541,6 +629,9 @@ export interface BrandSummary {
     otro: number
   }
   totalCut: number
+  openCut?: number
+  closedUnpaid?: number
+  paidCut?: number
   dailySeries: Array<{ date: string; total: number }>
 }
 

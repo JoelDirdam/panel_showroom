@@ -3,12 +3,16 @@ export interface ImportColumnOption {
   label: string
 }
 
+export type ImportFieldKind = 'number' | 'integer' | 'email' | 'percent'
+
 export interface ImportColumn {
   key: string
   label: string
   required?: boolean
   /** When set to `select`, the preview renders a dropdown with `options`. */
   type?: 'text' | 'select' | 'day-slots'
+  /** Validation kind for text inputs (independent of render `type`). */
+  kind?: ImportFieldKind
   options?: ImportColumnOption[]
   /** Max days for `day-slots` (default 2). */
   maxSelectable?: number
