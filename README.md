@@ -1,4 +1,4 @@
-# PuntoManeki — Showroom Admin
+# COSDI — Showroom Admin
 
 Panel administrativo para que las marcas gestionen sus productos y stock en el showroom.
 
@@ -11,7 +11,7 @@ Panel administrativo para que las marcas gestionen sus productos y stock en el s
 
 ## Modelo de cuentas, planes y marcas
 
-PuntoManeki separa tres ideas para que un mismo negocio pueda crecer sin crear roles raros ni tablas duplicadas:
+COSDI separa tres ideas para que un mismo negocio pueda crecer sin crear roles raros ni tablas duplicadas:
 
 1. **Quién inicia sesión (identidad)**  
    El usuario del panel del negocio tiene el rol `BUSINESS`. Eso significa “administra este negocio”, no “solo puede ser un tipo de producto”.  
@@ -154,7 +154,7 @@ En Railway Dashboard → cada servicio → Settings:
 ## Estructura
 
 ```
-punto-maneki/
+cosdi/
 ├── apps/
 │   ├── api/          # REST API + Prisma
 │   └── web/          # Vue admin panel

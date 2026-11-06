@@ -44,15 +44,33 @@
       </div>
       <div class="col-span-12 sm:col-span-6 xl:col-span-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Mensualidad acumulada</p>
-          <h3 class="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{{ formatCurrency(summary.accruedRent) }}</h3>
-          <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">Estimado (renta × meses del rango)</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Mensualidad del mes</p>
+          <h3 class="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{{ formatCurrency(summary.rent) }}</h3>
+          <p v-if="summary.rentPayment" class="mt-1 text-xs" :class="summary.rentPayment.status === 'PAID' ? 'text-success-600' : 'text-amber-600'">
+            {{ summary.rentPayment.status === 'PAID' ? 'Pagada este mes' : 'Pendiente de pago' }}
+          </p>
+        </div>
+      </div>
+      <div v-if="summary.rentPayment?.status === 'PENDING'" class="col-span-12">
+        <button
+          type="button"
+          class="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          :disabled="rentLoading"
+          @click="markRentPaid"
+        >
+          Marcar renta pagada
+        </button>
+      </div>
+      <div class="col-span-12 sm:col-span-6 xl:col-span-3">
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+          <p class="text-sm text-gray-500 dark:text-gray-400">Corte abierto</p>
+          <h3 class="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{{ formatCurrency(summary.openCut ?? 0) }}</h3>
         </div>
       </div>
       <div class="col-span-12 sm:col-span-6 xl:col-span-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <p class="text-sm text-gray-500 dark:text-gray-400">% Comisión</p>
-          <h3 class="mt-2 text-2xl font-bold text-gray-800 dark:text-white">{{ Number(brand.commissionPercent) }}%</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Cerrado sin pagar</p>
+          <h3 class="mt-2 text-2xl font-bold text-amber-600">{{ formatCurrency(summary.closedUnpaid ?? 0) }}</h3>
         </div>
       </div>
     </div>
@@ -101,12 +119,13 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
 import ComponentCard from '@/components/common/ComponentCard.vue'
-import { fetchBrandSummary, type Brand, type BrandSummary } from '@/services/api'
+import { fetchBrandSummary, patchRentPayment, type Brand, type BrandSummary } from '@/services/api'
 
 const props = defineProps<{ brand: Brand }>()
 
 const summary = ref<BrandSummary | null>(null)
 const loading = ref(false)
+const rentLoading = ref(false)
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10)
@@ -128,6 +147,18 @@ async function load() {
     summary.value = await fetchBrandSummary(props.brand.id, range.from, range.to)
   } finally {
     loading.value = false
+  }
+}
+
+async function markRentPaid() {
+  const paymentId = summary.value?.rentPayment?.id
+  if (!paymentId) return
+  rentLoading.value = true
+  try {
+    await patchRentPayment(paymentId, 'PAID')
+    await load()
+  } finally {
+    rentLoading.value = false
   }
 }
 

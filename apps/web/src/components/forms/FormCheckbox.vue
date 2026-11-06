@@ -1,6 +1,5 @@
 <template>
   <label
-    :for="inputId"
     class="flex cursor-pointer select-none text-sm font-normal text-gray-700 dark:text-gray-400"
     :class="align === 'center' ? 'items-center' : 'items-start'"
   >
@@ -32,7 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import { CheckIcon } from 'lucide-vue-next'
 
 const props = withDefaults(
@@ -54,10 +53,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
-let autoId = 0
-const fallbackId = `form-checkbox-${++autoId}`
-
-const inputId = computed(() => props.id ?? fallbackId)
+const generatedId = useId()
+const inputId = computed(() => props.id ?? generatedId)
 
 function onChange(event: Event) {
   emit('update:modelValue', (event.target as HTMLInputElement).checked)

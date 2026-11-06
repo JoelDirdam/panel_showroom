@@ -8,6 +8,7 @@ const ACTIVE_STATUSES: AppointmentStatus[] = ['PENDING', 'CONFIRMED']
 
 const appointmentInclude = {
   service: { select: { id: true, name: true, durationMinutes: true, price: true, isActive: true } },
+  sucursal: { select: { id: true, name: true, address: true, isActive: true } },
 } satisfies Prisma.AppointmentInclude
 
 function isOverlapDbError(e: unknown): boolean {
@@ -26,6 +27,7 @@ export async function assertNoOverlap(params: {
   tenantId: string
   startTime: Date
   endTime: Date
+  sucursalId?: string | null
   excludeId?: string
   tx?: Prisma.TransactionClient
 }) {
@@ -33,6 +35,7 @@ export async function assertNoOverlap(params: {
   const clash = await db.appointment.findFirst({
     where: {
       tenantId: params.tenantId,
+      sucursalId: params.sucursalId ?? null,
       status: { in: ACTIVE_STATUSES },
       startTime: { lt: params.endTime },
       endTime: { gt: params.startTime },
@@ -52,6 +55,15 @@ async function assertService(tenantId: string, serviceId: string | null | undefi
   })
   if (!service) throw new HttpError(400, 'Servicio no encontrado')
   if (!service.isActive) throw new HttpError(400, 'El servicio está inactivo')
+}
+
+async function assertSucursal(tenantId: string, sucursalId: string | null | undefined) {
+  if (!sucursalId) return
+  const sucursal = await prisma.sucursal.findFirst({
+    where: { id: sucursalId, tenantId },
+  })
+  if (!sucursal) throw new HttpError(400, 'Sucursal no encontrada')
+  if (!sucursal.isActive) throw new HttpError(400, 'La sucursal está inactiva')
 }
 
 export async function listAppointments(
@@ -87,17 +99,20 @@ export async function getAppointment(tenantId: string, id: string) {
 
 export async function createAppointment(tenantId: string, input: CreateAppointmentInput) {
   await assertService(tenantId, input.serviceId)
+  await assertSucursal(tenantId, input.sucursalId)
   try {
     return await prisma.$transaction(async (tx) => {
       await assertNoOverlap({
         tenantId,
         startTime: input.startTime,
         endTime: input.endTime,
+        sucursalId: input.sucursalId ?? null,
         tx,
       })
       return tx.appointment.create({
         data: {
           tenantId,
+          sucursalId: input.sucursalId ?? null,
           serviceId: input.serviceId ?? null,
           customerName: input.customerName,
           customerPhone: input.customerPhone,
@@ -121,6 +136,9 @@ export async function updateAppointment(tenantId: string, id: string, input: Upd
   if (input.serviceId !== undefined) {
     await assertService(tenantId, input.serviceId)
   }
+  if (input.sucursalId !== undefined) {
+    await assertSucursal(tenantId, input.sucursalId)
+  }
 
   const nextStart = input.startTime ?? existing.startTime
   const nextEnd = input.endTime ?? existing.endTime
@@ -129,9 +147,13 @@ export async function updateAppointment(tenantId: string, id: string, input: Upd
   }
 
   const nextStatus = input.status ?? existing.status
+  const nextSucursalId = input.sucursalId !== undefined ? input.sucursalId : existing.sucursalId
   const needsOverlap =
     ACTIVE_STATUSES.includes(nextStatus) &&
-    (input.startTime !== undefined || input.endTime !== undefined || input.status !== undefined)
+    (input.startTime !== undefined ||
+      input.endTime !== undefined ||
+      input.status !== undefined ||
+      input.sucursalId !== undefined)
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -140,6 +162,7 @@ export async function updateAppointment(tenantId: string, id: string, input: Upd
           tenantId,
           startTime: nextStart,
           endTime: nextEnd,
+          sucursalId: nextSucursalId,
           excludeId: id,
           tx,
         })
@@ -148,6 +171,7 @@ export async function updateAppointment(tenantId: string, id: string, input: Upd
         where: { id },
         data: {
           ...(input.serviceId !== undefined ? { serviceId: input.serviceId } : {}),
+          ...(input.sucursalId !== undefined ? { sucursalId: input.sucursalId } : {}),
           ...(input.customerName !== undefined ? { customerName: input.customerName } : {}),
           ...(input.customerPhone !== undefined ? { customerPhone: input.customerPhone } : {}),
           ...(input.startTime !== undefined ? { startTime: input.startTime } : {}),

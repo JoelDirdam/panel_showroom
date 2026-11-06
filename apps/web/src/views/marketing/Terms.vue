@@ -3,7 +3,7 @@
     <header class="border-b border-gray-200 dark:border-gray-800">
       <div class="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
         <router-link to="/" class="text-lg font-semibold text-gray-800 dark:text-white">
-          PuntoManeki
+          COSDI
         </router-link>
         <router-link
           to="/register"

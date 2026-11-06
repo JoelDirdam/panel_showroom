@@ -15,8 +15,9 @@
             <!-- Logo: deshabilitado hasta definir branding -->
             <!-- <img src="/images/logo/logo.svg" alt="Panel Bubbles" class="mx-auto mb-4 h-10 dark:hidden" /> -->
             <!-- <img src="/images/logo/logo-dark.svg" alt="Panel Bubbles" class="mx-auto mb-4 hidden h-10 dark:block" /> -->
-            <h1 class="text-xl font-semibold text-gray-800 dark:text-white">PuntoManeki</h1>
+            <h1 class="text-xl font-semibold text-gray-800 dark:text-white">COSDI</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Inicia sesión para gestionar tu inventario</p>
+            <p class="mt-2 text-xs italic text-gray-400 dark:text-gray-500">Te ofrecemos una solución tecnológica a tu negocio, si no la tenemos te la creamos.</p>
           </div>
 
           <form class="space-y-4" @submit.prevent="handleSubmit">

@@ -5,12 +5,21 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, authorize } from '../middleware/auth.js'
 import { buildMeResponse } from '../lib/meShape.js'
 import { advanceStep } from '../lib/onboarding.js'
+import { ensurePrincipalSucursal } from '../lib/sucursal.js'
 import { storage } from '../lib/storage.js'
 import { imageUpload, safeImageOriginalName } from '../lib/upload.js'
 
 const router = Router()
 
-const PLAN_TYPES: PlanType[] = ['NEGOCIO', 'CLINICA', 'RESTAURANTE', 'MARCA']
+const PLAN_TYPES: PlanType[] = [
+  'NEGOCIO',
+  'CLINICA',
+  'RESTAURANTE',
+  'MARCA',
+  'CITAS_RECORDATORIOS',
+  'CITAS_PANEL',
+  'CITAS_IA',
+]
 const TRIAL_BASE_DAYS = 15
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -29,7 +38,7 @@ const createBusinessSchema = z.object({
 router.use(authenticate, authorize('BUSINESS'))
 
 /**
- * Selecciona el plan y activa el trial. Sin promo: 15 días. Con MANEKI30
+ * Selecciona el plan y activa el trial. Sin promo: 15 días. Con COSDI30
  * (extraTrialDays=15): 15 + 15 = 30 días.
  */
 router.post('/select-plan', async (req, res) => {
@@ -149,6 +158,8 @@ router.post('/create-business', (req, res, next) => {
       ...(logoUrl ? { logoUrl } : {}),
     },
   })
+
+  await ensurePrincipalSucursal(tenantId)
 
   await prisma.businessPreferences.upsert({
     where: { tenantId },

@@ -3,7 +3,7 @@ import type { PaymentMethod, Product, SplitPaymentMethod } from '@/services/api'
 
 export const DEFAULT_USD_RATE = 18
 export const MAX_CAJAS = 10
-const STORAGE_KEY = 'puntomaneki.caja.tabs.v1'
+const STORAGE_KEY = 'cosdi.caja.tabs.v1'
 
 export interface CartLine {
   productId: string

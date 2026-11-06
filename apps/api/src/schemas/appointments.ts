@@ -24,6 +24,7 @@ export const createAppointmentSchema = z
     endTime: z.coerce.date(),
     notes: z.string().max(1000).optional().nullable(),
     status: appointmentStatusSchema.optional(),
+    sucursalId: z.string().min(1).optional().nullable(),
   })
   .superRefine(refineRange)
 
@@ -36,6 +37,7 @@ export const updateAppointmentSchema = z
     endTime: z.coerce.date().optional(),
     notes: z.string().max(1000).optional().nullable(),
     status: appointmentStatusSchema.optional(),
+    sucursalId: z.string().min(1).optional().nullable(),
   })
   .superRefine(refineRange)
 

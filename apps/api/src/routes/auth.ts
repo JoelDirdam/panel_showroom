@@ -154,6 +154,13 @@ router.post('/register', authRateLimit, async (req, res) => {
       },
     })
 
+    await tx.sucursal.create({
+      data: {
+        tenantId: tenant.id,
+        name: 'Sucursal principal',
+      },
+    })
+
     const user = await tx.user.create({
       data: {
         email,

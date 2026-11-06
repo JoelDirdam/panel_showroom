@@ -75,8 +75,13 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const { data } = await api.get('/auth/me')
       user.value = data
-    } catch {
-      logout()
+    } catch (e: unknown) {
+      // Solo cerrar sesión si el token es inválido. Si la API está caída
+      // (ECONNREFUSED / proxy error) no debemos expulsar al usuario.
+      const status = (e as { response?: { status?: number } })?.response?.status
+      if (status === 401 || status === 403) {
+        logout()
+      }
     }
   }
 

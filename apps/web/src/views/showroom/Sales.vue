@@ -28,8 +28,8 @@
               <th class="py-3 pr-4">Total</th>
               <th class="py-3 pr-4">Fecha</th>
               <th class="py-3 pr-4">Método de pago</th>
-              <th class="py-3 pr-4">En corte</th>
-              <th class="py-3">Pagado</th>
+              <th class="py-3 pr-4" title="Incluida en liquidación de corte">En corte</th>
+              <th class="py-3" title="La marca ya cobró esta línea">Pagado</th>
             </tr>
           </thead>
           <tbody>

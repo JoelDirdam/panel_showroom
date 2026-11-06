@@ -13,6 +13,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const data = error?.response?.data as { code?: string } | undefined
+    if (error?.response?.status === 402 && data?.code === 'SUBSCRIPTION_EXPIRED') {
+      const { default: router } = await import('@/router')
+      if (router.currentRoute.value.path !== '/suscripcion-vencida') {
+        void router.replace('/suscripcion-vencida')
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
 export default api
 
 export interface User {
@@ -227,8 +241,11 @@ export async function fetchPreferences(): Promise<BusinessPreferences> {
 
 export async function updatePreferences(
   payload: UpdateBusinessPreferencesPayload,
-): Promise<BusinessPreferences> {
-  const { data } = await api.patch<BusinessPreferences>('/preferences', payload)
+): Promise<BusinessPreferences & { brandsAligned?: number }> {
+  const { data } = await api.patch<BusinessPreferences & { brandsAligned?: number }>(
+    '/preferences',
+    payload,
+  )
   return data
 }
 
@@ -344,6 +361,7 @@ export interface HomeSummary {
   salesTodayTotal: number
   totalProducts: number
   totalBrands: number
+  totalEmployees: number
   lowStockCount: number
   setupStatus: {
     businessConfigured: boolean
@@ -354,6 +372,73 @@ export interface HomeSummary {
 
 export async function fetchHomeSummary(): Promise<HomeSummary> {
   const { data } = await api.get<HomeSummary>('/dashboard/home-summary')
+  return data
+}
+
+export interface CutBreakdown {
+  efectivo: number
+  tarjeta: number
+  transferencia: number
+  otro: number
+}
+
+export interface CutoffAlert {
+  brandId: string
+  brandName: string
+  cutoffDate: string
+  daysUntil: number
+  periodFrom: string
+  periodTo: string
+  totalCut: number
+  unpaidCut: number
+  cutBreakdown: CutBreakdown
+  settlementId?: string
+}
+
+export interface RentEvent {
+  brandId: string
+  brandName: string
+  dueDate: string
+  amount: number
+  status: 'PENDING' | 'PAID'
+  paymentId: string
+  year: number
+  month: number
+}
+
+export interface HomeCalendarDay {
+  date: string
+  cutoffs: string[]
+  rentsDue: Array<{ brandId: string; brandName: string; amount: number; paymentId: string }>
+}
+
+export interface HomeCalendar {
+  cutoffAlerts: CutoffAlert[]
+  rentEvents: RentEvent[]
+  calendarDays: HomeCalendarDay[]
+  year: number
+  month: number
+}
+
+export async function fetchHomeCalendar(year?: number, month?: number): Promise<HomeCalendar> {
+  const { data } = await api.get<HomeCalendar>('/dashboard/home-calendar', {
+    params: { ...(year ? { year } : {}), ...(month ? { month } : {}) },
+  })
+  return data
+}
+
+export async function closeBrandCutoff(brandId: string, note?: string) {
+  const { data } = await api.post(`/cutoffs/${brandId}/close`, { note: note ?? null })
+  return data
+}
+
+export async function markCutoffSettlementPaid(settlementId: string, note?: string) {
+  const { data } = await api.post(`/cutoffs/settlements/${settlementId}/mark-paid`, { note: note ?? null })
+  return data
+}
+
+export async function patchRentPayment(id: string, status: 'PENDING' | 'PAID', note?: string) {
+  const { data } = await api.patch(`/rent-payments/${id}`, { status, note: note ?? null })
   return data
 }
 
@@ -375,12 +460,13 @@ export interface Brand {
   isHouseBrand: boolean
   monthlyRent: string
   assignedSpace: string | null
-  cutoffDate: string | null
+  cutoffDaySlots: number[]
   commissionPercent: string
   cardFeePayer: CommissionFeePayer
   transferFeePayer: CommissionFeePayer
   inviteCodeExpiresAt: string | null
   ownerUserId: string | null
+  createdAt?: string
   owner?: { id: string; name: string; email: string } | null
   _count?: { products: number; users: number }
   temporaryPassword?: string
@@ -434,7 +520,7 @@ export async function importBrandsCsv(csv: string): Promise<BrandImportResult> {
 }
 
 export async function importBrandsRows(
-  rows: Array<Record<string, string | number | null | undefined>>,
+  rows: Array<Record<string, string | number | number[] | null | undefined>>,
 ): Promise<BrandImportResult> {
   const { data } = await api.post<BrandImportResult>('/brands/import', { rows })
   return data
@@ -502,8 +588,11 @@ export interface ProductImportResult {
   errors: Array<{ row: number; name?: string; error: string }>
 }
 
-export async function downloadProductsTemplate(): Promise<Blob> {
-  const { data } = await api.get('/products/template', { responseType: 'blob' })
+export async function downloadProductsTemplate(brandId?: string): Promise<Blob> {
+  const { data } = await api.get('/products/template', {
+    responseType: 'blob',
+    params: brandId ? { brandId } : undefined,
+  })
   return data
 }
 
@@ -526,6 +615,13 @@ export interface BrandSummary {
   to: string
   rent: number
   accruedRent: number
+  rentPayment?: {
+    id: string
+    status: 'PENDING' | 'PAID'
+    amount: number
+    dueDate: string
+    paidAt: string | null
+  } | null
   cutBreakdown: {
     efectivo: number
     tarjeta: number
@@ -533,6 +629,9 @@ export interface BrandSummary {
     otro: number
   }
   totalCut: number
+  openCut?: number
+  closedUnpaid?: number
+  paidCut?: number
   dailySeries: Array<{ date: string; total: number }>
 }
 

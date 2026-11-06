@@ -34,6 +34,10 @@ export type EntitlementModule =
   | 'orders'
   | 'cortes'
   | 'mensualidad'
+  // Línea Citas (COSDI)
+  | 'appointments'
+  | 'servicesConfig'
+  | 'whatsappSettings'
 
 /** Plan NEGOCIO: lista completa del showroom actual + stubs administrativos. */
 const NEGOCIO_MODULES: EntitlementModule[] = [
@@ -78,6 +82,26 @@ const ENTITLEMENTS_BY_PLAN: Record<PlanType, EntitlementModule[]> = {
     'preferences',
     'business',
   ],
+  CITAS_RECORDATORIOS: ['dashboard', 'preferences', 'business'],
+  CITAS_PANEL: [
+    'dashboard',
+    'appointments',
+    'servicesConfig',
+    'customers',
+    'users',
+    'preferences',
+    'business',
+  ],
+  CITAS_IA: [
+    'dashboard',
+    'appointments',
+    'servicesConfig',
+    'whatsappSettings',
+    'customers',
+    'users',
+    'preferences',
+    'business',
+  ],
   MARCA: [
     'dashboard',
     'products',
@@ -114,12 +138,19 @@ export type FeatureFlag =
   | 'ordersKitchen'
   | 'ai'
   | 'sms'
+  // Línea Citas (COSDI)
+  | 'publicBooking'
+  | 'whatsappReminders'
+  | 'remindersApi'
 
 const FLAGS_BY_PLAN: Record<PlanType, FeatureFlag[]> = {
   NEGOCIO: [],
   CLINICA: ['patientReminders', 'medicalHistory'],
   RESTAURANTE: ['dishes', 'ordersKitchen', 'ai', 'sms'],
   MARCA: [],
+  CITAS_RECORDATORIOS: ['whatsappReminders', 'remindersApi'],
+  CITAS_PANEL: ['publicBooking', 'whatsappReminders'],
+  CITAS_IA: ['publicBooking', 'whatsappReminders', 'ai'],
 }
 
 export function getFeatureFlags(planType: PlanType | null | undefined): FeatureFlag[] {

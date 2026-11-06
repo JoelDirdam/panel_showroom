@@ -95,7 +95,7 @@
             </p>
             <router-link
               v-if="!hasHouseBrand"
-              to="/brands/new?house=1"
+              to="/brands/mine"
               class="mt-3 inline-block text-xs font-medium text-brand-500 hover:underline"
             >
               Registrar mi marca propia →
@@ -323,6 +323,38 @@
           <p v-if="prefsMsg" class="text-sm text-success-600 dark:text-success-400">{{ prefsMsg }}</p>
           <p v-if="prefsError" class="text-sm text-error-500">{{ prefsError }}</p>
 
+          <div
+            v-if="showCutoffAlignConfirm"
+            class="fixed inset-0 z-99999 flex items-center justify-center bg-black/50 p-4"
+            @click.self="showCutoffAlignConfirm = false"
+          >
+            <div class="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-gray-900">
+              <h3 class="text-lg font-semibold text-gray-800 dark:text-white">Alinear días de corte</h3>
+              <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                Al guardar, todas las marcas usarán estos días de corte
+                ({{ prefsForm.cutoffDaySlots.join(', ') }}). ¿Continuar?
+              </p>
+              <div class="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  class="rounded-lg px-4 py-2 text-sm text-gray-600"
+                  :disabled="prefsSaving"
+                  @click="showCutoffAlignConfirm = false"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  :disabled="prefsSaving"
+                  @click="confirmSavePreferences"
+                >
+                  {{ prefsSaving ? 'Guardando…' : 'Sí, alinear marcas' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="flex justify-end">
             <button
               type="submit"
@@ -405,19 +437,71 @@ import {
 
 const auth = useAuthStore()
 
-function apiError(e: unknown, fallback: string): string {
-  return (e as { response?: { data?: { error?: string } } }).response?.data?.error || fallback
+const PREF_FIELD_LABELS: Record<string, string> = {
+  primaryTerminalCommission: 'Terminal primaria (%)',
+  secondaryTerminalCommission: 'Terminal secundaria (%)',
+  transferCommission: 'Transferencia (%)',
+  layawayDueDays: 'Días para vencimiento de apartados',
+  labelWidthMm: 'Ancho de etiqueta (mm)',
+  labelHeightMm: 'Alto de etiqueta (mm)',
+  ticketFixedComment: 'Comentarios fijos en tickets',
+  usdEnabled: 'Pagos en dólares',
+  usdRateMode: 'Tipo de cambio',
+  usdFixedRate: 'Tipo de cambio fijo',
+  cutoffType: 'Tipo de corte',
+  cutoffWeekday: 'Día de la semana para el corte',
+  cutoffDaySlots: 'Días del mes para el corte',
+  flexibleInventory: 'Inventario flexible',
+  printTickets: 'Imprimir tickets',
+  chargeIva: 'Cobrar IVA',
 }
 
-function numOrNull(value: string): number | null {
-  const trimmed = value.trim()
+function apiError(e: unknown, fallback: string): string {
+  const data = (
+    e as {
+      response?: {
+        data?: {
+          error?: string
+          details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] }
+        }
+      }
+      message?: string
+    }
+  ).response?.data
+
+  const fieldErrors = data?.details?.fieldErrors
+  if (fieldErrors) {
+    const parts = Object.entries(fieldErrors).flatMap(([field, msgs]) => {
+      if (!msgs?.length) return []
+      const label = PREF_FIELD_LABELS[field] || field
+      return msgs.map((msg) => `${label}: ${msg}`)
+    })
+    if (parts.length) return parts.join(' · ')
+  }
+
+  const formErrors = data?.details?.formErrors?.filter(Boolean)
+  if (formErrors?.length) return formErrors.join(' · ')
+
+  if (data?.error) return data.error
+
+  // Errores locales (p. ej. TypeError al parsear) no traen response de Axios.
+  const local = e instanceof Error ? e.message : null
+  if (local && !local.startsWith('Request failed')) return local
+
+  return fallback
+}
+
+function numOrNull(value: string | number | null | undefined): number | null {
+  if (value == null) return null
+  const trimmed = String(value).trim()
   if (!trimmed) return null
   const parsed = Number(trimmed)
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function intOrNull(value: string): number | null {
-  const trimmed = value.trim()
+function intOrNull(value: string | number | null | undefined): number | null {
+  if (value == null) return null
+  const trimmed = String(value).trim()
   if (!trimmed) return null
   const parsed = parseInt(trimmed, 10)
   return Number.isFinite(parsed) ? parsed : null
@@ -556,6 +640,8 @@ const prefsLoading = ref(true)
 const prefsSaving = ref(false)
 const prefsError = ref<string | null>(null)
 const prefsMsg = ref<string | null>(null)
+const showCutoffAlignConfirm = ref(false)
+const cutoffAlignConfirmed = ref(false)
 
 const prefsForm = reactive({
   primaryTerminalCommission: '',
@@ -617,9 +703,11 @@ function toggleCutoffDay(day: number) {
 }
 
 function applyPreferences(data: BusinessPreferences) {
-  prefsForm.primaryTerminalCommission = data.primaryTerminalCommission ?? ''
-  prefsForm.secondaryTerminalCommission = data.secondaryTerminalCommission ?? ''
-  prefsForm.transferCommission = data.transferCommission ?? ''
+  prefsForm.primaryTerminalCommission =
+    data.primaryTerminalCommission != null ? String(data.primaryTerminalCommission) : ''
+  prefsForm.secondaryTerminalCommission =
+    data.secondaryTerminalCommission != null ? String(data.secondaryTerminalCommission) : ''
+  prefsForm.transferCommission = data.transferCommission != null ? String(data.transferCommission) : ''
   prefsForm.layawayDueDays = data.layawayDueDays
   prefsForm.labelWidthMm = data.labelWidthMm != null ? String(data.labelWidthMm) : ''
   prefsForm.labelHeightMm = data.labelHeightMm != null ? String(data.labelHeightMm) : ''
@@ -629,7 +717,7 @@ function applyPreferences(data: BusinessPreferences) {
   prefsForm.chargeIva = data.chargeIva
   prefsForm.usdEnabled = data.usdEnabled
   prefsForm.usdRateMode = data.usdRateMode ?? ''
-  prefsForm.usdFixedRate = data.usdFixedRate ?? ''
+  prefsForm.usdFixedRate = data.usdFixedRate != null ? String(data.usdFixedRate) : ''
   prefsForm.cutoffType = data.cutoffType
   prefsForm.cutoffWeekday = data.cutoffWeekday
   prefsForm.cutoffDaySlots = [...data.cutoffDaySlots].sort((a, b) => a - b)
@@ -647,18 +735,52 @@ async function loadPreferences() {
   }
 }
 
+function validateCommission(raw: string | number | null | undefined, label: string): string | null {
+  const trimmed = String(raw ?? '').trim()
+  if (!trimmed) return null
+  const value = numOrNull(trimmed)
+  if (value == null) return `${label}: debe ser un número`
+  if (value < 0 || value > 100) return `${label}: debe estar entre 0 y 100`
+  return null
+}
+
 function validatePrefs(): string | null {
-  if (!prefsForm.layawayDueDays || prefsForm.layawayDueDays < 1) {
-    return 'Los días para vencimiento de apartados deben ser al menos 1'
+  for (const [raw, label] of [
+    [prefsForm.primaryTerminalCommission, 'Terminal primaria (%)'],
+    [prefsForm.secondaryTerminalCommission, 'Terminal secundaria (%)'],
+    [prefsForm.transferCommission, 'Transferencia (%)'],
+  ] as const) {
+    const err = validateCommission(raw, label)
+    if (err) return err
   }
+
+  if (!prefsForm.layawayDueDays || prefsForm.layawayDueDays < 1 || prefsForm.layawayDueDays > 365) {
+    return 'Días para vencimiento de apartados: debe ser entre 1 y 365'
+  }
+
+  const labelW = String(prefsForm.labelWidthMm ?? '').trim()
+  if (labelW) {
+    const w = intOrNull(labelW)
+    if (w == null || w < 1) return 'Ancho de etiqueta (mm): debe ser un entero mayor a 0'
+  }
+  const labelH = String(prefsForm.labelHeightMm ?? '').trim()
+  if (labelH) {
+    const h = intOrNull(labelH)
+    if (h == null || h < 1) return 'Alto de etiqueta (mm): debe ser un entero mayor a 0'
+  }
+
   if (prefsForm.cutoffType === 'WEEKLY' && !prefsForm.cutoffWeekday) {
-    return 'Selecciona el día de la semana para el corte'
+    return 'Día de la semana para el corte: selecciónalo'
   }
   if (prefsForm.cutoffType === 'MONTHLY_FIXED' && prefsForm.cutoffDaySlots.length === 0) {
-    return 'Selecciona al menos un día del mes para el corte'
+    return 'Días del mes para el corte: elige al menos uno'
   }
-  if (prefsForm.usdEnabled && prefsForm.usdRateMode === 'FIXED' && numOrNull(prefsForm.usdFixedRate) == null) {
-    return 'Define el tipo de cambio fijo'
+  if (prefsForm.usdEnabled && !prefsForm.usdRateMode) {
+    return 'Tipo de cambio: elige Fijo o Automático'
+  }
+  if (prefsForm.usdEnabled && prefsForm.usdRateMode === 'FIXED') {
+    const rate = numOrNull(prefsForm.usdFixedRate)
+    if (rate == null || rate <= 0) return 'Tipo de cambio fijo: debe ser mayor a 0'
   }
   return null
 }
@@ -672,6 +794,24 @@ async function savePreferences() {
     return
   }
 
+  const willAlignBrands =
+    prefsForm.cutoffType === 'MONTHLY_FIXED' && prefsForm.cutoffDaySlots.length > 0
+  if (willAlignBrands && !cutoffAlignConfirmed.value) {
+    showCutoffAlignConfirm.value = true
+    return
+  }
+
+  await persistPreferences()
+}
+
+async function confirmSavePreferences() {
+  cutoffAlignConfirmed.value = true
+  showCutoffAlignConfirm.value = false
+  await persistPreferences()
+  cutoffAlignConfirmed.value = false
+}
+
+async function persistPreferences() {
   prefsSaving.value = true
   try {
     const payload: UpdateBusinessPreferencesPayload = {
@@ -695,10 +835,16 @@ async function savePreferences() {
     }
     const data = await updatePreferences(payload)
     applyPreferences(data)
-    prefsMsg.value = 'Preferencias guardadas'
-    // Refresca `auth.user.preferences` para que otras vistas (p. ej. apartados
-    // de marca) reflejen de inmediato el nuevo `layawayDueDays`.
-    await auth.fetchMe()
+    const aligned = data.brandsAligned ?? 0
+    prefsMsg.value =
+      aligned > 0
+        ? `Preferencias guardadas. Se alinearon ${aligned} marca(s) a estos días de corte.`
+        : 'Preferencias guardadas'
+    try {
+      await auth.fetchMe()
+    } catch {
+      // El guardado ya aplicó; un fallo de /me no debe mostrarse como error de preferencias.
+    }
   } catch (e) {
     prefsError.value = apiError(e, 'No se pudieron guardar las preferencias')
   } finally {

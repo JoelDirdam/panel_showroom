@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div :class="disabled ? 'opacity-50' : undefined">
     <label :for="inputId" class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
       {{ label }}
     </label>
@@ -7,7 +7,8 @@
       <div class="absolute">
         <select
           v-model="country"
-          class="appearance-none rounded-l-lg border-0 border-r border-gray-200 bg-transparent bg-none py-3 pl-3.5 pr-8 leading-tight text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:text-gray-400"
+          :disabled="disabled"
+          class="appearance-none rounded-l-lg border-0 border-r border-gray-200 bg-transparent bg-none py-3 pl-3.5 pr-8 leading-tight text-gray-700 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:text-gray-400 disabled:cursor-not-allowed"
           @change="onCountryChange"
         >
           <option v-for="opt in PHONE_COUNTRY_OPTIONS" :key="opt.value" :value="opt.value">
@@ -33,8 +34,9 @@
         v-model="displayValue"
         type="tel"
         :placeholder="placeholder"
+        :disabled="disabled"
         maxlength="20"
-        class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent py-3 pl-[84px] pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+        class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent py-3 pl-[84px] pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800 disabled:cursor-not-allowed disabled:bg-gray-50 dark:disabled:bg-gray-800/50"
         @input="onInput"
       />
     </div>
@@ -43,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, useId } from 'vue'
 import {
   formatPhone,
   parseDisplayInput,
@@ -60,10 +62,12 @@ const props = withDefaults(
     id?: string
     placeholder?: string
     hint?: string
+    disabled?: boolean
   }>(),
   {
     label: 'Teléfono',
     placeholder: '+52',
+    disabled: false,
   },
 )
 
@@ -71,17 +75,15 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-let autoId = 0
-const fallbackId = `phone-field-${++autoId}`
-
-const inputId = computed(() => props.id ?? fallbackId)
+const generatedId = useId()
+const inputId = computed(() => props.id ?? generatedId)
 
 const country = ref<PhoneCountry>('MX')
 const displayValue = ref('+52')
 const syncing = ref(false)
 
 function emitStored() {
-  if (syncing.value) return
+  if (syncing.value || props.disabled) return
   const parsed = parseDisplayInput(displayValue.value, country.value)
   country.value = parsed.country
   emit('update:modelValue', formatPhone(parsed.country, parsed.local))
@@ -92,6 +94,7 @@ function onInput() {
 }
 
 function onCountryChange() {
+  if (props.disabled) return
   const parsed = parseDisplayInput(displayValue.value, country.value)
   // Keep national digits when switching country; reset prefix in the field
   displayValue.value = toDisplayValue(country.value, parsed.local)

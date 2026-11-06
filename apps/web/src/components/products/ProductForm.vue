@@ -15,38 +15,32 @@
         </div>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Categoría</label>
-          <div class="flex gap-2">
-            <select v-model="form.categoryId" class="field">
-              <option value="">Sin categoría</option>
-              <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
-            </select>
-            <button
-              type="button"
-              class="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
-              @click="showNewCategory = !showNewCategory"
-            >
-              Nueva
-            </button>
-          </div>
-          <div v-if="showNewCategory" class="mt-2 flex gap-2">
-            <input v-model="newCategoryName" class="field" placeholder="Nombre de categoría" />
-            <button
-              type="button"
-              class="whitespace-nowrap rounded-lg bg-brand-500 px-3 py-2 text-sm text-white"
-              @click="addCategory"
-            >
-              Crear
-            </button>
-          </div>
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div class="shrink-0">
+          <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Imagen (opcional)</label>
+          <ProductImageDropzone
+            :preview-url="imagePreview"
+            :uploading="uploadingImage"
+            @file="onImageFile"
+            @error="(msg) => (error = msg)"
+          />
         </div>
-        <div>
-          <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">
-            Nombre <span class="text-error-500">*</span>
-          </label>
-          <input v-model="form.name" required class="field" />
+        <div class="flex min-w-0 flex-1 flex-col gap-4">
+          <div>
+            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">
+              Nombre <span class="text-error-500">*</span>
+            </label>
+            <input v-model="form.name" required class="field" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Categoría</label>
+            <CategoryAutocompleteInput
+              ref="categoryInputRef"
+              v-model="form.categoryId"
+              :categories="categories"
+              @category-created="loadCategories"
+            />
+          </div>
         </div>
       </div>
 
@@ -81,21 +75,18 @@
           />
         </div>
         <div v-if="isEdit">
-          <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cantidad actual</label>
-          <input :value="currentQuantity" disabled class="field opacity-60" />
+          <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Inventario actual</label>
+          <p class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-white/[0.02] dark:text-gray-200">
+            En inventario: <strong>{{ currentQuantity }}</strong> uds
+          </p>
         </div>
-      </div>
-
-      <div>
-        <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Imagen (opcional)</label>
-        <input type="file" accept="image/*" class="field" @change="onImageChange" />
-        <p v-if="uploadingImage" class="mt-1 text-xs text-gray-500 dark:text-gray-400">Subiendo imagen…</p>
-        <img
-          v-if="imagePreview"
-          :src="imagePreview"
-          alt="Vista previa"
-          class="mt-2 h-24 w-24 rounded-lg object-cover"
-        />
+        <div v-if="isEdit">
+          <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Cantidad a agregar</label>
+          <input v-model.number="addQuantity" type="number" min="0" class="field" />
+          <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Solo indica las unidades nuevas.
+          </p>
+        </div>
       </div>
 
       <p v-if="error" class="text-sm text-error-500">{{ error }}</p>
@@ -125,8 +116,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import CategoryAutocompleteInput from '@/components/products/CategoryAutocompleteInput.vue'
+import ProductImageDropzone from '@/components/products/ProductImageDropzone.vue'
 import api, {
-  createCategory,
   extractApiError,
   fetchCategories,
   uploadProductImage,
@@ -135,6 +127,7 @@ import api, {
   type Product,
 } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import { resolveUploadUrl } from '@/utils/mediaUrl'
 
 const props = withDefaults(
   defineProps<{
@@ -162,14 +155,14 @@ const isEdit = computed(() => props.mode === 'edit')
 
 const categories = ref<Category[]>([])
 const brands = ref<Brand[]>([])
-const showNewCategory = ref(false)
-const newCategoryName = ref('')
+const categoryInputRef = ref<InstanceType<typeof CategoryAutocompleteInput> | null>(null)
 const uploadingImage = ref(false)
 const imagePreview = ref<string | null>(null)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 const currentQuantity = ref(0)
+const addQuantity = ref(0)
 
 const form = reactive({
   brandId: props.brandId || '',
@@ -212,29 +205,23 @@ async function loadProduct() {
   form.minStock = data.stock?.minStock ?? 5
   form.sku = data.sku
   form.imageUrl = data.imageUrl || null
-  imagePreview.value = data.imageUrl || null
+  imagePreview.value = resolveUploadUrl(data.imageUrl)
   currentQuantity.value = data.stock?.quantity ?? 0
 }
 
-async function addCategory() {
-  if (!newCategoryName.value.trim()) return
-  const category = await createCategory(newCategoryName.value.trim())
-  await loadCategories()
-  form.categoryId = category.id
-  newCategoryName.value = ''
-  showNewCategory.value = false
-}
-
-async function onImageChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+async function onImageFile(file: File) {
   uploadingImage.value = true
+  error.value = null
+  const localPreview = URL.createObjectURL(file)
+  imagePreview.value = localPreview
   try {
     form.imageUrl = await uploadProductImage(file)
-    imagePreview.value = form.imageUrl
+    URL.revokeObjectURL(localPreview)
+    imagePreview.value = resolveUploadUrl(form.imageUrl)
   } catch {
     error.value = 'No se pudo subir la imagen'
+    URL.revokeObjectURL(localPreview)
+    imagePreview.value = resolveUploadUrl(form.imageUrl)
   } finally {
     uploadingImage.value = false
   }
@@ -255,21 +242,43 @@ async function save() {
 
   saving.value = true
   try {
+    const categoryId = await categoryInputRef.value?.resolveCategoryId() ?? null
+
     if (isEdit.value && props.productId) {
       await api.patch(`/products/${props.productId}`, {
         name: form.name.trim(),
-        categoryId: form.categoryId || null,
+        categoryId,
         description: form.description.trim() || null,
         price: form.price,
         minStock: form.minStock,
         imageUrl: form.imageUrl,
       })
-      success.value = 'Producto actualizado.'
+      if (addQuantity.value > 0) {
+        if (auth.isAdmin) {
+          await api.post(`/stock/${props.productId}/entries`, {
+            quantity: addQuantity.value,
+            note: 'Agregado desde edición de producto',
+          })
+        } else {
+          await api.post('/product-requests', {
+            type: 'RESTOCK',
+            productId: props.productId,
+            quantity: addQuantity.value,
+            notes: 'Agregado desde edición de producto',
+          })
+        }
+      }
+      success.value =
+        addQuantity.value > 0
+          ? auth.isAdmin
+            ? 'Producto actualizado y stock agregado.'
+            : 'Producto actualizado. Solicitud de restock enviada.'
+          : 'Producto actualizado.'
     } else {
       const payload = {
         name: form.name.trim(),
         sku: form.sku.trim() || undefined,
-        categoryId: form.categoryId || null,
+        categoryId,
         description: form.description.trim() || null,
         price: form.price,
         imageUrl: form.imageUrl,

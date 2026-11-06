@@ -105,10 +105,22 @@ const router = createRouter({
       meta: { title: 'Marcas', adminOnly: true },
     },
     {
+      path: '/brands/import',
+      name: 'BrandsImport',
+      component: () => import('../views/showroom/brands/BrandsImport.vue'),
+      meta: { title: 'Importar marcas', adminOnly: true },
+    },
+    {
       path: '/brands/new',
       name: 'BrandCreate',
       component: () => import('../views/showroom/brands/BrandForm.vue'),
       meta: { title: 'Nueva marca', adminOnly: true },
+    },
+    {
+      path: '/brands/mine',
+      name: 'HouseBrandCreate',
+      component: () => import('../views/showroom/brands/HouseBrandForm.vue'),
+      meta: { title: 'Mi marca', adminOnly: true },
     },
     {
       path: '/brands/:id/edit',
@@ -121,6 +133,12 @@ const router = createRouter({
       name: 'BrandOwner',
       component: () => import('../views/showroom/brands/BrandOwner.vue'),
       meta: { title: 'Propietario y accesos', adminOnly: true },
+    },
+    {
+      path: '/brands/:id/products/import',
+      name: 'BrandProductsImport',
+      component: () => import('../views/showroom/products/ProductsImport.vue'),
+      meta: { title: 'Importar productos', adminOnly: true },
     },
     {
       path: '/brands/:id/products/new',
@@ -157,6 +175,12 @@ const router = createRouter({
       name: 'BrandDetail',
       component: () => import('../views/showroom/brands/BrandDetail.vue'),
       meta: { title: 'Resumen de marca', adminOnly: true },
+    },
+    {
+      path: '/products/import',
+      name: 'ProductsImport',
+      component: () => import('../views/showroom/products/ProductsImport.vue'),
+      meta: { title: 'Importar productos', adminOnly: true },
     },
     {
       path: '/products/new',
@@ -199,6 +223,30 @@ const router = createRouter({
       name: 'ProductRequests',
       component: () => import('../views/showroom/ProductRequests.vue'),
       meta: { title: 'Solicitudes de productos' },
+    },
+    {
+      path: '/appointments',
+      name: 'Appointments',
+      component: () => import('../views/appointments/AppointmentsView.vue'),
+      meta: { title: 'Citas', adminOnly: true },
+    },
+    {
+      path: '/appointments/config',
+      name: 'ServicesConfig',
+      component: () => import('../views/appointments/ServicesConfigView.vue'),
+      meta: { title: 'Servicios y horarios', adminOnly: true },
+    },
+    {
+      path: '/reservar/:slug',
+      name: 'PublicBooking',
+      component: () => import('../views/appointments/PublicBooking.vue'),
+      meta: { title: 'Agendar cita', public: true },
+    },
+    {
+      path: '/suscripcion-vencida',
+      name: 'SubscriptionExpired',
+      component: () => import('../views/appointments/SubscriptionExpired.vue'),
+      meta: { title: 'Cuenta pausada' },
     },
     {
       path: '/agenda',
@@ -300,7 +348,7 @@ const ONBOARDING_PATHS = new Set([
 ])
 
 router.beforeEach(async (to, _from, next) => {
-  document.title = `${to.meta.title || 'Panel'} | PuntoManeki`
+  document.title = `${to.meta.title || 'Panel'} | COSDI`
 
   const auth = useAuthStore()
   const appHome = '/home'
@@ -377,6 +425,11 @@ router.beforeEach(async (to, _from, next) => {
       // Ya completó el onboarding: no tiene sentido volver a esas vistas.
       return next(appHome)
     }
+  }
+
+  // Plan de Citas: el panel de inicio es la agenda, no el showroom.
+  if (to.path === '/home' && auth.user?.subscription?.planType?.startsWith('CITAS_')) {
+    return next('/appointments')
   }
 
   if (to.meta.adminOnly && auth.user?.role !== 'BUSINESS') {

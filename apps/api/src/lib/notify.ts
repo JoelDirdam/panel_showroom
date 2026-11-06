@@ -33,4 +33,51 @@ export class ConsoleNotifyAdapter implements NotificationProvider {
   }
 }
 
-export const notify: NotificationProvider = new ConsoleNotifyAdapter()
+const PURPOSE_SUBJECT: Record<NotifyPurpose, string> = {
+  'verify-email': 'Tu código de verificación de COSDI',
+  'change-email': 'Confirma tu nuevo correo en COSDI',
+  'verify-phone': 'Tu código de verificación de COSDI',
+}
+
+/**
+ * Email real vía Resend (https://resend.com). Requiere RESEND_API_KEY y EMAIL_FROM
+ * (ej. "COSDI <no-reply@cosdi.mx>") con el dominio verificado en Resend.
+ * El SMS sigue en consola hasta contratar un proveedor.
+ */
+export class ResendEmailAdapter extends ConsoleNotifyAdapter {
+  constructor(
+    private readonly apiKey: string,
+    private readonly from: string,
+  ) {
+    super()
+  }
+
+  override async sendEmailCode(to: string, code: string, purpose: NotifyPurpose): Promise<void> {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: this.from,
+        to: [to],
+        subject: PURPOSE_SUBJECT[purpose],
+        html: `<p>Tu código es:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px">${code}</p><p>Vence en unos minutos. Si no lo solicitaste, ignora este correo.</p><p>— COSDI</p>`,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) {
+      throw new Error(`Resend respondió ${res.status}`)
+    }
+  }
+}
+
+function createNotifyProvider(): NotificationProvider {
+  const apiKey = process.env.RESEND_API_KEY?.trim()
+  const from = process.env.EMAIL_FROM?.trim()
+  if (apiKey && from) return new ResendEmailAdapter(apiKey, from)
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('[notify] RESEND_API_KEY/EMAIL_FROM no configurados: los correos NO se envían en producción')
+  }
+  return new ConsoleNotifyAdapter()
+}
+
+export const notify: NotificationProvider = createNotifyProvider()

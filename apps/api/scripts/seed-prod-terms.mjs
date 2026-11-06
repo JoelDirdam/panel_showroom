@@ -8,7 +8,7 @@ try {
     update: {},
     create: {
       version: '1.0',
-      title: 'Terminos y Condiciones Punto Maneki',
+      title: 'Terminos y Condiciones COSDI',
       content:
         'Documento legal placeholder version 1.0. Al registrarte aceptas estos terminos.',
       publishedAt: new Date(),
@@ -16,10 +16,10 @@ try {
   })
 
   const promo = await prisma.promoCode.upsert({
-    where: { code: 'MANEKI30' },
+    where: { code: 'COSDI30' },
     update: { active: true },
     create: {
-      code: 'MANEKI30',
+      code: 'COSDI30',
       extraTrialDays: 15,
       active: true,
     },

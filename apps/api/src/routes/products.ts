@@ -7,7 +7,13 @@ import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
 import { generateUniqueSku } from '../lib/sku.js'
 import { storage } from '../lib/storage.js'
-import { authenticate, authorize, brandFilter, tenantFilter } from '../middleware/auth.js'
+import {
+  brandDisplayName,
+  brandDropdownLabel,
+  resolveBrandRef,
+  sortBrandsForImport,
+} from '../lib/brandImportRef.js'
+import { authenticate, authorize, brandFilter, tenantFilter, type AuthUser } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -113,12 +119,95 @@ const productImportRowSchema = z.object({
   brandId: z.string().optional(),
 })
 
+function importCell(raw: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const key of keys) {
+    const value = raw[key]
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value
+  }
+  return undefined
+}
+
+async function loadImportBrands(user: AuthUser) {
+  const brands = await prisma.brand.findMany({
+    where: tenantFilter(user),
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, name: true, slug: true, isHouseBrand: true, createdAt: true },
+  })
+  return sortBrandsForImport(brands)
+}
+
 /** Plantilla XLSX para alta masiva de productos. */
-router.get('/template', authorize('BUSINESS', 'BRAND'), async (_req, res) => {
+router.get('/template', authorize('BUSINESS', 'BRAND'), async (req, res) => {
+  const queryBrandId = typeof req.query.brandId === 'string' ? req.query.brandId.trim() : ''
+  const scopedBrandId = req.user!.role === 'BRAND' ? req.user!.brandId! : queryBrandId
+  const brands = await loadImportBrands(req.user!)
+
+  if (scopedBrandId) {
+    const scoped = brands.find((brand) => brand.id === scopedBrandId)
+    if (!scoped) return res.status(400).json({ error: 'Marca no encontrada' })
+  }
+
   const workbook = new ExcelJS.Workbook()
   const sheet = workbook.addWorksheet('Productos')
-  sheet.addRow(['name', 'price', 'quantity', 'sku', 'minStock', 'description', 'brandId'])
-  sheet.addRow(['Producto de ejemplo', 199, 10, '', 5, 'Descripción opcional', ''])
+  const includeMarca = !scopedBrandId
+  const headers = includeMarca
+    ? ['nombre', 'precio', 'stock', 'sku', 'stock_min', 'descripcion', 'marca']
+    : ['nombre', 'precio', 'stock', 'sku', 'stock_min', 'descripcion']
+  sheet.addRow(headers)
+  sheet.getRow(1).font = { bold: true }
+  sheet.views = [{ state: 'frozen', ySplit: 1 }]
+  sheet.columns = headers.map((header) => ({
+    width: header === 'descripcion' ? 28 : header === 'nombre' || header === 'marca' ? 24 : 14,
+  }))
+
+  const exampleBrand = scopedBrandId
+    ? brands.find((brand) => brand.id === scopedBrandId)
+    : brands[0]
+  const exampleRow: Array<string | number> = [
+    'Producto de ejemplo',
+    199,
+    10,
+    '',
+    5,
+    'Descripción opcional',
+  ]
+  if (includeMarca) exampleRow.push(exampleBrand ? brandDisplayName(exampleBrand) : '')
+  sheet.addRow(exampleRow)
+
+  if (includeMarca) {
+    const marcaCell = sheet.getCell('G1')
+    marcaCell.note = 'Usa el nombre o el número de la hoja Marcas.'
+
+    const refSheet = workbook.addWorksheet('Marcas')
+    refSheet.addRow(['#', 'nombre', 'etiqueta'])
+    refSheet.getRow(1).font = { bold: true }
+    refSheet.views = [{ state: 'frozen', ySplit: 1 }]
+    brands.forEach((brand, index) => {
+      refSheet.addRow([index + 1, brandDisplayName(brand), brandDropdownLabel(index, brand)])
+    })
+    refSheet.getColumn(1).width = 8
+    refSheet.getColumn(2).width = 28
+    refSheet.getColumn(3).width = 32
+    refSheet.getColumn(3).hidden = true
+
+    if (brands.length > 0) {
+      const validations = (
+        sheet as ExcelJS.Worksheet & {
+          dataValidations: { add: (range: string, options: ExcelJS.DataValidation) => void }
+        }
+      ).dataValidations
+      validations.add('G2:G1000', {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`Marcas!$C$2:$C$${brands.length + 1}`],
+        showErrorMessage: false,
+        promptTitle: 'Marca',
+        prompt: 'Elige de la lista, o escribe el nombre o el número (#) de la hoja Marcas.',
+        showInputMessage: true,
+      })
+    }
+  }
+
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
   res.setHeader('Content-Disposition', 'attachment; filename="plantilla-productos.xlsx"')
   await workbook.xlsx.write(res)
@@ -135,43 +224,43 @@ router.post('/import', authorize('BUSINESS', 'BRAND'), async (req, res) => {
   const defaultBrandId =
     req.user!.role === 'BRAND' ? req.user!.brandId! : typeof body.brandId === 'string' ? body.brandId : ''
 
-  if (!defaultBrandId && req.user!.role === 'BUSINESS') {
-    // brandId puede venir por fila
-  }
-
+  const brands = await loadImportBrands(req.user!)
   const created: string[] = []
   const errors: Array<{ row: number; name?: string; error: string }> = []
 
   for (let i = 0; i < body.rows.length; i++) {
     const raw = body.rows[i] as Record<string, unknown>
-    const rowBrandId =
-      typeof raw.brandId === 'string' && raw.brandId.trim()
-        ? raw.brandId.trim()
-        : defaultBrandId
+    const rawBrandRef = importCell(raw, 'brandId', 'marca', 'brand', 'brandid')
+    const resolvedBrandId =
+      req.user!.role === 'BRAND'
+        ? req.user!.brandId!
+        : resolveBrandRef(rawBrandRef == null ? '' : String(rawBrandRef), brands) || defaultBrandId
     const parsed = productImportRowSchema.safeParse({
-      name: raw.name ?? raw.producto ?? raw.nombre,
-      price: raw.price ?? raw.precio,
-      quantity: raw.quantity ?? raw.stock ?? 0,
-      sku: raw.sku || undefined,
-      minStock: raw.minStock ?? raw.minstock ?? 5,
-      description: raw.description ?? raw.descripcion ?? undefined,
-      brandId: rowBrandId || undefined,
+      name: importCell(raw, 'name', 'nombre', 'producto'),
+      price: importCell(raw, 'price', 'precio'),
+      quantity: importCell(raw, 'quantity', 'stock') ?? 0,
+      sku: importCell(raw, 'sku') || undefined,
+      minStock: importCell(raw, 'minStock', 'minstock', 'stock_min', 'stockmin') ?? 5,
+      description: importCell(raw, 'description', 'descripcion') ?? undefined,
+      brandId: resolvedBrandId || undefined,
     })
 
     if (!parsed.success) {
-      errors.push({ row: i + 1, name: String(raw.name ?? ''), error: 'Datos inválidos' })
+      errors.push({
+        row: i + 1,
+        name: String(importCell(raw, 'name', 'nombre', 'producto') ?? ''),
+        error: 'Datos inválidos',
+      })
       continue
     }
 
     const brandId = req.user!.role === 'BRAND' ? req.user!.brandId! : parsed.data.brandId
     if (!brandId) {
-      errors.push({ row: i + 1, name: parsed.data.name, error: 'Falta brandId' })
+      errors.push({ row: i + 1, name: parsed.data.name, error: 'Falta marca' })
       continue
     }
 
-    const brand = await prisma.brand.findFirst({
-      where: { id: brandId, ...tenantFilter(req.user!) },
-    })
+    const brand = brands.find((item) => item.id === brandId)
     if (!brand) {
       errors.push({ row: i + 1, name: parsed.data.name, error: 'Marca no encontrada' })
       continue

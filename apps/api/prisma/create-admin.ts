@@ -40,6 +40,14 @@ async function main() {
     },
   })
 
+  await prisma.sucursal.create({
+    data: {
+      tenantId: tenant.id,
+      name: 'Sucursal principal',
+      address: null,
+    },
+  })
+
   const house = await ensureHouseBrand(prisma, tenant, email)
 
   const hash = await bcrypt.hash(password, 10)

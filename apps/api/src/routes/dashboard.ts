@@ -1,6 +1,13 @@
 import { Router } from 'express'
 import { prisma } from '../lib/prisma.js'
-import { authenticate, brandFilter, tenantFilter } from '../middleware/auth.js'
+import { authenticate, authorize, brandFilter, tenantFilter } from '../middleware/auth.js'
+import {
+  buildCutoffAlerts,
+  computeBrandCut,
+  ensureRentPaymentsForMonth,
+  getTenantCutoffPrefs,
+} from '../services/cutoff.service.js'
+import { cutoffDatesInMonth } from '../utils/cutoffDays.js'
 
 const router = Router()
 
@@ -100,7 +107,7 @@ router.get('/home-summary', async (req, res) => {
   const filter = brandFilter(req.user!)
   const isAdmin = req.user!.role === 'BUSINESS'
 
-  const [salesToday, salesAgg, totalProducts, totalBrands, lowStockCount, houseBrand] =
+  const [salesToday, salesAgg, totalProducts, totalBrands, lowStockCount, houseBrand, totalEmployees] =
     await Promise.all([
       prisma.sale.count({
         where: { tenantId, soldAt: { gte: startOfDayNow } },
@@ -123,6 +130,7 @@ router.get('/home-summary', async (req, res) => {
         where: { tenantId, isHouseBrand: true, active: true },
         select: { id: true },
       }),
+      isAdmin ? prisma.employee.count({ where: { tenantId, active: true } }) : Promise.resolve(0),
     ])
 
   const tenant = await prisma.tenant.findUnique({
@@ -135,12 +143,85 @@ router.get('/home-summary', async (req, res) => {
     salesTodayTotal: Number(salesAgg._sum.total ?? 0),
     totalProducts,
     totalBrands,
+    totalEmployees,
     lowStockCount,
     setupStatus: {
       businessConfigured: Boolean(tenant?.onboardingComplete),
       hasHouseBrand: Boolean(houseBrand),
       houseBrandId: houseBrand?.id ?? null,
     },
+  })
+})
+
+router.get('/home-calendar', authorize('BUSINESS'), async (req, res) => {
+  const tenantId = req.user!.tenantId
+  if (!tenantId) {
+    return res.status(400).json({ error: 'Tenant requerido' })
+  }
+
+  const now = new Date()
+  const year = req.query.year ? Number(req.query.year) : now.getFullYear()
+  const month = req.query.month ? Number(req.query.month) : now.getMonth() + 1
+  const monthIndex0 = month - 1
+
+  await ensureRentPaymentsForMonth(tenantId, new Date(year, monthIndex0, 1))
+
+  const [prefs, brands, cutoffAlerts, rentPayments] = await Promise.all([
+    getTenantCutoffPrefs(tenantId),
+    prisma.brand.findMany({
+      where: { tenantId, active: true },
+      select: { id: true, name: true, cutoffDaySlots: true },
+    }),
+    buildCutoffAlerts(tenantId, now),
+    prisma.brandRentPayment.findMany({
+      where: { tenantId, year, month },
+      include: { brand: { select: { id: true, name: true } } },
+    }),
+  ])
+
+  const cutoffMap = cutoffDatesInMonth(prefs, brands, year, monthIndex0)
+  const calendarDays: Array<{
+    date: string
+    cutoffs: string[]
+    rentsDue: Array<{ brandId: string; brandName: string; amount: number; paymentId: string }>
+  }> = []
+
+  const daysInMonth = new Date(year, monthIndex0 + 1, 0).getDate()
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateKey = new Date(year, monthIndex0, d).toISOString().slice(0, 10)
+    const cutoffs = cutoffMap.get(dateKey) ?? []
+    const rentsDue = rentPayments
+      .filter((p) => p.status === 'PENDING' && p.dueDate.toISOString().slice(0, 10) === dateKey)
+      .map((p) => ({
+        brandId: p.brandId,
+        brandName: p.brand.name,
+        amount: Number(p.amount),
+        paymentId: p.id,
+      }))
+    if (cutoffs.length || rentsDue.length) {
+      calendarDays.push({ date: dateKey, cutoffs, rentsDue })
+    }
+  }
+
+  const pendingRents = rentPayments
+    .filter((p) => p.status === 'PENDING')
+    .map((p) => ({
+      brandId: p.brandId,
+      brandName: p.brand.name,
+      dueDate: p.dueDate.toISOString(),
+      amount: Number(p.amount),
+      status: p.status,
+      paymentId: p.id,
+      year: p.year,
+      month: p.month,
+    }))
+
+  return res.json({
+    cutoffAlerts,
+    rentEvents: pendingRents,
+    calendarDays,
+    year,
+    month,
   })
 })
 
