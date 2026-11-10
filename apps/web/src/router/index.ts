@@ -24,12 +24,24 @@ const router = createRouter({
       path: '/',
       name: 'LandingPlanes',
       component: () => import('../views/marketing/LandingPlanes.vue'),
-      meta: { title: 'Planes', public: true },
+      meta: { title: 'Inicio', public: true },
     },
     {
       // Compat: la landing vivía en /planes
       path: '/planes',
       redirect: '/',
+    },
+    {
+      path: '/privacidad',
+      name: 'PrivacyNotice',
+      component: () => import('../views/marketing/PrivacyNotice.vue'),
+      meta: { title: 'Aviso de privacidad', public: true },
+    },
+    {
+      path: '/terminos',
+      name: 'TermsPublic',
+      component: () => import('../views/marketing/TermsPublic.vue'),
+      meta: { title: 'Términos y condiciones', public: true },
     },
     {
       path: '/terms',
