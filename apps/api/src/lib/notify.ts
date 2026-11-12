@@ -53,19 +53,27 @@ export class ResendEmailAdapter extends ConsoleNotifyAdapter {
   }
 
   override async sendEmailCode(to: string, code: string, purpose: NotifyPurpose): Promise<void> {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: this.from,
-        to: [to],
-        subject: PURPOSE_SUBJECT[purpose],
-        html: `<p>Tu código es:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px">${code}</p><p>Vence en unos minutos. Si no lo solicitaste, ignora este correo.</p><p>— COSDI</p>`,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    })
-    if (!res.ok) {
-      throw new Error(`Resend respondió ${res.status}`)
+    // Un fallo de Resend (dominio sin verificar, 422, timeout) NO debe tumbar la API:
+    // las rutas son async en Express 4 y un throw aquí sería un unhandled rejection.
+    // El usuario puede pedir "reenviar código".
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: this.from,
+          to: [to],
+          subject: PURPOSE_SUBJECT[purpose],
+          html: `<p>Tu código es:</p><p style="font-size:28px;font-weight:700;letter-spacing:4px">${code}</p><p>Vence en unos minutos. Si no lo solicitaste, ignora este correo.</p><p>— COSDI</p>`,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      })
+      if (!res.ok) {
+        const detail = (await res.text().catch(() => '')).slice(0, 300)
+        console.error(`[notify:email] Resend respondió ${res.status} (purpose=${purpose}): ${detail}`)
+      }
+    } catch (err) {
+      console.error(`[notify:email] fallo al enviar (purpose=${purpose}):`, err instanceof Error ? err.message : err)
     }
   }
 }
