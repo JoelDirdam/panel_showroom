@@ -25,9 +25,39 @@ El sitio ya muestra exactamente ese nombre y domicilio en el pie de página y en
 
 Ruta: business.facebook.com → Configuración del negocio → Centro de seguridad → Iniciar verificación.
 
-## 4. Número de WhatsApp (618 292 3010)
+## 4. Números de WhatsApp
 
-- Para poder registrarlo en la API de WhatsApp Business **no puede estar activo en la app de WhatsApp ni WhatsApp Business**. Hay que eliminar la cuenta: WhatsApp → Ajustes → Cuenta → Eliminar cuenta (se pierden chats y grupos; haz respaldo).
-- Después de eliminarla, el número solo funcionará vía API (no podrás atenderlo desde el celular salvo con un panel como COSDI).
-- Alternativa sin riesgo: usar el **número de prueba gratuito de Meta** mientras desarrollas, y migrar el 618 292 3010 al final.
-- Ojo: el footer de la home y `VITE_SUPPORT_WHATSAPP` (Dockerfile web) apuntan a este número. Si lo migras a la API, quien escriba ahí caerá en la API; decide si el soporte usará otro número.
+- **618 321 9919 (nuevo, chip dedicado):** es el que se registra en la API de WhatsApp Business (Meta). **No instales WhatsApp ni WhatsApp Business en ese número**; solo debe poder recibir el SMS/llamada con el código de verificación. Conserva el chip activo (recarga periódica) para no perder la línea.
+- **618 292 3010:** queda para soporte con la app WhatsApp Business (la del sitio y `VITE_SUPPORT_WHATSAPP`). No hay que eliminarlo.
+- Nombre para mostrar en Meta: "COSDI" (igual que el sitio).
+
+### Pasos en Meta
+1. business.facebook.com → Configuración del negocio → crear/seleccionar el portafolio comercial "COSDI".
+2. Iniciar la verificación del negocio (sección 3) con la constancia y el comprobante de domicilio.
+3. developers.facebook.com → crear app tipo "Business" → agregar el producto **WhatsApp**.
+4. WhatsApp → Configuración de la API → **Agregar número de teléfono** (618 321 9919, país México +52) y verificar con el código.
+5. Guardar `Phone number ID`, `WhatsApp Business Account ID` y generar un token permanente (usuario del sistema) para el backend.
+
+## 5. Recordatorios de cita por WhatsApp (API de COSDI)
+
+Código: `apps/api/src/services/appointmentReminders.service.ts` (se inicia desde `src/index.ts`). Cada 5 minutos busca citas PENDING/CONFIRMED que empiecen en las próximas N horas y no tengan recordatorio, y envía una **plantilla** por WhatsApp. Si el negocio tiene su propia configuración activa (`WhatsappConfig`) usa esa; si no, usa el número de la plataforma COSDI (variables de entorno).
+
+### Lo que tienes que hacer tú
+1. **Crear la plantilla** en Administrador de WhatsApp → Plantillas de mensajes → Crear:
+   - Nombre: `recordatorio_cita` · Categoría: **Utilidad** · Idioma: **Español (MEX)**
+   - Cuerpo: `Hola {{1}}, te recordamos tu cita en {{2}} ({{3}}) el {{4}}. Si necesitas cambiarla, responde a este mensaje.`
+   - Espera la aprobación (minutos u horas).
+2. **Crear el token permanente**: Configuración del negocio → Usuarios del sistema → Agregar (rol Administrador) → Asignar activos (tu app COSDI y la cuenta de WhatsApp, control total) → Generar token con permisos `whatsapp_business_messaging` y `whatsapp_business_management`. **Cópialo una vez y no lo compartas.**
+3. **Copiar el Phone number ID** del número 618 321 9919 (Administrador de WhatsApp → Números de teléfono, o developers.facebook.com → tu app → WhatsApp → Configuración de la API).
+4. **Variables en Railway** (servicio `api`):
+   - `WHATSAPP_PHONE_NUMBER_ID` = el Phone number ID
+   - `WHATSAPP_ACCESS_TOKEN` = el token permanente
+   - `WHATSAPP_VERIFY_TOKEN` = una cadena larga inventada por ti (para el webhook)
+   - `WHATSAPP_REMINDERS_ENABLED` = `true` (solo cuando la plantilla esté aprobada)
+   - Opcionales: `WHATSAPP_REMINDER_TEMPLATE`, `WHATSAPP_REMINDER_LANG` (`es_MX`), `WHATSAPP_REMINDER_HOURS_BEFORE` (`24`)
+5. **Webhook** (developers.facebook.com → tu app → WhatsApp → Configuración):
+   - URL de devolución de llamada: `https://api.cosdi.mx/api/v1/whatsapp/webhook`
+   - Token de verificación: el mismo `WHATSAPP_VERIFY_TOKEN`
+   - Suscribirse al campo **messages**.
+6. **Desplegar** la API (la migración `20261111000000_appointment_whatsapp_reminders` se aplica sola al arrancar).
+7. **Probar**: crea una cita para dentro de unas horas con tu propio celular y revisa los logs (`[reminders] enviados: 1`).

@@ -146,3 +146,45 @@ export async function sendInteractiveButtons(
     },
   })
 }
+
+export interface TemplateMessageInput {
+  to: string
+  templateName: string
+  languageCode: string
+  /** Valores de {{1}}, {{2}}, ... del cuerpo de la plantilla, en orden. */
+  bodyParams: ReadonlyArray<string>
+}
+
+/**
+ * Envía una plantilla aprobada (necesaria para iniciar conversaciones fuera de la
+ * ventana de 24 h, p. ej. recordatorios de cita).
+ */
+export async function sendTemplateMessage(
+  input: TemplateMessageInput,
+  tenantToken: string,
+  phoneNumberId: string,
+): Promise<WhatsappGraphSendResponse> {
+  if (!input.to || !input.templateName) {
+    throw new HttpError(400, 'Destinatario y plantilla son obligatorios')
+  }
+
+  return postMessage(phoneNumberId, tenantToken, {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: input.to,
+    type: 'template',
+    template: {
+      name: input.templateName,
+      language: { code: input.languageCode },
+      components:
+        input.bodyParams.length > 0
+          ? [
+              {
+                type: 'body',
+                parameters: input.bodyParams.map((text) => ({ type: 'text', text })),
+              },
+            ]
+          : [],
+    },
+  })
+}

@@ -5,6 +5,7 @@ export {
   findActiveConfigByPhoneNumberId,
   findActiveConfigByTenantId,
   sendInteractiveButtons,
+  sendTemplateMessage,
   sendTextMessage,
 } from './whatsapp.service.js'
 export { verifyHubToken } from './whatsapp.webhook.js'

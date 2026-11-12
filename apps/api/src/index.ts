@@ -29,6 +29,7 @@ import chatRoutes from './routes/chat.js'
 import publicRoutes from './routes/public.js'
 import { whatsappWebhookRoutes } from './modules/whatsapp/index.js'
 import { registerInboundAiHandler } from './modules/ai/index.js'
+import { startReminderScheduler } from './services/appointmentReminders.service.js'
 import { UPLOADS_ROOT } from './lib/storage.js'
 import { requireOnboarding, requireTerms } from './middleware/auth.js'
 
@@ -147,4 +148,5 @@ app.use((err: unknown, req: express.Request, res: express.Response, next: expres
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on port ${PORT}`)
   console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`)
+  startReminderScheduler()
 })
