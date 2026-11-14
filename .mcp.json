@@ -7,6 +7,14 @@
       "env": {
         "STRIPE_SECRET_KEY": "${STRIPE_MCP_KEY}"
       }
+    },
+    "stripe-prod": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@stripe/mcp@0.3.4", "--tools=all"],
+      "env": {
+        "STRIPE_SECRET_KEY": "${STRIPE_MCP_KEY_LIVE}"
+      }
     }
   }
 }
