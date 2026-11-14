@@ -249,6 +249,18 @@ const router = createRouter({
       meta: { title: 'Servicios y horarios', adminOnly: true },
     },
     {
+      path: '/appointments/whatsapp',
+      name: 'WhatsappReminders',
+      component: () => import('../views/appointments/WhatsappRemindersView.vue'),
+      meta: { title: 'Recordatorios por WhatsApp', adminOnly: true },
+    },
+    {
+      path: '/suscripcion',
+      name: 'Subscription',
+      component: () => import('../views/billing/SubscriptionView.vue'),
+      meta: { title: 'Mi suscripción', adminOnly: true },
+    },
+    {
       path: '/reservar/:slug',
       name: 'PublicBooking',
       component: () => import('../views/appointments/PublicBooking.vue'),

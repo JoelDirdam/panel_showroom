@@ -56,7 +56,14 @@ function formatWhen(date: Date, timeZone: string): string {
   return `${day} a las ${time}`
 }
 
-function platformCredentials(): { phoneNumberId: string; token: string } | null {
+export function reminderTemplate(): { name: string; language: string } {
+  return {
+    name: envString('WHATSAPP_REMINDER_TEMPLATE', 'recordatorio_cita'),
+    language: envString('WHATSAPP_REMINDER_LANG', 'es_MX'),
+  }
+}
+
+export function platformCredentials(): { phoneNumberId: string; token: string } | null {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim() ?? ''
   const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim() ?? ''
   return phoneNumberId && token ? { phoneNumberId, token } : null
@@ -74,7 +81,11 @@ export async function runReminderTick(now: Date = new Date()): Promise<number> {
       reminderSentAt: null,
       reminderAttempts: { lt: MAX_ATTEMPTS },
       startTime: { gt: now, lte: horizon },
-      tenant: { active: true },
+      tenant: {
+        active: true,
+        // Cuenta pausada o cancelada: no se envían recordatorios.
+        OR: [{ subscription: null }, { subscription: { status: { in: ['TRIALING', 'ACTIVE'] } } }],
+      },
     },
     include: {
       tenant: { select: { id: true, name: true } },
@@ -102,12 +113,22 @@ export async function runReminderTick(now: Date = new Date()): Promise<number> {
 
     const tenantConfig = await prisma.whatsappConfig.findFirst({
       where: { tenantId: appt.tenantId, isActive: true },
-      select: { phoneNumberId: true, accessToken: true },
+      select: { phoneNumberId: true, accessToken: true, templateStatus: true },
     })
-    const creds =
-      tenantConfig?.phoneNumberId && tenantConfig.accessToken
-        ? { phoneNumberId: tenantConfig.phoneNumberId, token: tenantConfig.accessToken }
-        : platform
+    const prefs = await prisma.whatsappConfig.findUnique({
+      where: { tenantId: appt.tenantId },
+      select: { remindersEnabled: true },
+    })
+    if (prefs && !prefs.remindersEnabled) continue
+
+    // Número propio solo si su plantilla ya fue aprobada por Meta; si no, sale del número de COSDI.
+    // ('' = configuración anterior a este control: se respeta como antes.)
+    const ownReady =
+      Boolean(tenantConfig?.phoneNumberId && tenantConfig.accessToken) &&
+      (tenantConfig!.templateStatus === 'APPROVED' || tenantConfig!.templateStatus === '')
+    const creds = ownReady
+      ? { phoneNumberId: tenantConfig!.phoneNumberId, token: tenantConfig!.accessToken }
+      : platform
     if (!creds) continue
 
     const settings = await prisma.agendaSettings.findUnique({

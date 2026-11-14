@@ -13,6 +13,8 @@ export interface PlanInfo {
   description: string
   features: string[]
   available: boolean
+  /** Precio mensual en MXN, sin IVA. Sin precio = aún no se cobra en línea. */
+  priceMxn?: number
 }
 
 export const PLANS: PlanInfo[] = [
@@ -41,9 +43,10 @@ export const PLANS: PlanInfo[] = [
       'Panel para ver y crear citas',
       'Link de citas para compartir en redes',
       'Servicios, precios y horarios',
-      'Recordatorios por WhatsApp (próximamente)',
+      'Recordatorios automáticos por WhatsApp',
     ],
     available: true,
+    priceMxn: 349,
   },
   {
     type: 'CITAS_IA',
@@ -52,6 +55,7 @@ export const PLANS: PlanInfo[] = [
     description: 'Todo el plan Citas, más un asistente de IA que atiende y agenda por WhatsApp.',
     features: ['Todo lo del plan Citas', 'Asistente de IA en WhatsApp', 'Chats en tablero Kanban'],
     available: false,
+    priceMxn: 549,
   },
   {
     type: 'CITAS_RECORDATORIOS',
@@ -60,6 +64,7 @@ export const PLANS: PlanInfo[] = [
     description: 'Solo recordatorios de cita por WhatsApp, vía panel simple o API para desarrolladores.',
     features: ['Recordatorios por WhatsApp', 'API para desarrolladores'],
     available: false,
+    priceMxn: 149,
   },
   {
     type: 'CLINICA',

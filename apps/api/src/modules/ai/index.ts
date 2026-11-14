@@ -7,7 +7,7 @@ export { processCustomerMessage } from './processCustomerMessage.js'
 export function registerInboundAiHandler(): void {
   inboundQueue.setHandler(async (message) => {
     const config = await findActiveConfigByPhoneNumberId(message.tenantPhoneNumberId)
-    if (!config) return
+    if (!config || !config.aiEnabled) return
     await processCustomerMessage(config.tenantId, message.customerPhone, message.messageText)
   })
 }

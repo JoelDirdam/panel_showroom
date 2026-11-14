@@ -21,6 +21,7 @@ export async function findActiveConfigByPhoneNumberId(phoneNumberId: string) {
       phoneNumberId: true,
       accessToken: true,
       systemPrompt: true,
+      aiEnabled: true,
     },
   })
 }
@@ -35,6 +36,7 @@ export async function findActiveConfigByTenantId(tenantId: string) {
       phoneNumberId: true,
       accessToken: true,
       systemPrompt: true,
+      aiEnabled: true,
     },
   })
 }

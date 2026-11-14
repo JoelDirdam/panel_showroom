@@ -109,6 +109,8 @@ export async function buildMeResponse(userId: string) {
           paymentDeferred: freshSub.paymentDeferred,
           currentPeriodEndsAt: freshSub.currentPeriodEndsAt,
           paymentProvider: freshSub.paymentProvider,
+          cancelAtPeriodEnd: freshSub.cancelAtPeriodEnd,
+          hasPaymentMethod: Boolean(freshSub.externalSubscriptionId),
         }
       : null,
     setupStatus: {

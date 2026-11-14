@@ -224,6 +224,8 @@ import {
   House,
   Store,
   Users,
+  MessageCircle,
+  CreditCard,
 } from "lucide-vue-next";
 import { BoxesIcon, ChevronDownIcon, HorizontalDots, BookOpenPesoIcon } from "../../icons";
 import { useSidebar } from "@/composables/useSidebar";
@@ -309,6 +311,17 @@ const menuGroups = computed(() => [
         tourKey: "sidebar-services-config",
         moduleId: "servicesConfig",
       },
+      ...(auth.isAdmin
+        ? [
+            {
+              icon: MessageCircle,
+              name: "Recordatorios WhatsApp",
+              path: "/appointments/whatsapp",
+              tourKey: "sidebar-whatsapp-reminders",
+              moduleId: "servicesConfig",
+            },
+          ]
+        : []),
       {
         icon: CalendarDays,
         name: "Agenda",
@@ -341,7 +354,17 @@ const menuGroups = computed(() => [
         tourKey: "sidebar-sales",
         moduleId: "sales",
       },
-    ].filter((item) => auth.canAccess(item.moduleId)),
+      ...(auth.isAdmin && auth.user?.subscription
+        ? [
+            {
+              icon: CreditCard,
+              name: "Mi suscripción",
+              path: "/suscripcion",
+              tourKey: "sidebar-subscription",
+            },
+          ]
+        : []),
+    ].filter((item) => !item.moduleId || auth.canAccess(item.moduleId)),
   },
 ]);
 

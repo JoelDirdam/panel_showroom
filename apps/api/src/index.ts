@@ -27,6 +27,7 @@ import cutoffsRoutes from './routes/cutoffs.js'
 import rentPaymentsRoutes from './routes/rentPayments.js'
 import chatRoutes from './routes/chat.js'
 import publicRoutes from './routes/public.js'
+import { billingRouter, stripeWebhookRouter } from './routes/billing.js'
 import { whatsappWebhookRoutes } from './modules/whatsapp/index.js'
 import { registerInboundAiHandler } from './modules/ai/index.js'
 import { startReminderScheduler } from './services/appointmentReminders.service.js'
@@ -77,6 +78,8 @@ app.use(
     credentials: true,
   }),
 )
+// El webhook de Stripe necesita el cuerpo crudo: va ANTES de express.json().
+app.use('/api/billing/webhook', stripeWebhookRouter)
 app.use(express.json())
 app.use(
   '/uploads',
@@ -106,6 +109,7 @@ app.use(requireTerms, requireOnboarding)
 app.use('/api/auth', authRoutes)
 app.use('/api/terms', termsRoutes)
 app.use('/api/onboarding', onboardingRoutes)
+app.use('/api/billing', billingRouter)
 app.use('/api/brands', brandsRoutes)
 app.use('/api/products', productsRoutes)
 app.use('/api/stock', stockRoutes)

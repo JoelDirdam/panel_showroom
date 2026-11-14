@@ -12,8 +12,8 @@
 
 | Plan (código) | Precio sugerido* | Qué incluye | Estado |
 |---|---|---|---|
-| **Recordatorios** (`CITAS_RECORDATORIOS`) | **$149/mes** | Recordatorios de cita por WhatsApp. Vía panel mínimo o **API para desarrolladores**. | Plan creado; falta módulo de envío (requiere Meta) |
-| **Citas** (`CITAS_PANEL`) | **$349/mes** | Panel de citas, crear citas, **link público** de reserva, servicios/horarios, recordatorios por WhatsApp. | **Panel + link: listos.** Recordatorios: pendiente de Meta |
+| **Recordatorios** (`CITAS_RECORDATORIOS`) | **$149/mes** | Recordatorios de cita por WhatsApp. Vía panel mínimo o **API para desarrolladores**. | Recordatorios: listos. Falta la API para desarrolladores |
+| **Citas** (`CITAS_PANEL`) | **$349/mes** | Panel de citas, crear citas, **link público** de reserva, servicios/horarios, recordatorios por WhatsApp. | **Listo para vender**: panel, link, recordatorios y cobro con tarjeta |
 | **Citas + IA** (`CITAS_IA`) | **$549/mes** + créditos de IA | Todo lo anterior + asistente de IA que atiende y agenda por WhatsApp, chats en Kanban. | Motor de IA hecho; falta Kanban y medición de uso |
 
 \*Precios en MXN + IVA, dentro del rango de la competencia (StockPoint Clínica $699, sin WhatsApp ni IA). Se pueden ajustar tras los primeros 5 clientes. **La IA se cobra aparte por créditos** (paquetes de 500 / 2,000 / 6,000 respuestas; ver `plan-implementacion.md` §9).
@@ -60,8 +60,8 @@ Piezas por construir: tabla `ApiKey` (hash, tenantId, límites), `Reminder` (col
 
 **Pendiente, en orden**
 1. Aplicar migración en producción y configurar `RESEND_API_KEY`, `CORS_ORIGIN`, `VITE_API_URL` (prompt de Cursor).
-2. **Cobro de suscripción** (Stripe + Mercado Pago) con webhooks que reactiven/pausen.
-3. Recordatorios por WhatsApp (job + plantilla aprobada) — depende de la verificación de Meta.
+2. ~~Cobro de suscripción con Stripe~~ ✅ hecho (ver `cobro-stripe.md`). Falta activar la cuenta real de Stripe y, después, Mercado Pago (OXXO/SPEI).
+3. ~~Recordatorios por WhatsApp~~ ✅ hechos: plantilla `recordatorio_cita` aprobada; salen del número de COSDI o del número propio del negocio (pantalla "Recordatorios WhatsApp").
 4. Kanban de chats + medición/cobro de créditos de IA.
 5. API de recordatorios para desarrolladores.
 6. Aviso de privacidad y términos para el cliente final que agenda (borrador en `docs/legal/`).

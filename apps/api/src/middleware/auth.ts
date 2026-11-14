@@ -123,6 +123,8 @@ const GUARD_ALLOWLIST_PREFIXES = [
   '/api/auth',
   '/api/terms',
   '/api/onboarding',
+  // Pagar debe seguir disponible con la cuenta pausada (402) o sin onboarding terminado.
+  '/api/billing',
   '/api/v1/whatsapp',
   '/api/public',
   '/uploads',

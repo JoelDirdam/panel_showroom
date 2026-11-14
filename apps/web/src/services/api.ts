@@ -54,6 +54,8 @@ export interface User {
     paymentDeferred?: boolean
     currentPeriodEndsAt?: string | null
     paymentProvider?: string | null
+    cancelAtPeriodEnd?: boolean
+    hasPaymentMethod?: boolean
   } | null
   setupStatus?: {
     businessConfigured: boolean
