@@ -68,25 +68,41 @@ function setVar(name, value) {
   if (r.status !== 0) process.exitCode = 1
 }
 
-// 1. Productos y precios (mensual, MXN, IVA incluido)
+// 1. Productos y precios (mensual, MXN, IVA incluido).
+// Un precio con tax_behavior distinto de "inclusive" choca con la tasa de IVA incluida,
+// así que se reemplaza por uno nuevo en el mismo producto y el anterior se archiva.
 const prices = await stripe.prices.list({ active: true, limit: 100 })
 const byPlan = {}
+const stale = {}
 for (const p of prices.data) {
-  if (p.metadata?.planType && p.recurring?.interval === 'month') byPlan[p.metadata.planType] = p.id
+  if (!p.metadata?.planType || p.recurring?.interval !== 'month') continue
+  if (p.tax_behavior === 'inclusive') byPlan[p.metadata.planType] = p.id
+  else stale[p.metadata.planType] = p
 }
 for (const plan of PLANS) {
   if (byPlan[plan.planType]) continue
+  const priceData = {
+    currency: 'mxn',
+    unit_amount: plan.amount,
+    recurring: { interval: 'month' },
+    tax_behavior: 'inclusive',
+    metadata: { planType: plan.planType },
+  }
+  const old = stale[plan.planType]
+  if (old) {
+    const productId = typeof old.product === 'string' ? old.product : old.product.id
+    const price = await stripe.prices.create({ ...priceData, product: productId })
+    await stripe.products.update(productId, { default_price: price.id })
+    await stripe.prices.update(old.id, { active: false })
+    byPlan[plan.planType] = price.id
+    console.log('precio reemplazado (IVA incluido):', plan.name)
+    continue
+  }
   const product = await stripe.products.create({
     name: plan.name,
     description: plan.description,
     metadata: { planType: plan.planType },
-    default_price_data: {
-      currency: 'mxn',
-      unit_amount: plan.amount,
-      recurring: { interval: 'month' },
-      tax_behavior: 'inclusive',
-      metadata: { planType: plan.planType },
-    },
+    default_price_data: priceData,
   })
   byPlan[plan.planType] = typeof product.default_price === 'string' ? product.default_price : product.default_price.id
   console.log('producto creado:', plan.name)
