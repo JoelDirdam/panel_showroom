@@ -16,7 +16,7 @@
 | **Citas** (`CITAS_PANEL`) | **$349/mes** | Panel de citas, crear citas, **link público** de reserva, servicios/horarios, recordatorios por WhatsApp. | **Listo para vender**: panel, link, recordatorios y cobro con tarjeta |
 | **Citas + IA** (`CITAS_IA`) | **$549/mes** + créditos de IA | Todo lo anterior + asistente de IA que atiende y agenda por WhatsApp, chats en Kanban. | Motor de IA hecho; falta Kanban y medición de uso |
 
-\*Precios en MXN + IVA, dentro del rango de la competencia (StockPoint Clínica $699, sin WhatsApp ni IA). Se pueden ajustar tras los primeros 5 clientes. **La IA se cobra aparte por créditos** (paquetes de 500 / 2,000 / 6,000 respuestas; ver `plan-implementacion.md` §9).
+\*Precios en MXN con IVA incluido, dentro del rango de la competencia (StockPoint Clínica $699, sin WhatsApp ni IA). Se pueden ajustar tras los primeros 5 clientes. **La IA se cobra aparte por créditos** (paquetes de 500 / 2,000 / 6,000 respuestas; ver `plan-implementacion.md` §9).
 
 ### Cuenta pausada por falta de pago ✅ (implementado)
 - Si vence la prueba/suscripción: el **negocio ve "Cuenta pausada"** y no accede a su panel (la API responde 402).

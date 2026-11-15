@@ -21,9 +21,7 @@
           <div class="min-w-0">
             <p class="text-lg font-semibold text-gray-800 dark:text-white">Plan {{ plan?.name ?? sub.planType }}</p>
             <p v-if="plan?.priceMxn" class="text-sm text-gray-500 dark:text-gray-400">
-              {{ formatMxn(plan.priceMxn) }} al mes + IVA<span v-if="taxPercent">
-                ({{ formatMxn(plan.priceMxn * (1 + taxPercent / 100)) }} con IVA)</span
-              >
+              {{ formatMxn(plan.priceMxn) }} al mes, IVA incluido
             </p>
           </div>
           <span :class="['shrink-0 rounded-full px-3 py-1 text-xs font-medium', badge.cls]">{{ badge.label }}</span>
@@ -104,7 +102,6 @@ const notice = ref<{ kind: 'ok' | 'info'; text: string } | null>(null)
 
 const sub = computed(() => status.value?.subscription ?? null)
 const stripeConfigured = computed(() => Boolean(status.value?.stripeConfigured))
-const taxPercent = computed(() => status.value?.taxPercent ?? 0)
 const plan = computed(() => planInfo(sub.value?.planType))
 
 const badge = computed(() => {

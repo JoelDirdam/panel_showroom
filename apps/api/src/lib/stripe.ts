@@ -45,7 +45,7 @@ export function appUrl(): string {
   return (firstCors || 'http://localhost:5173').replace(/\/+$/, '')
 }
 
-/** Tasa de IVA (txr_...) que se suma a cada suscripción. Vacío = sin impuesto. */
+/** Tasa de IVA (txr_..., incluida en el precio) que se desglosa en cada recibo. Vacío = sin impuesto. */
 export function taxRateId(): string | null {
   return process.env.STRIPE_TAX_RATE_ID?.trim() || null
 }

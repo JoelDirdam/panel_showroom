@@ -13,7 +13,7 @@ export interface PlanInfo {
   description: string
   features: string[]
   available: boolean
-  /** Precio mensual en MXN, sin IVA. Sin precio = aún no se cobra en línea. */
+  /** Precio mensual en MXN, con IVA incluido. Sin precio = aún no se cobra en línea. */
   priceMxn?: number
 }
 
@@ -51,10 +51,10 @@ export const PLANS: PlanInfo[] = [
   {
     type: 'CITAS_IA',
     name: 'Citas + IA',
-    tagline: 'Próximamente',
+    tagline: 'Disponible hoy',
     description: 'Todo el plan Citas, más un asistente de IA que atiende y agenda por WhatsApp.',
     features: ['Todo lo del plan Citas', 'Asistente de IA en WhatsApp', 'Chats en tablero Kanban'],
-    available: false,
+    available: true,
     priceMxn: 549,
   },
   {

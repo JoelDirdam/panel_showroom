@@ -38,7 +38,7 @@ billingRouter.get('/status', async (req, res) => {
     })
     return res.json({
       stripeConfigured: isStripeConfigured(),
-      taxIncluded: false,
+      taxIncluded: true,
       taxPercent: taxRateId() ? 16 : 0,
       subscription: sub && {
         planType: sub.planType,

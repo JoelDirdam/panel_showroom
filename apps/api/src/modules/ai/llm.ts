@@ -18,7 +18,10 @@ function openaiModel(): string {
 export function createOpenAiClient(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY?.trim()
   if (!apiKey) return null
-  return new OpenAI({ apiKey, timeout: openaiTimeoutMs() })
+  // OPENAI_BASE_URL permite usar cualquier proveedor compatible con la API de OpenAI
+  // (DeepSeek, Groq, Gemini, OpenRouter...). Vacío = OpenAI.
+  const baseURL = process.env.OPENAI_BASE_URL?.trim() || undefined
+  return new OpenAI({ apiKey, baseURL, timeout: openaiTimeoutMs() })
 }
 
 export async function runConversationLlm(params: {

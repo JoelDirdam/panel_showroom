@@ -68,7 +68,7 @@ function setVar(name, value) {
   if (r.status !== 0) process.exitCode = 1
 }
 
-// 1. Productos y precios (mensual, MXN, IVA aparte)
+// 1. Productos y precios (mensual, MXN, IVA incluido)
 const prices = await stripe.prices.list({ active: true, limit: 100 })
 const byPlan = {}
 for (const p of prices.data) {
@@ -84,7 +84,7 @@ for (const plan of PLANS) {
       currency: 'mxn',
       unit_amount: plan.amount,
       recurring: { interval: 'month' },
-      tax_behavior: 'exclusive',
+      tax_behavior: 'inclusive',
       metadata: { planType: plan.planType },
     },
   })
@@ -93,15 +93,15 @@ for (const plan of PLANS) {
 }
 console.log('precios:', byPlan)
 
-// 2. Tasa de IVA 16 % (se suma al precio)
+// 2. Tasa de IVA 16 % incluida en el precio (el recibo la desglosa; el total no cambia)
 const rates = await stripe.taxRates.list({ active: true, limit: 100 })
-let rate = rates.data.find((r) => r.percentage === 16 && !r.inclusive && r.country === 'MX')
+let rate = rates.data.find((r) => r.percentage === 16 && r.inclusive && r.country === 'MX')
 if (!rate) {
   rate = await stripe.taxRates.create({
     display_name: 'IVA',
     description: 'IVA 16 % México',
     percentage: 16,
-    inclusive: false,
+    inclusive: true,
     country: 'MX',
     jurisdiction: 'MX',
   })

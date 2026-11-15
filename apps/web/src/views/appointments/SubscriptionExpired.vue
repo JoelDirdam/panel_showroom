@@ -25,7 +25,7 @@
             <span class="font-medium text-gray-800 dark:text-white">Plan {{ plan.name }}</span>
             <span class="shrink-0 text-right font-semibold text-gray-800 dark:text-white">
               {{ formatMxn(plan.priceMxn) }}
-              <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">al mes + IVA</span>
+              <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">al mes, IVA incluido</span>
             </span>
           </div>
         </div>

@@ -16,12 +16,9 @@
             <p class="font-medium text-gray-800 dark:text-white">Plan {{ plan?.name ?? 'seleccionado' }}</p>
             <p v-if="plan?.priceMxn" class="shrink-0 text-right font-semibold text-gray-800 dark:text-white">
               {{ formatMxn(plan.priceMxn) }}
-              <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">al mes + IVA</span>
+              <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">al mes, IVA incluido</span>
             </p>
           </div>
-          <p v-if="plan?.priceMxn && taxPercent" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Total con IVA: {{ formatMxn(plan.priceMxn * (1 + taxPercent / 100)) }} al mes.
-          </p>
         </div>
 
         <p v-if="error" class="mt-4 text-sm text-error-500">{{ error }}</p>
@@ -89,7 +86,6 @@ const busy = ref<'pay' | 'trial' | null>(null)
 const error = ref<string | null>(null)
 const loadingStatus = ref(true)
 const stripeConfigured = ref(false)
-const taxPercent = ref(0)
 
 const planType = computed(() => auth.user?.subscription?.planType)
 const plan = computed(() => planInfo(planType.value))
@@ -101,7 +97,6 @@ onMounted(async () => {
   try {
     const status = await fetchBillingStatus()
     stripeConfigured.value = status.stripeConfigured
-    taxPercent.value = status.taxPercent
   } catch {
     stripeConfigured.value = false
   } finally {
