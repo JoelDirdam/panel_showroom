@@ -4,7 +4,9 @@ import { z } from 'zod'
 import { allocateTicketNumber } from '../lib/saleTicket.js'
 import { prisma } from '../lib/prisma.js'
 import { getParam } from '../lib/params.js'
+import { computeTotals, money, parseDateParam, parsePage, round2 } from '../lib/saleMath.js'
 import { authenticate, authorize, tenantFilter } from '../middleware/auth.js'
+import { requireModule } from '../middleware/plan.js'
 
 const router = Router()
 
@@ -28,12 +30,18 @@ const createSaleSchema = z.object({
   ticketComment: z.string().max(500).optional().nullable(),
   applyTax: z.boolean().optional().default(false),
   taxRate: z.number().nonnegative().max(1).optional().default(0.16),
+  /** Los precios ya traen IVA: se desglosa del total en vez de sumarse. */
+  pricesIncludeTax: z.boolean().optional().default(false),
   attendedById: z.string().min(1).optional().nullable(),
   /** Usuario BUSINESS que atiende (p. ej. el dueño sin empleados registrados). */
   attendedByUserId: z.string().min(1).optional().nullable(),
   customerId: z.string().min(1).optional().nullable(),
   giftCardCode: z.string().min(1).optional().nullable(),
   payments: z.array(paymentSplitSchema).optional(),
+})
+
+const cancelSaleSchema = z.object({
+  reason: z.string().trim().max(500).optional().nullable(),
 })
 
 const patchLineSchema = z.object({
@@ -57,14 +65,6 @@ const saleInclude = {
     },
   },
 } satisfies Prisma.SaleInclude
-
-function money(value: number): Prisma.Decimal {
-  return new Prisma.Decimal(value.toFixed(2))
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100
-}
 
 function filterSalesForBrand(brandId: string): Prisma.SaleWhereInput {
   return {
@@ -94,6 +94,8 @@ function serializeSale<T extends { lines: Array<{ product: { brandId: string } }
 ) {
   return {
     ...sale,
+    // Una marca solo ve sus líneas; los datos del cliente final son del negocio.
+    ...(role === 'BRAND' ? { customer: null } : {}),
     lines: filterLinesForBrand(sale.lines, brandId, role),
   }
 }
@@ -104,11 +106,53 @@ function toSplitMethod(method: PaymentMethod): SplitPaymentMethod {
   return SplitPaymentMethod.EFECTIVO
 }
 
-router.use(authenticate)
+router.use(authenticate, requireModule('sales', 'caja'))
 
+/**
+ * Filtros opcionales: `from`, `to` (fechas ISO), `q` (número de ticket, cliente,
+ * producto o SKU) y `customerId`. Sin `page` responde un arreglo con las 200
+ * más recientes; con `page` responde `{ items, total, page, pageSize }`.
+ */
 router.get('/', async (req, res) => {
   const user = req.user!
   const where: Prisma.SaleWhereInput = tenantFilter(user)
+  const and: Prisma.SaleWhereInput[] = []
+
+  const from = parseDateParam(req.query.from)
+  const to = parseDateParam(req.query.to)
+  if (from || to) {
+    where.soldAt = { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) }
+  }
+  if (typeof req.query.customerId === 'string' && req.query.customerId && user.role !== 'BRAND') {
+    where.customerId = req.query.customerId
+  }
+  const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : ''
+  if (q) {
+    const ticket = /^#?\d{1,9}$/.test(q) ? Number(q.replace('#', '')) : null
+    const brandScope = user.role === 'BRAND' && user.brandId ? { brandId: user.brandId } : {}
+    and.push({
+      OR: [
+        ...(ticket !== null ? [{ ticketNumber: ticket }] : []),
+        ...(user.role !== 'BRAND'
+          ? [{ customer: { name: { contains: q, mode: 'insensitive' as const } } }]
+          : []),
+        {
+          lines: {
+            some: {
+              product: {
+                ...brandScope,
+                OR: [
+                  { name: { contains: q, mode: 'insensitive' as const } },
+                  { sku: { contains: q, mode: 'insensitive' as const } },
+                ],
+              },
+            },
+          },
+        },
+      ],
+    })
+  }
+  if (and.length) where.AND = and
 
   if (user.role === 'BRAND' && user.brandId) {
     Object.assign(where, filterSalesForBrand(user.brandId))
@@ -129,6 +173,26 @@ router.get('/', async (req, res) => {
     }
   }
 
+  if (req.query.page !== undefined) {
+    const { page, pageSize, skip } = parsePage(req.query)
+    const [items, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        include: saleInclude,
+        orderBy: { soldAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.sale.count({ where }),
+    ])
+    return res.json({
+      items: items.map((sale) => serializeSale(sale, user.role, user.brandId)),
+      total,
+      page,
+      pageSize,
+    })
+  }
+
   const sales = await prisma.sale.findMany({
     where,
     include: saleInclude,
@@ -137,6 +201,25 @@ router.get('/', async (req, res) => {
   })
 
   return res.json(sales.map((sale) => serializeSale(sale, user.role, user.brandId)))
+})
+
+/** Ventas canceladas del negocio (la venta ya no existe; se conserva su copia). */
+router.get('/cancelled', authorize('BUSINESS'), async (req, res) => {
+  const { tenantId } = tenantFilter(req.user!)
+  const from = parseDateParam(req.query.from)
+  const to = parseDateParam(req.query.to)
+  const { page, pageSize, skip } = parsePage(req.query)
+  const where: Prisma.CancelledSaleWhereInput = {
+    tenantId,
+    ...(from || to
+      ? { cancelledAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } }
+      : {}),
+  }
+  const [items, total] = await Promise.all([
+    prisma.cancelledSale.findMany({ where, orderBy: { cancelledAt: 'desc' }, skip, take: pageSize }),
+    prisma.cancelledSale.count({ where }),
+  ])
+  return res.json({ items, total, page, pageSize })
 })
 
 router.get('/:id', async (req, res) => {
@@ -172,6 +255,7 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
     ticketComment,
     applyTax,
     taxRate,
+    pricesIncludeTax,
     attendedById,
     attendedByUserId,
     customerId,
@@ -235,12 +319,15 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
 
       for (const line of lines) {
         const product = productMap.get(line.productId)!
-        const unitPriceNum =
+        // Se redondea a centavos antes de calcular para que las líneas guardadas
+        // sumen exactamente el subtotal de la venta.
+        const unitPriceNum = round2(
           line.unitPrice !== undefined
             ? line.unitPrice
             : product.price !== null
               ? Number(product.price)
-              : NaN
+              : NaN,
+        )
 
         if (!Number.isFinite(unitPriceNum)) {
           throw new Error(`MISSING_PRICE:${product.name}`)
@@ -251,13 +338,13 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
           throw new Error(`INSUFFICIENT_STOCK:${product.name}:${stockQty}`)
         }
 
-        const subtotal = unitPriceNum * line.quantity
-        const discount = line.discount ?? 0
+        const subtotal = round2(unitPriceNum * line.quantity)
+        const discount = round2(line.discount ?? 0)
         if (discount > subtotal) {
           throw new Error(`INVALID_DISCOUNT:${product.name}`)
         }
-        const commission = line.commission ?? 0
-        const total = subtotal - discount
+        const commission = round2(line.commission ?? 0)
+        const total = round2(subtotal - discount)
         linesSubtotal += total
 
         lineData.push({
@@ -271,24 +358,35 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
         })
       }
 
-      linesSubtotal = round2(linesSubtotal)
-      const taxAmount = applyTax ? round2(linesSubtotal * taxRate) : 0
-      let dueBeforeGift = round2(linesSubtotal + taxAmount)
+      const totals = computeTotals(linesSubtotal, { applyTax, taxRate, pricesIncludeTax })
+      linesSubtotal = totals.subtotal
+      const taxAmount = totals.taxAmount
+      const dueBeforeGift = totals.due
       let giftCardAmount = 0
 
       if (giftCardCode?.trim()) {
         const code = giftCardCode.trim()
         const giftCard = await tx.giftCard.findFirst({
-          where: { tenantId: req.user!.tenantId, code, active: true },
+          where: {
+            tenantId: req.user!.tenantId,
+            // Los códigos se guardan en mayúsculas; al canjear no se distingue.
+            code: { equals: code, mode: 'insensitive' },
+            active: true,
+          },
         })
         if (!giftCard) throw new Error('GIFT_CARD_NOT_FOUND')
         const balance = Number(giftCard.balance)
         if (balance <= 0) throw new Error('GIFT_CARD_EMPTY')
         giftCardAmount = round2(Math.min(balance, dueBeforeGift))
-        await tx.giftCard.update({
-          where: { id: giftCard.id },
-          data: { balance: money(balance - giftCardAmount) },
-        })
+        if (giftCardAmount > 0) {
+          // Descuento condicionado al saldo: dos cajas usando la misma tarjeta
+          // a la vez no pueden gastar el mismo saldo dos veces.
+          const spent = await tx.giftCard.updateMany({
+            where: { id: giftCard.id, active: true, balance: { gte: money(giftCardAmount) } },
+            data: { balance: { decrement: money(giftCardAmount) } },
+          })
+          if (spent.count === 0) throw new Error('GIFT_CARD_CHANGED')
+        }
       }
 
       const saleTotal = round2(Math.max(0, dueBeforeGift - giftCardAmount))
@@ -338,10 +436,17 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
       })
 
       for (const line of lines) {
-        await tx.stock.update({
-          where: { productId: line.productId },
+        // Descuento condicionado a que siga habiendo existencias: evita vender
+        // dos veces la última pieza cuando dos cajas cobran al mismo tiempo.
+        const updated = await tx.stock.updateMany({
+          where: { productId: line.productId, quantity: { gte: line.quantity } },
           data: { quantity: { decrement: line.quantity } },
         })
+        if (updated.count === 0) {
+          const current = await tx.stock.findUnique({ where: { productId: line.productId } })
+          const name = productMap.get(line.productId)?.name ?? ''
+          throw new Error(`INSUFFICIENT_STOCK:${name}:${current?.quantity ?? 0}`)
+        }
       }
 
       return created
@@ -368,6 +473,11 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
     if (message === 'GIFT_CARD_NOT_FOUND') {
       return res.status(400).json({ error: 'Tarjeta de regalo no encontrada o inactiva' })
     }
+    if (message === 'GIFT_CARD_CHANGED') {
+      return res.status(409).json({
+        error: 'El saldo de la tarjeta de regalo cambió. Vuelve a aplicarla e intenta de nuevo',
+      })
+    }
     if (message === 'GIFT_CARD_EMPTY') {
       return res.status(400).json({ error: 'La tarjeta de regalo no tiene saldo' })
     }
@@ -386,7 +496,11 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
       })
     }
     if (message.startsWith('INSUFFICIENT_STOCK:')) {
-      const [, name, qty] = message.split(':')
+      // El nombre del producto puede traer ":"; la cantidad es lo último.
+      const rest = message.slice('INSUFFICIENT_STOCK:'.length)
+      const cut = rest.lastIndexOf(':')
+      const name = rest.slice(0, cut)
+      const qty = rest.slice(cut + 1)
       return res.status(400).json({
         error: `Stock insuficiente para "${name}" (disponible: ${qty})`,
       })
@@ -398,6 +512,84 @@ router.post('/', authorize('BUSINESS'), async (req, res) => {
     }
     console.error(err)
     return res.status(500).json({ error: 'Error al registrar la venta' })
+  }
+})
+
+/**
+ * Cancela una venta completa: regresa las piezas al inventario, guarda una
+ * copia en `CancelledSale` y elimina la venta para que ningún reporte la sume.
+ */
+router.post('/:id/cancel', authorize('BUSINESS'), async (req, res) => {
+  const id = getParam(req.params.id)
+  const parsed = cancelSaleSchema.safeParse(req.body ?? {})
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
+  }
+  const { tenantId } = tenantFilter(req.user!)
+
+  try {
+    const cancelled = await prisma.$transaction(async (tx) => {
+      const sale = await tx.sale.findFirst({ where: { id, tenantId }, include: saleInclude })
+      if (!sale) throw new Error('SALE_NOT_FOUND')
+      if (sale.layawayId) throw new Error('SALE_FROM_LAYAWAY')
+      if (sale.lines.some((line) => line.inSettlement || line.paid)) {
+        throw new Error('SALE_IN_SETTLEMENT')
+      }
+
+      for (const line of sale.lines) {
+        await tx.stock.upsert({
+          where: { productId: line.productId },
+          update: { quantity: { increment: line.quantity } },
+          create: { productId: line.productId, quantity: line.quantity },
+        })
+      }
+
+      const record = await tx.cancelledSale.create({
+        data: {
+          tenantId,
+          ticketNumber: sale.ticketNumber,
+          soldAt: sale.soldAt,
+          total: sale.total,
+          customerId: sale.customerId,
+          customerName: sale.customer?.name ?? null,
+          reason: parsed.data.reason || null,
+          // Copia plana de la venta (los Decimal quedan como texto).
+          snapshot: JSON.parse(JSON.stringify(sale)) as Prisma.InputJsonValue,
+          cancelledById: req.user!.id,
+          cancelledByName: req.user!.name,
+        },
+      })
+
+      // Si dos personas cancelan a la vez, solo una encuentra la venta.
+      const removed = await tx.sale.deleteMany({ where: { id, tenantId } })
+      if (removed.count === 0) throw new Error('SALE_NOT_FOUND')
+
+      return { record, giftCardAmount: Number(sale.giftCardAmount) }
+    })
+
+    return res.json({
+      ...cancelled.record,
+      // La venta no guarda qué tarjeta de regalo se usó: el saldo no se puede reponer solo.
+      giftCardAmountToRestore: cancelled.giftCardAmount,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : ''
+    if (message === 'SALE_NOT_FOUND') {
+      return res.status(404).json({ error: 'Venta no encontrada (puede que ya esté cancelada)' })
+    }
+    if (message === 'SALE_IN_SETTLEMENT') {
+      return res.status(409).json({
+        error:
+          'Esta venta ya entró en un corte o ya se pagó a la marca. Quita esas marcas en la venta antes de cancelarla.',
+      })
+    }
+    if (message === 'SALE_FROM_LAYAWAY') {
+      return res.status(409).json({
+        error: 'Esta venta viene de un apartado liquidado y no se puede cancelar desde aquí.',
+      })
+    }
+    console.error(err)
+    return res.status(500).json({ error: 'Error al cancelar la venta' })
   }
 })
 

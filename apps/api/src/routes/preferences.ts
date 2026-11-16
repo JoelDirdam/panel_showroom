@@ -40,6 +40,7 @@ const preferencesSchema = z.object({
     .nullable()
     .optional(),
   chargeIva: z.boolean({ invalid_type_error: 'Valor inválido' }).optional(),
+  pricesIncludeIva: z.boolean({ invalid_type_error: 'Valor inválido' }).optional(),
   usdEnabled: z.boolean({ invalid_type_error: 'Valor inválido' }).optional(),
   usdRateMode: z
     .enum(['FIXED', 'AUTOMATIC'], {

@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
 import { authenticate, authorize } from '../middleware/auth.js'
+import { requireModule } from '../middleware/plan.js'
 
 const router = Router()
 
@@ -21,7 +22,7 @@ function money(value: number): Prisma.Decimal {
   return new Prisma.Decimal(value.toFixed(2))
 }
 
-router.use(authenticate)
+router.use(authenticate, requireModule('giftCards', 'caja'))
 
 /** Preview / validar tarjeta de regalo sin descontar. */
 router.post('/preview', authorize('BUSINESS'), async (req, res) => {
@@ -32,7 +33,12 @@ router.post('/preview', authorize('BUSINESS'), async (req, res) => {
 
   const code = parsed.data.code.trim()
   const giftCard = await prisma.giftCard.findFirst({
-    where: { tenantId: req.user!.tenantId, code, active: true },
+    where: {
+      tenantId: req.user!.tenantId,
+      // Los códigos se guardan en mayúsculas; al canjear no se distingue.
+      code: { equals: code, mode: 'insensitive' },
+      active: true,
+    },
   })
   if (!giftCard) {
     return res.status(404).json({ error: 'Tarjeta de regalo no encontrada o inactiva' })

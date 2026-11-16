@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import './lib/asyncErrors.js'
 import express from 'express'
 import cors from 'cors'
 import authRoutes from './routes/auth.js'
@@ -24,6 +25,8 @@ import businessHoursRoutes from './routes/businessHours.js'
 import appointmentsRoutes from './routes/appointments.js'
 import whatsappConfigRoutes from './routes/whatsappConfig.js'
 import cutoffsRoutes from './routes/cutoffs.js'
+import cashSessionsRoutes from './routes/cashSessions.js'
+import { sendError } from './lib/httpError.js'
 import rentPaymentsRoutes from './routes/rentPayments.js'
 import chatRoutes from './routes/chat.js'
 import publicRoutes from './routes/public.js'
@@ -131,6 +134,7 @@ app.use('/api/v1/appointments', appointmentsRoutes)
 app.use('/api/v1/whatsapp-config', whatsappConfigRoutes)
 app.use('/api/v1/whatsapp', whatsappWebhookRoutes)
 app.use('/api/cutoffs', cutoffsRoutes)
+app.use('/api/cash-sessions', cashSessionsRoutes)
 app.use('/api/rent-payments', rentPaymentsRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/public', publicRoutes)
@@ -147,6 +151,22 @@ app.use((err: unknown, req: express.Request, res: express.Response, next: expres
     return
   }
   next(err)
+})
+
+// Último recurso: cualquier error no atendido por una ruta responde JSON en vez
+// de dejar la petición colgada o devolver la página de error de Express.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (res.headersSent) return
+  const status = (err as { status?: unknown } | null)?.status
+  if (typeof status === 'number' && status >= 400 && status < 500) {
+    // Errores del propio cliente detectados por Express (JSON mal formado, cuerpo demasiado grande).
+    return res.status(status).json({ error: 'Solicitud inválida' })
+  }
+  return sendError(res, err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason)
 })
 
 app.listen(PORT, '0.0.0.0', () => {

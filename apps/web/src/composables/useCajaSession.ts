@@ -3,7 +3,19 @@ import type { PaymentMethod, Product, SplitPaymentMethod } from '@/services/api'
 
 export const DEFAULT_USD_RATE = 18
 export const MAX_CAJAS = 10
+export const TAX_RATE = 0.16
 const STORAGE_KEY = 'cosdi.caja.tabs.v1'
+
+/** Convierte lo que venga de un input numérico (puede ser '' o NaN) en un número utilizable. */
+export function num(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+/** Importe de una línea ya con su descuento, nunca negativo. */
+export function lineTotal(line: Pick<CartLine, 'unitPrice' | 'quantity' | 'discount'>): number {
+  return round2(Math.max(0, num(line.unitPrice) * num(line.quantity) - num(line.discount)))
+}
 
 export interface CartLine {
   productId: string
@@ -27,7 +39,8 @@ export interface CajaTabState {
   customerId: string | null
   customerLabel: string
   giftCardCode: string
-  giftCardApplied: number
+  /** Saldo de la tarjeta validada; 0 si no hay tarjeta aplicada. */
+  giftCardBalance: number
   cashReceived: number
   mixed: { efectivo: number; tarjeta: number; transferencia: number }
   converterPesos: number
@@ -36,6 +49,10 @@ export interface CajaTabState {
 export interface CajaSessionOptions {
   defaultAttendedById: () => string
   defaultApplyTax?: () => boolean
+  /** Los precios ya traen IVA: al aplicarlo se desglosa del total en vez de sumarse. */
+  pricesIncludeTax?: () => boolean
+  /** Separa los carritos guardados por negocio/usuario en el mismo navegador. */
+  storageScope?: string
 }
 
 function newId() {
@@ -58,19 +75,30 @@ export function emptyTab(
     customerId: null,
     customerLabel: '',
     giftCardCode: '',
-    giftCardApplied: 0,
+    giftCardBalance: 0,
     cashReceived: 0,
     mixed: { efectivo: 0, tarjeta: 0, transferencia: 0 },
     converterPesos: 0,
   }
 }
 
-function loadTabs(): { tabs: CajaTabState[]; activeId: string } | null {
+function loadTabs(key: string): { tabs: CajaTabState[]; activeId: string } | null {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = sessionStorage.getItem(key)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { tabs: CajaTabState[]; activeId: string }
-    if (!parsed.tabs?.length) return null
+    if (!Array.isArray(parsed.tabs) || !parsed.tabs.length) return null
+    // Rellena campos que no existían cuando se guardó la sesión.
+    parsed.tabs = parsed.tabs.map((t, i) => ({
+      ...emptyTab(i + 1),
+      ...t,
+      lines: Array.isArray(t.lines) ? t.lines : [],
+      mixed: {
+        efectivo: num(t.mixed?.efectivo),
+        tarjeta: num(t.mixed?.tarjeta),
+        transferencia: num(t.mixed?.transferencia),
+      },
+    }))
     return parsed
   } catch {
     return null
@@ -82,8 +110,10 @@ export function useCajaSession(options: CajaSessionOptions | (() => string)) {
     typeof options === 'function' ? { defaultAttendedById: options } : options
   const defaultAttendedById = opts.defaultAttendedById
   const defaultApplyTax = opts.defaultApplyTax || (() => false)
+  const pricesIncludeTax = opts.pricesIncludeTax || (() => false)
 
-  const saved = loadTabs()
+  const storageKey = opts.storageScope ? `${STORAGE_KEY}:${opts.storageScope}` : STORAGE_KEY
+  const saved = loadTabs(storageKey)
   const tabs = ref<CajaTabState[]>(
     saved?.tabs?.length
       ? saved.tabs
@@ -100,10 +130,14 @@ export function useCajaSession(options: CajaSessionOptions | (() => string)) {
   watch(
     [tabs, activeId],
     () => {
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ tabs: tabs.value, activeId: activeId.value }),
-      )
+      try {
+        sessionStorage.setItem(
+          storageKey,
+          JSON.stringify({ tabs: tabs.value, activeId: activeId.value }),
+        )
+      } catch {
+        // Almacenamiento lleno o bloqueado: la caja sigue funcionando sin persistir.
+      }
     },
     { deep: true },
   )
@@ -151,16 +185,25 @@ export function useCajaSession(options: CajaSessionOptions | (() => string)) {
     activeId.value = id
   }
 
-  function addProduct(product: Product, qty = 1) {
+  /** Agrega un producto al carrito. Devuelve un mensaje si no se pudo (o se topó con el stock). */
+  function addProduct(product: Product, qty = 1): string | null {
     const tab = activeTab.value
-    if (!tab) return
-    const price = product.price ? Number(product.price) : 0
+    if (!tab) return null
+    // Sin precio se registraría una venta en $0; sin existencias el servidor la rechaza.
+    if (product.price === null || product.price === '' || !Number.isFinite(Number(product.price))) {
+      return `"${product.name}" no tiene precio. Asígnale uno en Productos para poder venderlo.`
+    }
+    const price = Number(product.price)
     const stock = product.stock?.quantity ?? 0
+    if (stock <= 0) {
+      return `"${product.name}" no tiene existencias.`
+    }
     const existing = tab.lines.find((l) => l.productId === product.id)
     if (existing) {
-      const next = existing.quantity + qty
-      existing.quantity = stock > 0 ? Math.min(stock, next) : next
-      return
+      existing.stock = stock
+      const next = num(existing.quantity) + qty
+      existing.quantity = Math.min(stock, next)
+      return next > stock ? `Solo hay ${stock} en existencia de "${product.name}".` : null
     }
     tab.lines.push({
       productId: product.id,
@@ -169,9 +212,10 @@ export function useCajaSession(options: CajaSessionOptions | (() => string)) {
       brandName: product.brand.name,
       stock,
       unitPrice: price,
-      quantity: stock > 0 ? Math.min(qty, stock) : qty,
+      quantity: Math.min(qty, stock),
       discount: 0,
     })
+    return null
   }
 
   function removeLine(productId: string) {
@@ -181,44 +225,55 @@ export function useCajaSession(options: CajaSessionOptions | (() => string)) {
   }
 
   const grossSubtotal = computed(() =>
-    round2(activeTab.value.lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0)),
+    round2(activeTab.value.lines.reduce((s, l) => s + num(l.unitPrice) * num(l.quantity), 0)),
   )
 
   const discountTotal = computed(() =>
-    round2(activeTab.value.lines.reduce((s, l) => s + (l.discount || 0), 0)),
+    round2(activeTab.value.lines.reduce((s, l) => s + num(l.discount), 0)),
   )
 
   const subtotalWithDiscount = computed(() =>
-    round2(
-      activeTab.value.lines.reduce(
-        (s, l) => s + Math.max(0, l.unitPrice * l.quantity - l.discount),
-        0,
-      ),
-    ),
+    round2(activeTab.value.lines.reduce((s, l) => s + lineTotal(l), 0)),
   )
 
-  const taxAmount = computed(() =>
-    activeTab.value.applyTax ? round2(subtotalWithDiscount.value * 0.16) : 0,
+  // Mismo cálculo que el servidor (`computeTotals` en apps/api/src/lib/saleMath.ts).
+  const taxAmount = computed(() => {
+    if (!activeTab.value.applyTax) return 0
+    const gross = subtotalWithDiscount.value
+    if (pricesIncludeTax()) return round2(gross - round2(gross / (1 + TAX_RATE)))
+    return round2(gross * TAX_RATE)
+  })
+
+  const totalBeforeGift = computed(() =>
+    pricesIncludeTax()
+      ? subtotalWithDiscount.value
+      : round2(subtotalWithDiscount.value + taxAmount.value),
   )
 
-  const totalBeforeGift = computed(() => round2(subtotalWithDiscount.value + taxAmount.value))
+  /**
+   * Lo que cubre la tarjeta de regalo. Se recalcula con el carrito (igual que
+   * hace el servidor al cobrar) para que el total mostrado sea el que se registra.
+   */
+  const giftCardApplied = computed(() =>
+    round2(Math.min(Math.max(0, num(activeTab.value.giftCardBalance)), totalBeforeGift.value)),
+  )
 
   const totalToPay = computed(() =>
-    round2(Math.max(0, totalBeforeGift.value - (activeTab.value.giftCardApplied || 0))),
+    round2(Math.max(0, totalBeforeGift.value - giftCardApplied.value)),
   )
 
   const changeDue = computed(() => {
     if (activeTab.value.paymentMethod !== 'EFECTIVO') return 0
-    return round2(Math.max(0, (activeTab.value.cashReceived || 0) - totalToPay.value))
+    return round2(Math.max(0, num(activeTab.value.cashReceived) - totalToPay.value))
   })
 
   function mixedPayments(): Array<{ method: SplitPaymentMethod; amount: number }> {
     const m = activeTab.value.mixed
     return (
       [
-        { method: 'EFECTIVO' as const, amount: round2(m.efectivo || 0) },
-        { method: 'TARJETA' as const, amount: round2(m.tarjeta || 0) },
-        { method: 'TRANSFERENCIA' as const, amount: round2(m.transferencia || 0) },
+        { method: 'EFECTIVO' as const, amount: round2(num(m.efectivo)) },
+        { method: 'TARJETA' as const, amount: round2(num(m.tarjeta)) },
+        { method: 'TRANSFERENCIA' as const, amount: round2(num(m.transferencia)) },
       ] as Array<{ method: SplitPaymentMethod; amount: number }>
     ).filter((p) => p.amount > 0)
   }
@@ -238,6 +293,7 @@ export function useCajaSession(options: CajaSessionOptions | (() => string)) {
     subtotalWithDiscount,
     taxAmount,
     totalBeforeGift,
+    giftCardApplied,
     totalToPay,
     changeDue,
     mixedPayments,

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import type { EntitlementModule } from '@/lib/entitlements'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -282,13 +283,31 @@ const router = createRouter({
       path: '/sales',
       name: 'Sales',
       component: () => import('../views/showroom/Sales.vue'),
-      meta: { title: 'Ventas/Tickets' },
+      meta: { title: 'Ventas/Tickets', moduleId: 'sales' },
     },
     {
       path: '/caja',
       name: 'Caja',
       component: () => import('../views/showroom/Caja.vue'),
-      meta: { title: 'Caja', adminOnly: true },
+      meta: { title: 'Caja', adminOnly: true, moduleId: 'caja' },
+    },
+    {
+      path: '/customers',
+      name: 'Customers',
+      component: () => import('../views/showroom/Customers.vue'),
+      meta: { title: 'Clientes', adminOnly: true, moduleId: 'customers' },
+    },
+    {
+      path: '/layaways',
+      name: 'Layaways',
+      component: () => import('../views/showroom/Layaways.vue'),
+      meta: { title: 'Apartados', adminOnly: true, moduleId: 'layaways' },
+    },
+    {
+      path: '/corte-caja',
+      name: 'CashRegister',
+      component: () => import('../views/showroom/CashRegister.vue'),
+      meta: { title: 'Corte de caja', adminOnly: true, moduleId: 'caja' },
     },
     {
       path: '/employees',
@@ -465,6 +484,13 @@ router.beforeEach(async (to, _from, next) => {
   const planRequired = to.meta.planRequired as string | undefined
   const currentPlan = auth.user?.subscription?.planType
   if (planRequired && currentPlan && currentPlan !== planRequired) {
+    return next(appHome)
+  }
+
+  // El menú ya oculta lo que el plan no incluye; esto cubre entrar por la URL.
+  // Sin entitlements cargados (negocios anteriores a los planes) no se bloquea nada.
+  const moduleId = to.meta.moduleId as EntitlementModule | undefined
+  if (moduleId && auth.user && !auth.canAccess(moduleId)) {
     return next(appHome)
   }
 

@@ -33,6 +33,16 @@ enum SplitPaymentMethod {
   TRANSFERENCIA
 }
 
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  IN
+  OUT
+}
+
 enum ProductRequestType {
   CREATE_PRODUCT
   RESTOCK
@@ -148,6 +158,8 @@ model Tenant {
   saleCounter        TenantSaleCounter?
   rentPayments       BrandRentPayment[]
   cutoffSettlements  BrandCutoffSettlement[]
+  cancelledSales     CancelledSale[]
+  cashSessions       CashSession[]
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 }
@@ -343,6 +355,9 @@ model Sale {
   attendedByUser   User?         @relation("SaleAttendedByUser", fields: [attendedByUserId], references: [id], onDelete: SetNull)
   customerId       String?
   customer         Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  /// Venta generada al liquidar un apartado (sus pagos ya se contaron como abonos).
+  layawayId        String?       @unique
+  layaway          Layaway?      @relation(fields: [layawayId], references: [id], onDelete: SetNull)
   lines            SaleLine[]
   payments         SalePayment[]
   createdAt        DateTime      @default(now())
@@ -442,6 +457,7 @@ model Layaway {
   createdBy     User?            @relation(fields: [createdById], references: [id], onDelete: SetNull)
   lines         LayawayLine[]
   payments      LayawayPayment[]
+  sale          Sale?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -815,6 +831,8 @@ model BusinessPreferences {
   printTickets                Boolean      @default(true)
   ticketFixedComment          String?
   chargeIva                   Boolean      @default(false)
+  /// Los precios de lista ya traen el IVA: al cobrar se desglosa en vez de sumarse.
+  pricesIncludeIva            Boolean      @default(false)
   usdEnabled                  Boolean      @default(false)
   usdRateMode                 UsdRateMode?
   usdFixedRate                Decimal?     @db.Decimal(10, 4)
@@ -839,4 +857,68 @@ model Category {
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+}
+
+/// Venta cancelada: la venta se elimina de `Sale` (así ningún reporte la suma)
+/// y aquí queda la copia completa para consulta y auditoría.
+model CancelledSale {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ticketNumber    Int
+  soldAt          DateTime
+  total           Decimal  @db.Decimal(10, 2)
+  customerId      String?
+  customerName    String?
+  reason          String?
+  /// Copia de la venta (líneas, pagos, quién atendió) al momento de cancelar.
+  snapshot        Json
+  cancelledById   String?
+  cancelledByName String?
+  cancelledAt     DateTime @default(now())
+
+  @@index([tenantId, cancelledAt])
+  @@index([tenantId, customerId])
+}
+
+/// Turno de caja: fondo inicial al abrir y arqueo al cerrar.
+model CashSession {
+  id           String            @id @default(cuid())
+  tenantId     String
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  status       CashSessionStatus @default(OPEN)
+  openedAt     DateTime          @default(now())
+  openedById   String?
+  openedByName String?
+  openingFloat Decimal           @default(0) @db.Decimal(10, 2)
+  closedAt     DateTime?
+  closedById   String?
+  closedByName String?
+  /// Efectivo que debería haber en caja al cerrar.
+  expectedCash Decimal?          @db.Decimal(10, 2)
+  /// Efectivo contado al cerrar.
+  countedCash  Decimal?          @db.Decimal(10, 2)
+  difference   Decimal?          @db.Decimal(10, 2)
+  /// Resumen del turno al cerrar (ventas por método, abonos, movimientos).
+  summary      Json?
+  note         String?
+  movements    CashMovement[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, openedAt])
+}
+
+/// Entrada o retiro de efectivo durante un turno (no es una venta).
+model CashMovement {
+  id            String           @id @default(cuid())
+  cashSessionId String
+  cashSession   CashSession      @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  type          CashMovementType
+  amount        Decimal          @db.Decimal(10, 2)
+  note          String?
+  createdById   String?
+  createdByName String?
+  createdAt     DateTime         @default(now())
+
+  @@index([cashSessionId])
 }

@@ -226,6 +226,9 @@ import {
   Users,
   MessageCircle,
   CreditCard,
+  Contact,
+  CalendarClock,
+  Calculator,
 } from "lucide-vue-next";
 import { BoxesIcon, ChevronDownIcon, HorizontalDots, BookOpenPesoIcon } from "../../icons";
 import { useSidebar } from "@/composables/useSidebar";
@@ -337,6 +340,27 @@ const menuGroups = computed(() => [
               path: "/caja",
               tourKey: "sidebar-caja",
               moduleId: "caja",
+            },
+            {
+              icon: Calculator,
+              name: "Corte de caja",
+              path: "/corte-caja",
+              tourKey: "sidebar-cash-register",
+              moduleId: "caja",
+            },
+            {
+              icon: CalendarClock,
+              name: "Apartados",
+              path: "/layaways",
+              tourKey: "sidebar-layaways",
+              moduleId: "layaways",
+            },
+            {
+              icon: Contact,
+              name: "Clientes",
+              path: "/customers",
+              tourKey: "sidebar-customers",
+              moduleId: "customers",
             },
             {
               icon: Users,

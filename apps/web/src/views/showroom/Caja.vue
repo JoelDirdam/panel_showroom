@@ -26,27 +26,35 @@
     </div>
 
     <div class="mb-4 flex flex-wrap items-center gap-2" data-tour="caja-tabs">
-      <button
+      <div
         v-for="tab in tabs"
         :key="tab.id"
-        type="button"
-        class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition"
+        class="inline-flex items-stretch overflow-hidden rounded-lg border text-sm font-medium transition"
         :class="
           tab.id === activeId
             ? 'border-brand-500 bg-brand-500 text-white'
             : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
         "
-        @click="selectTab(tab.id)"
       >
-        {{ tab.label }}
-        <span
-          class="rounded px-1 text-xs opacity-80 hover:bg-black/10"
-          title="Cerrar"
-          @click.stop="closeTab(tab.id)"
+        <button
+          type="button"
+          class="py-1.5 pl-3 pr-1"
+          :aria-pressed="tab.id === activeId"
+          @click="selectTab(tab.id)"
+        >
+          {{ tab.label }}
+          <span v-if="tab.lines.length" class="ml-1 text-xs opacity-80">({{ tab.lines.length }})</span>
+        </button>
+        <button
+          type="button"
+          class="px-2 text-base leading-none opacity-80 hover:bg-black/10 hover:opacity-100"
+          :title="`Cerrar ${tab.label}`"
+          :aria-label="`Cerrar ${tab.label}`"
+          @click="requestCloseTab(tab)"
         >
           ×
-        </span>
-      </button>
+        </button>
+      </div>
       <button
         type="button"
         class="rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-600 dark:text-gray-300"
@@ -56,9 +64,15 @@
         + Nueva caja
       </button>
       <span class="ml-auto text-xs text-gray-500">{{ tabs.length }}/{{ MAX_CAJAS }} abiertas</span>
+      <router-link
+        to="/corte-caja"
+        class="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+      >
+        Corte de caja
+      </router-link>
     </div>
 
-    <div class="grid gap-4 xl:grid-cols-3">
+    <div class="grid gap-4 pb-20 xl:grid-cols-3 xl:pb-0">
       <!-- Columna izquierda -->
       <div class="space-y-4 xl:col-span-2">
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -73,9 +87,13 @@
               class="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               placeholder="Escanea o busca por código, nombre o marca"
               autocomplete="off"
+              autocapitalize="off"
+              enterkeyhint="search"
+              aria-label="Buscar o escanear producto"
               @input="scheduleSearch"
               @keydown="onSearchKeydown"
               @focus="showSearchDropdown = true"
+              @blur="showSearchDropdown = false"
             />
             <ul
               v-if="showSearchDropdown && searchResults.length"
@@ -88,14 +106,25 @@
                 :class="i === searchHighlight ? 'bg-brand-50 dark:bg-brand-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800'"
                 @mousedown.prevent="pickSearchProduct(p)"
               >
-                <span class="font-medium text-gray-800 dark:text-white">{{ p.name }}</span>
-                <span class="ml-2 text-xs text-gray-500">{{ p.sku }} · {{ p.brand.name }}</span>
-                <span class="float-right text-xs text-gray-500">
-                  ${{ formatMoney(Number(p.price || 0)) }} · stock {{ p.stock?.quantity ?? 0 }}
-                </span>
+                <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <span class="min-w-0 break-words">
+                    <span class="font-medium text-gray-800 dark:text-white">{{ p.name }}</span>
+                    <span class="ml-2 text-xs text-gray-500">{{ p.sku }} · {{ p.brand.name }}</span>
+                  </span>
+                  <span class="text-xs text-gray-500">
+                    <span v-if="p.price === null" class="text-error-500">Sin precio</span>
+                    <template v-else>${{ formatMoney(Number(p.price)) }}</template>
+                    ·
+                    <span v-if="(p.stock?.quantity ?? 0) <= 0" class="text-error-500">Sin stock</span>
+                    <template v-else>stock {{ p.stock?.quantity }}</template>
+                  </span>
+                </div>
               </li>
             </ul>
           </div>
+          <p v-if="searchMsg" class="mt-2 text-sm text-error-500" role="alert">
+            {{ searchMsg }}
+          </p>
         </div>
 
         <div
@@ -105,12 +134,12 @@
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-gray-800 dark:text-white">Artículos en venta</h3>
             <span class="text-xs text-gray-500">
-              {{ activeTab.lines.reduce((s, l) => s + l.quantity, 0) }} Productos totales
+              {{ itemCount }} {{ itemCount === 1 ? 'pieza' : 'piezas' }}
             </span>
           </div>
 
           <div v-if="activeTab.lines.length === 0" class="py-12 text-center text-sm text-gray-500">
-            Agrega productos o apartados para comenzar
+            Busca o escanea un producto para comenzar la venta
           </div>
 
           <div v-else class="space-y-3">
@@ -120,15 +149,17 @@
               class="rounded-xl border border-gray-100 p-4 dark:border-gray-800"
             >
               <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p class="font-medium text-gray-800 dark:text-white">{{ line.name }}</p>
+                <div class="min-w-0">
+                  <p class="break-words font-medium text-gray-800 dark:text-white">{{ line.name }}</p>
                   <p class="text-xs uppercase tracking-wide text-gray-500">
                     Marca: {{ line.brandName }}
                   </p>
-                  <p class="text-xs text-gray-500">Stock disponible: {{ line.stock }}</p>
+                  <p class="text-xs text-gray-500">
+                    ${{ formatMoney(line.unitPrice) }} c/u · Stock disponible: {{ line.stock }}
+                  </p>
                 </div>
                 <p class="text-lg font-semibold text-gray-800 dark:text-white">
-                  ${{ formatMoney(Math.max(0, line.unitPrice * line.quantity - line.discount)) }}
+                  ${{ formatMoney(lineTotal(line)) }}
                 </p>
               </div>
               <div class="mt-3 flex flex-wrap items-end gap-3">
@@ -137,9 +168,12 @@
                   <input
                     v-model.number="line.discount"
                     type="number"
+                    inputmode="decimal"
                     min="0"
+                    :max="round2(line.unitPrice * line.quantity)"
                     step="0.01"
-                    class="mt-1 w-28 rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    @change="fixLine(line)"
+                    class="mt-1 block w-28 rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                   />
                 </label>
                 <div class="text-xs text-gray-500">
@@ -147,22 +181,30 @@
                   <div class="mt-1 flex items-center gap-1">
                     <button
                       type="button"
-                      class="h-8 w-8 rounded-lg border border-gray-300 dark:border-gray-700"
-                      @click="line.quantity = Math.max(1, line.quantity - 1)"
+                      class="h-9 w-9 rounded-lg border border-gray-300 text-gray-700 disabled:opacity-40 dark:border-gray-700 dark:text-gray-200"
+                      :aria-label="`Quitar una pieza de ${line.name}`"
+                      :disabled="line.quantity <= 1"
+                      @click="stepQuantity(line, -1)"
                     >
                       −
                     </button>
                     <input
                       v-model.number="line.quantity"
                       type="number"
+                      inputmode="numeric"
                       min="1"
+                      step="1"
                       :max="line.stock || undefined"
-                      class="w-14 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      :aria-label="`Cantidad de ${line.name}`"
+                      @change="fixLine(line)"
+                      class="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
                     />
                     <button
                       type="button"
-                      class="h-8 w-8 rounded-lg border border-gray-300 dark:border-gray-700"
-                      @click="line.quantity = Math.min(line.stock || line.quantity + 1, line.quantity + 1)"
+                      class="h-9 w-9 rounded-lg border border-gray-300 text-gray-700 disabled:opacity-40 dark:border-gray-700 dark:text-gray-200"
+                      :aria-label="`Agregar una pieza de ${line.name}`"
+                      :disabled="line.stock > 0 && line.quantity >= line.stock"
+                      @click="stepQuantity(line, 1)"
                     >
                       +
                     </button>
@@ -170,7 +212,8 @@
                 </div>
                 <button
                   type="button"
-                  class="ml-auto rounded-lg border border-error-500 px-3 py-1.5 text-sm text-error-500 hover:bg-error-50"
+                  class="ml-auto rounded-lg border border-error-500 px-3 py-1.5 text-sm text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+                  :aria-label="`Quitar ${line.name} de la venta`"
                   @click="removeLine(line.productId)"
                 >
                   Quitar
@@ -184,7 +227,8 @@
       <!-- Resumen -->
       <div class="space-y-4">
         <div
-          class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
+          id="caja-summary"
+          class="scroll-mt-24 rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]"
           data-tour="caja-summary"
         >
           <div class="mb-4 flex items-center justify-between">
@@ -194,8 +238,9 @@
             </span>
           </div>
 
-          <label class="mb-1 block text-xs text-gray-500">Atiende</label>
+          <label for="caja-attendant" class="mb-1 block text-xs text-gray-500">Atiende</label>
           <select
+            id="caja-attendant"
             v-model="activeTab.attendedById"
             data-tour="caja-attendant"
             class="mb-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
@@ -218,9 +263,14 @@
               <span>${{ formatMoney(subtotalWithDiscount) }}</span>
             </div>
             <div class="flex items-center justify-between">
-              <span class="text-gray-600 dark:text-gray-300">Aplicar IVA (16%)</span>
+              <span class="text-gray-600 dark:text-gray-300">
+                {{ pricesIncludeIva ? 'Desglosar IVA (ya incluido)' : 'Aplicar IVA (16%)' }}
+              </span>
               <button
                 type="button"
+                role="switch"
+                :aria-checked="activeTab.applyTax"
+                :aria-label="pricesIncludeIva ? 'Desglosar IVA incluido' : 'Aplicar IVA (16%)'"
                 class="rounded-full px-3 py-1 text-xs font-medium"
                 :class="
                   activeTab.applyTax
@@ -233,15 +283,15 @@
               </button>
             </div>
             <div v-if="activeTab.applyTax" class="flex justify-between text-gray-600 dark:text-gray-300">
-              <span>IVA (16%)</span>
+              <span>{{ pricesIncludeIva ? 'IVA incluido (16%)' : 'IVA (16%)' }}</span>
               <span>${{ formatMoney(taxAmount) }}</span>
             </div>
             <div
-              v-if="activeTab.giftCardApplied > 0"
+              v-if="giftCardApplied > 0"
               class="flex justify-between text-success-600"
             >
               <span>Tarjeta de regalo</span>
-              <span>−${{ formatMoney(activeTab.giftCardApplied) }}</span>
+              <span>−${{ formatMoney(giftCardApplied) }}</span>
             </div>
             <div class="flex justify-between border-t border-gray-100 pt-2 text-base font-semibold text-gray-800 dark:border-gray-800 dark:text-white">
               <span>Total a pagar</span>
@@ -298,12 +348,16 @@
               <input
                 v-model.number="activeTab.cashReceived"
                 type="number"
+                inputmode="decimal"
                 min="0"
                 step="0.01"
                 class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               />
             </label>
-            <p v-if="changeDue > 0" class="mt-1 text-xs text-success-600">
+            <p v-if="cashShort > 0" class="mt-1 text-xs text-error-500">
+              Faltan ${{ formatMoney(cashShort) }} para cubrir el total
+            </p>
+            <p v-else-if="changeDue > 0" class="mt-1 text-sm font-medium text-success-600">
               Cambio: ${{ formatMoney(changeDue) }}
             </p>
           </div>
@@ -323,6 +377,7 @@
               v-for="opt in paymentOptions"
               :key="opt.value"
               type="button"
+              :aria-pressed="activeTab.paymentMethod === opt.value"
               class="rounded-xl border px-3 py-3 text-sm font-medium transition"
               :class="
                 activeTab.paymentMethod === opt.value
@@ -348,6 +403,7 @@
               <input
                 v-model.number="activeTab.mixed[field.key]"
                 type="number"
+                inputmode="decimal"
                 min="0"
                 step="0.01"
                 class="mt-1 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
@@ -355,6 +411,10 @@
             </label>
             <p class="text-xs" :class="mixedOk ? 'text-success-600' : 'text-error-500'">
               Suma: ${{ formatMoney(mixedSum) }} / ${{ formatMoney(totalToPay) }}
+              <template v-if="!mixedOk">
+                · {{ mixedSum < totalToPay ? 'faltan' : 'sobran' }}
+                ${{ formatMoney(Math.abs(totalToPay - mixedSum)) }}
+              </template>
             </p>
           </div>
 
@@ -365,11 +425,16 @@
             :disabled="saving || activeTab.lines.length === 0"
             @click="confirmSale"
           >
-            Confirmar compra
+            {{ saving ? 'Registrando…' : 'Confirmar compra' }}
           </button>
 
-          <p v-if="formError" class="mt-3 text-sm text-error-500">{{ formError }}</p>
-          <p v-if="successMsg" class="mt-3 text-sm text-success-600">{{ successMsg }}</p>
+          <p v-if="formError" class="mt-3 text-sm text-error-500" role="alert">{{ formError }}</p>
+          <p v-if="successMsg" class="mt-3 text-sm text-success-600" role="status">
+            {{ successMsg }}
+            <button v-if="lastSale" type="button" class="ml-1 font-medium underline" @click="showTicket = true">
+              Ver ticket
+            </button>
+          </p>
         </div>
 
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -381,54 +446,125 @@
         </div>
 
         <div class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
-          <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">
+          <label for="caja-gift-code" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">
             Código de tarjeta de regalo
           </label>
           <div class="flex gap-2">
             <input
+              id="caja-gift-code"
               v-model="activeTab.giftCardCode"
               type="text"
+              autocomplete="off"
+              autocapitalize="characters"
               placeholder="Escanea o ingresa el código"
-              class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              @input="onGiftCodeInput"
+              @keydown.enter.prevent="applyGiftCard"
             />
             <button
               type="button"
-              class="rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600"
+              class="rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+              :disabled="giftLoading"
               @click="applyGiftCard"
             >
-              Aplicar
+              {{ giftLoading ? '…' : 'Aplicar' }}
             </button>
           </div>
-          <p v-if="giftMsg" class="mt-1 text-xs text-gray-500">{{ giftMsg }}</p>
+          <p v-if="activeTab.giftCardBalance > 0" class="mt-1 text-xs text-success-600">
+            Saldo ${{ formatMoney(activeTab.giftCardBalance) }} · se aplicarán ${{ formatMoney(giftCardApplied) }}
+            <button type="button" class="ml-2 underline" @click="clearGiftCard">Quitar</button>
+          </p>
+          <p v-else-if="giftMsg" class="mt-1 text-xs text-error-500" role="alert">{{ giftMsg }}</p>
 
-          <label class="mb-1 mt-4 block text-xs font-medium text-gray-600 dark:text-gray-300">
-            Cliente frecuente
+          <label for="caja-customer" class="mb-1 mt-4 block text-xs font-medium text-gray-600 dark:text-gray-300">
+            Cliente (opcional)
           </label>
           <div class="relative">
             <input
+              id="caja-customer"
               v-model="customerQuery"
               type="text"
-              placeholder="Nombre o teléfono"
+              autocomplete="off"
+              placeholder="Busca por nombre o teléfono"
               class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
               @input="searchCustomers"
               @keydown.enter.prevent="createOrSelectCustomer"
+              @keydown.esc="closeCustomerDropdown"
+              @blur="closeCustomerDropdown"
             />
             <ul
-              v-if="customerResults.length"
-              class="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-900"
+              v-if="customerDropdownOpen"
+              class="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow dark:border-gray-700 dark:bg-gray-900"
             >
               <li
                 v-for="c in customerResults"
                 :key="c.id"
-                class="cursor-pointer px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-800"
+                class="cursor-pointer break-words px-3 py-2 text-sm text-gray-800 hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800"
                 @mousedown.prevent="selectCustomer(c)"
               >
                 {{ c.name }}
                 <span v-if="c.phone" class="text-xs text-gray-500">· {{ c.phone }}</span>
               </li>
+              <li v-if="customerResults.length === 0" class="px-3 py-2 text-xs text-gray-500">
+                Sin coincidencias
+              </li>
+              <li
+                class="cursor-pointer break-words border-t border-gray-100 px-3 py-2 text-sm font-medium text-brand-600 hover:bg-gray-50 dark:border-gray-800 dark:text-brand-400 dark:hover:bg-gray-800"
+                @mousedown.prevent="openNewCustomer"
+              >
+                + Crear cliente «{{ customerQuery.trim() }}»
+              </li>
             </ul>
           </div>
-          <p v-if="activeTab.customerLabel" class="mt-1 text-xs text-brand-600">
+          <p v-if="customerMsg" class="mt-1 text-xs text-error-500" role="alert">{{ customerMsg }}</p>
+
+          <form
+            v-if="newCustomer.open"
+            class="mt-2 space-y-2 rounded-lg border border-gray-100 p-3 dark:border-gray-800"
+            @submit.prevent="saveNewCustomer"
+          >
+            <p class="text-xs font-medium text-gray-700 dark:text-gray-200">Nuevo cliente</p>
+            <label class="block text-xs text-gray-500">
+              Nombre
+              <input
+                ref="newCustomerNameRef"
+                v-model="newCustomer.name"
+                type="text"
+                maxlength="200"
+                autocomplete="off"
+                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </label>
+            <label class="block text-xs text-gray-500">
+              Teléfono (opcional)
+              <input
+                v-model="newCustomer.phone"
+                type="tel"
+                inputmode="tel"
+                maxlength="40"
+                autocomplete="off"
+                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              />
+            </label>
+            <div class="flex gap-2">
+              <button
+                type="submit"
+                class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                :disabled="newCustomer.saving"
+              >
+                {{ newCustomer.saving ? 'Guardando…' : 'Guardar cliente' }}
+              </button>
+              <button
+                type="button"
+                class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                @click="newCustomer.open = false"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+
+          <p v-if="activeTab.customerLabel" class="mt-1 break-words text-xs text-brand-600">
             Seleccionado: {{ activeTab.customerLabel }}
             <button type="button" class="ml-2 underline" @click="clearCustomer">Quitar</button>
           </p>
@@ -459,13 +595,40 @@
         </div>
       </div>
     </div>
+
+    <!-- En pantallas chicas el resumen queda abajo del carrito: el total va siempre a la vista. -->
+    <div
+      v-if="activeTab.lines.length > 0"
+      class="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-gray-200 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] xl:hidden dark:border-gray-800 dark:bg-gray-900"
+    >
+      <div class="min-w-0">
+        <p class="text-xs text-gray-500">{{ itemCount }} {{ itemCount === 1 ? 'pieza' : 'piezas' }} · Total</p>
+        <p class="text-lg font-semibold text-gray-800 dark:text-white">${{ formatMoney(totalToPay) }}</p>
+      </div>
+      <button
+        type="button"
+        class="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+        @click="goToSummary"
+      >
+        Cobrar
+      </button>
+    </div>
+
+    <sale-ticket
+      v-if="showTicket && lastSale"
+      :sale="lastSale.sale"
+      :cash-received="lastSale.cashReceived"
+      :change="lastSale.change"
+      @close="closeTicket"
+    />
   </admin-layout>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
+import SaleTicket from '@/components/pos/SaleTicket.vue'
 import api, {
   fetchEmployees,
   fetchPreferences,
@@ -484,8 +647,12 @@ import {
   DEFAULT_USD_RATE,
   MAX_CAJAS,
   formatMoney,
+  lineTotal,
+  num,
   round2,
   useCajaSession,
+  type CajaTabState,
+  type CartLine,
 } from '@/composables/useCajaSession'
 
 const auth = useAuthStore()
@@ -504,6 +671,7 @@ const usdRate = computed(() => {
   }
   return DEFAULT_USD_RATE
 })
+const pricesIncludeIva = computed(() => !!prefs.value?.pricesIncludeIva)
 const ticketFixedComment = computed(() => prefs.value?.ticketFixedComment?.trim() || '')
 const prefsBanner = computed(() => {
   const p = prefs.value
@@ -555,13 +723,87 @@ const {
   subtotalWithDiscount,
   taxAmount,
   totalBeforeGift,
+  giftCardApplied,
   totalToPay,
   changeDue,
   mixedPayments,
 } = useCajaSession({
-  defaultAttendedById: () => employees.value[0]?.id || '',
+  defaultAttendedById: () => employees.value[0]?.id || SELF_ATTENDANT,
   defaultApplyTax: () => !!prefs.value?.chargeIva,
+  pricesIncludeTax: () => pricesIncludeIva.value,
+  // Un carrito a medias no debe aparecerle a otra cuenta que entre en este navegador.
+  storageScope: auth.user ? `${auth.user.tenantId ?? ''}:${auth.user.id}` : undefined,
 })
+
+const itemCount = computed(() => activeTab.value.lines.reduce((s, l) => s + num(l.quantity), 0))
+
+/** Efectivo capturado que no alcanza a cubrir el total (0 si no se capturó o sí alcanza). */
+const cashShort = computed(() => {
+  if (activeTab.value.paymentMethod !== 'EFECTIVO') return 0
+  const received = num(activeTab.value.cashReceived)
+  if (received <= 0) return 0
+  return round2(Math.max(0, totalToPay.value - received))
+})
+
+/** Última venta cobrada, para mostrar o reimprimir su ticket. */
+const lastSale = ref<{ sale: Sale; cashReceived: number; change: number } | null>(null)
+const showTicket = ref(false)
+
+function closeTicket() {
+  showTicket.value = false
+  void nextTick(() => searchInputRef.value?.focus())
+}
+
+function goToSummary() {
+  document.getElementById('caja-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function requestCloseTab(tab: CajaTabState) {
+  if (
+    tab.lines.length > 0 &&
+    !window.confirm(`${tab.label} tiene ${tab.lines.length} artículo(s) sin cobrar. ¿Cerrarla y descartarlos?`)
+  ) {
+    return
+  }
+  closeTab(tab.id)
+}
+
+/**
+ * Deja la línea en valores válidos: cantidad entera entre 1 y el stock, y
+ * descuento entre 0 y el importe de la línea. Devuelve true si tuvo que corregir.
+ */
+function fixLine(line: CartLine): boolean {
+  let changed = false
+  let qty = Math.floor(num(line.quantity))
+  if (qty < 1) qty = 1
+  if (line.stock > 0 && qty > line.stock) qty = line.stock
+  if (qty !== line.quantity) {
+    line.quantity = qty
+    changed = true
+  }
+  const maxDiscount = round2(num(line.unitPrice) * qty)
+  const discount = Math.min(maxDiscount, round2(Math.max(0, num(line.discount))))
+  if (discount !== line.discount) {
+    line.discount = discount
+    changed = true
+  }
+  return changed
+}
+
+function stepQuantity(line: CartLine, delta: number) {
+  line.quantity = Math.floor(num(line.quantity)) + delta
+  fixLine(line)
+}
+
+/** Valida el carrito antes de cobrar o apartar. Devuelve el mensaje de error, o '' si todo está bien. */
+function cartError(): string {
+  if (activeTab.value.lines.length === 0) return 'Agrega al menos un producto'
+  const fixed = activeTab.value.lines.filter((l) => fixLine(l)).map((l) => l.name)
+  if (fixed.length) {
+    return `Se ajustó la cantidad o el descuento de: ${fixed.join(', ')}. Revisa el total y confirma de nuevo.`
+  }
+  return ''
+}
 
 const searchQuery = ref('')
 const searchResults = ref<Product[]>([])
@@ -572,10 +814,24 @@ const searchTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const saving = ref(false)
 const formError = ref('')
 const successMsg = ref('')
+const searchMsg = ref('')
+let searchSeq = 0
 const giftMsg = ref('')
+const giftLoading = ref(false)
 const customerQuery = ref('')
 const customerResults = ref<Customer[]>([])
+const customerDropdownOpen = ref(false)
+const customerMsg = ref('')
 let customerTimer: ReturnType<typeof setTimeout> | null = null
+let customerSeq = 0
+const newCustomer = reactive({ open: false, name: '', phone: '', saving: false })
+const newCustomerNameRef = ref<HTMLInputElement | null>(null)
+
+function apiError(e: unknown, fallback: string): string {
+  const err = e as { response?: { data?: { error?: string } } }
+  if (!err.response) return 'Sin conexión con el servidor. Intenta de nuevo.'
+  return err.response.data?.error || fallback
+}
 
 const paymentOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: 'EFECTIVO', label: 'Efectivo' },
@@ -592,9 +848,9 @@ const mixedFields = [
 
 const mixedSum = computed(() =>
   round2(
-    (activeTab.value.mixed.efectivo || 0) +
-      (activeTab.value.mixed.tarjeta || 0) +
-      (activeTab.value.mixed.transferencia || 0),
+    num(activeTab.value.mixed.efectivo) +
+      num(activeTab.value.mixed.tarjeta) +
+      num(activeTab.value.mixed.transferencia),
   ),
 )
 
@@ -615,14 +871,24 @@ function scheduleSearch() {
 
 async function runSearch() {
   const q = searchQuery.value.trim()
+  const seq = ++searchSeq
+  searchMsg.value = ''
   if (!q) {
     searchResults.value = []
     return
   }
-  const { data } = await api.get<Product[]>('/products', { params: { q } })
-  searchResults.value = data.slice(0, 30)
-  searchHighlight.value = 0
-  showSearchDropdown.value = true
+  try {
+    const { data } = await api.get<Product[]>('/products', { params: { q } })
+    // Una respuesta lenta de una búsqueda anterior no debe pisar la más reciente.
+    if (seq !== searchSeq) return
+    searchResults.value = data.slice(0, 30)
+    searchHighlight.value = 0
+    showSearchDropdown.value = true
+  } catch (e: unknown) {
+    if (seq !== searchSeq) return
+    searchResults.value = []
+    searchMsg.value = apiError(e, 'No se pudo buscar el producto')
+  }
 }
 
 function onSearchKeydown(e: KeyboardEvent) {
@@ -652,11 +918,13 @@ function onSearchKeydown(e: KeyboardEvent) {
 async function commitSearch() {
   const q = searchQuery.value.trim()
   if (!q) return
+  if (searchTimer.value) clearTimeout(searchTimer.value)
   await runSearch()
+  if (searchMsg.value) return
   const exact = searchResults.value.find((p) => p.sku.toLowerCase() === q.toLowerCase())
   const pick = exact || searchResults.value[searchHighlight.value]
   if (!pick) {
-    formError.value = 'No se encontró producto'
+    searchMsg.value = `No se encontró ningún producto con «${q}»`
     return
   }
   pickSearchProduct(pick)
@@ -664,7 +932,8 @@ async function commitSearch() {
 
 function pickSearchProduct(product: Product) {
   formError.value = ''
-  addProduct(product)
+  successMsg.value = ''
+  searchMsg.value = addProduct(product) || ''
   searchQuery.value = ''
   searchResults.value = []
   showSearchDropdown.value = false
@@ -678,31 +947,65 @@ async function applyGiftCard() {
     giftMsg.value = 'Ingresa un código'
     return
   }
+  const tab = activeTab.value
+  giftLoading.value = true
   try {
     const { data } = await api.post<GiftCardPreview>('/gift-cards/preview', {
       code,
       amountDue: totalBeforeGift.value,
     })
-    activeTab.value.giftCardApplied = data.applicable
-    giftMsg.value = `Saldo $${formatMoney(data.balance)} · se aplicarán $${formatMoney(data.applicable)}`
+    tab.giftCardCode = data.code
+    tab.giftCardBalance = data.balance
+    if (data.balance <= 0) giftMsg.value = 'La tarjeta de regalo no tiene saldo'
   } catch (e: unknown) {
-    activeTab.value.giftCardApplied = 0
-    const err = e as { response?: { data?: { error?: string } } }
-    giftMsg.value = err.response?.data?.error || 'No se pudo aplicar'
+    tab.giftCardBalance = 0
+    giftMsg.value = apiError(e, 'No se pudo aplicar la tarjeta')
+  } finally {
+    giftLoading.value = false
   }
 }
 
-async function searchCustomers() {
+/** Si cambian el código ya validado, hay que volver a aplicarlo. */
+function onGiftCodeInput() {
+  activeTab.value.giftCardBalance = 0
+  giftMsg.value = ''
+}
+
+function clearGiftCard() {
+  activeTab.value.giftCardCode = ''
+  activeTab.value.giftCardBalance = 0
+  giftMsg.value = ''
+}
+
+function searchCustomers() {
   if (customerTimer) clearTimeout(customerTimer)
-  customerTimer = setTimeout(async () => {
-    const q = customerQuery.value.trim()
-    if (!q) {
-      customerResults.value = []
-      return
-    }
+  customerMsg.value = ''
+  const seq = ++customerSeq
+  const q = customerQuery.value.trim()
+  if (!q) {
+    customerResults.value = []
+    customerDropdownOpen.value = false
+    return
+  }
+  customerTimer = setTimeout(() => void runCustomerSearch(q, seq), 200)
+}
+
+async function runCustomerSearch(q: string, seq: number) {
+  try {
     const { data } = await api.get<Customer[]>('/customers', { params: { q } })
+    if (seq !== customerSeq) return
     customerResults.value = data
-  }, 200)
+    customerDropdownOpen.value = true
+  } catch (e: unknown) {
+    if (seq !== customerSeq) return
+    customerResults.value = []
+    customerDropdownOpen.value = false
+    customerMsg.value = apiError(e, 'No se pudo buscar clientes')
+  }
+}
+
+function closeCustomerDropdown() {
+  customerDropdownOpen.value = false
 }
 
 function selectCustomer(c: Customer) {
@@ -710,6 +1013,9 @@ function selectCustomer(c: Customer) {
   activeTab.value.customerLabel = c.phone ? `${c.name} (${c.phone})` : c.name
   customerQuery.value = ''
   customerResults.value = []
+  customerDropdownOpen.value = false
+  customerMsg.value = ''
+  newCustomer.open = false
 }
 
 function clearCustomer() {
@@ -717,26 +1023,57 @@ function clearCustomer() {
   activeTab.value.customerLabel = ''
 }
 
+/** Enter en el buscador: elige la primera coincidencia o abre el alta con lo escrito. */
 async function createOrSelectCustomer() {
   const q = customerQuery.value.trim()
   if (!q) return
+  if (customerTimer) clearTimeout(customerTimer)
+  await runCustomerSearch(q, ++customerSeq)
+  if (customerMsg.value) return
   if (customerResults.value[0]) {
     selectCustomer(customerResults.value[0])
     return
   }
-  const looksPhone = /^\d[\d\s-]{5,}$/.test(q)
-  const { data } = await api.post<Customer>('/customers', {
-    name: looksPhone ? q : q,
-    phone: looksPhone ? q.replace(/\s/g, '') : null,
-  })
-  selectCustomer(data)
+  openNewCustomer()
+}
+
+function openNewCustomer() {
+  const q = customerQuery.value.trim()
+  const looksPhone = /^\+?\d[\d\s().-]{5,}$/.test(q)
+  newCustomer.name = looksPhone ? '' : q
+  newCustomer.phone = looksPhone ? q : ''
+  newCustomer.open = true
+  customerDropdownOpen.value = false
+  customerMsg.value = ''
+  void nextTick(() => newCustomerNameRef.value?.focus())
+}
+
+async function saveNewCustomer() {
+  const name = newCustomer.name.trim()
+  if (!name) {
+    customerMsg.value = 'Escribe el nombre del cliente'
+    return
+  }
+  customerMsg.value = ''
+  newCustomer.saving = true
+  try {
+    const { data } = await api.post<Customer>('/customers', {
+      name,
+      phone: newCustomer.phone.trim() || null,
+    })
+    selectCustomer(data)
+  } catch (e: unknown) {
+    customerMsg.value = apiError(e, 'No se pudo guardar el cliente')
+  } finally {
+    newCustomer.saving = false
+  }
 }
 
 function buildLinesPayload() {
   return activeTab.value.lines.map((l) => ({
     productId: l.productId,
     quantity: l.quantity,
-    discount: l.discount || 0,
+    discount: num(l.discount),
     unitPrice: l.unitPrice,
   }))
 }
@@ -744,12 +1081,22 @@ function buildLinesPayload() {
 async function confirmSale() {
   formError.value = ''
   successMsg.value = ''
-  if (activeTab.value.lines.length === 0) {
-    formError.value = 'Agrega al menos un producto'
-    return
+  if (saving.value) return
+  formError.value = cartError()
+  if (formError.value) return
+  if (activeTab.value.paymentMethod === 'MIXTO') {
+    if (!mixedOk.value) {
+      formError.value = 'Los montos del pago mixto deben sumar el total'
+      return
+    }
+    if (mixedPayments().length < 2) {
+      formError.value =
+        'El pago mixto necesita montos en al menos dos formas de pago. Si es una sola, elígela arriba.'
+      return
+    }
   }
-  if (activeTab.value.paymentMethod === 'MIXTO' && !mixedOk.value) {
-    formError.value = 'Los montos del pago mixto deben sumar el total'
+  if (cashShort.value > 0) {
+    formError.value = `El efectivo recibido no cubre el total: faltan $${formatMoney(cashShort.value)}`
     return
   }
 
@@ -758,27 +1105,37 @@ async function confirmSale() {
     paymentMethod: activeTab.value.paymentMethod,
     applyTax: activeTab.value.applyTax,
     taxRate: 0.16,
+    pricesIncludeTax: pricesIncludeIva.value,
     ticketComment: activeTab.value.ticketComment || null,
     attendedById: isSelf ? null : activeTab.value.attendedById || null,
     attendedByUserId: isSelf && auth.user ? auth.user.id : null,
     customerId: activeTab.value.customerId,
-    giftCardCode: activeTab.value.giftCardApplied > 0 ? activeTab.value.giftCardCode.trim() : null,
+    giftCardCode: giftCardApplied.value > 0 ? activeTab.value.giftCardCode.trim() : null,
     lines: buildLinesPayload(),
     ...(activeTab.value.paymentMethod === 'MIXTO'
       ? { payments: mixedPayments() }
       : {}),
   }
 
+  const change = changeDue.value
+  const cashReceived = activeTab.value.paymentMethod === 'EFECTIVO' ? num(activeTab.value.cashReceived) : 0
+  const tabId = activeTab.value.id
   saving.value = true
   try {
     const { data } = await api.post<Sale>('/sales', payload)
-    successMsg.value = `Venta registrada · ticket #${data.ticketNumber}`
-    resetTab(activeTab.value.id)
+    successMsg.value =
+      `Venta registrada · ticket #${data.ticketNumber} · total $${formatMoney(Number(data.total ?? 0))}` +
+      (change > 0 ? ` · cambio $${formatMoney(change)}` : '')
+    resetTab(tabId)
     giftMsg.value = ''
-    void nextTick(() => searchInputRef.value?.focus())
+    searchMsg.value = ''
+    newCustomer.open = false
+    lastSale.value = { sale: data, cashReceived, change }
+    // Con "Imprimir tickets" activo el ticket se abre solo, listo para imprimir o enviar.
+    showTicket.value = prefs.value?.printTickets !== false
+    if (!showTicket.value) void nextTick(() => searchInputRef.value?.focus())
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } }
-    formError.value = err.response?.data?.error || 'No se pudo confirmar la compra'
+    formError.value = apiError(e, 'No se pudo confirmar la compra')
   } finally {
     saving.value = false
   }
@@ -787,27 +1144,34 @@ async function confirmSale() {
 async function createLayaway() {
   formError.value = ''
   successMsg.value = ''
+  if (saving.value) return
   if (activeTab.value.lines.length === 0) {
     formError.value = 'Agrega productos para el apartado'
     return
   }
+  formError.value = cartError()
+  if (formError.value) return
 
   const payload: CreateLayawayPayload = {
     lines: buildLinesPayload(),
     applyTax: activeTab.value.applyTax,
     taxRate: 0.16,
+    pricesIncludeTax: pricesIncludeIva.value,
     ticketComment: activeTab.value.ticketComment || null,
     customerId: activeTab.value.customerId,
   }
 
+  const tabId = activeTab.value.id
   saving.value = true
   try {
     const { data } = await api.post<{ code: string }>('/layaways', payload)
     successMsg.value = `Apartado creado · código ${data.code}`
-    resetTab(activeTab.value.id)
+    resetTab(tabId)
+    giftMsg.value = ''
+    searchMsg.value = ''
+    newCustomer.open = false
   } catch (e: unknown) {
-    const err = e as { response?: { data?: { error?: string } } }
-    formError.value = err.response?.data?.error || 'No se pudo crear el apartado'
+    formError.value = apiError(e, 'No se pudo crear el apartado')
   } finally {
     saving.value = false
   }
@@ -835,8 +1199,15 @@ onMounted(async () => {
     loadingEmployees.value = false
   }
 
-  if (!activeTab.value.attendedById) {
-    activeTab.value.attendedById = employees.value[0]?.id || SELF_ATTENDANT
+  const chargeIva = !!prefs.value?.chargeIva
+  for (const tab of tabs.value) {
+    // Quien atendía pudo darse de baja desde que se guardó la sesión.
+    const known =
+      tab.attendedById === SELF_ATTENDANT || employees.value.some((e) => e.id === tab.attendedById)
+    if (!known) tab.attendedById = employees.value[0]?.id || SELF_ATTENDANT
+    // Las preferencias llegan después de crear la primera caja: una caja aún
+    // vacía toma el "Cobrar IVA por defecto" del negocio.
+    if (tab.lines.length === 0) tab.applyTax = chargeIva
   }
   void nextTick(() => searchInputRef.value?.focus())
 })

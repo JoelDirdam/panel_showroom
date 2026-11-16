@@ -15,7 +15,7 @@
 ## Entornos
 | Entorno | Web | API | Stripe |
 |---|---|---|---|
-| production | https://app.cosdi.mx | https://api.cosdi.mx | Real (pendiente: activar la cuenta) |
+| production | https://app.cosdi.mx | https://api.cosdi.mx | Real, activo desde el 16 nov 2026 (solo planes de Citas) |
 | dev (Railway) | https://web-dev-46ae7335.up.railway.app | https://api-dev-cd691f6e.up.railway.app | Prueba |
 
 `dev` tiene su propia base de datos, no envía correos (el código de verificación sale en los logs) ni WhatsApp.

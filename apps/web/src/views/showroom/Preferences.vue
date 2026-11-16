@@ -217,10 +217,13 @@
                 Inventario flexible (permite vender sin stock exacto)
               </FormCheckbox>
               <FormCheckbox v-model="prefsForm.printTickets" align="center">
-                Imprimir tickets automáticamente
+                Mostrar el ticket al cobrar (para imprimir o enviar)
               </FormCheckbox>
               <FormCheckbox v-model="prefsForm.chargeIva" align="center">
                 Cobrar IVA por defecto
+              </FormCheckbox>
+              <FormCheckbox v-model="prefsForm.pricesIncludeIva" align="center">
+                Mis precios ya incluyen IVA (en Caja se desglosa en vez de sumarse)
               </FormCheckbox>
             </div>
             <div class="mt-4">
@@ -454,6 +457,7 @@ const PREF_FIELD_LABELS: Record<string, string> = {
   flexibleInventory: 'Inventario flexible',
   printTickets: 'Imprimir tickets',
   chargeIva: 'Cobrar IVA',
+  pricesIncludeIva: 'Precios con IVA incluido',
 }
 
 function apiError(e: unknown, fallback: string): string {
@@ -654,6 +658,7 @@ const prefsForm = reactive({
   printTickets: true,
   ticketFixedComment: '',
   chargeIva: false,
+  pricesIncludeIva: false,
   usdEnabled: false,
   usdRateMode: '' as '' | UsdRateMode,
   usdFixedRate: '',
@@ -715,6 +720,7 @@ function applyPreferences(data: BusinessPreferences) {
   prefsForm.printTickets = data.printTickets
   prefsForm.ticketFixedComment = data.ticketFixedComment || ''
   prefsForm.chargeIva = data.chargeIva
+  prefsForm.pricesIncludeIva = !!data.pricesIncludeIva
   prefsForm.usdEnabled = data.usdEnabled
   prefsForm.usdRateMode = data.usdRateMode ?? ''
   prefsForm.usdFixedRate = data.usdFixedRate != null ? String(data.usdFixedRate) : ''
@@ -825,6 +831,7 @@ async function persistPreferences() {
       printTickets: prefsForm.printTickets,
       ticketFixedComment: prefsForm.ticketFixedComment?.trim() || null,
       chargeIva: prefsForm.chargeIva,
+      pricesIncludeIva: prefsForm.pricesIncludeIva,
       usdEnabled: prefsForm.usdEnabled,
       usdRateMode: prefsForm.usdRateMode || null,
       usdFixedRate:

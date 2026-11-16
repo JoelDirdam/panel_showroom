@@ -207,6 +207,8 @@ export interface BusinessPreferences {
   printTickets: boolean
   ticketFixedComment: string | null
   chargeIva: boolean
+  /** Los precios de lista ya traen IVA: se desglosa en vez de sumarse. */
+  pricesIncludeIva?: boolean
   usdEnabled: boolean
   usdRateMode: UsdRateMode | null
   usdFixedRate: string | null
@@ -228,6 +230,7 @@ export interface UpdateBusinessPreferencesPayload {
   printTickets?: boolean
   ticketFixedComment?: string | null
   chargeIva?: boolean
+  pricesIncludeIva?: boolean
   usdEnabled?: boolean
   usdRateMode?: UsdRateMode | null
   usdFixedRate?: number | null
@@ -935,6 +938,8 @@ export interface Sale {
   createdById: string | null
   attendedById?: string | null
   customerId?: string | null
+  /** Venta generada al liquidar un apartado. */
+  layawayId?: string | null
   createdAt: string
   createdBy?: { id: string; name: string } | null
   attendedBy?: { id: string; name: string; role?: string } | null
@@ -950,6 +955,7 @@ export interface CreateSalePayload {
   ticketComment?: string | null
   applyTax?: boolean
   taxRate?: number
+  pricesIncludeTax?: boolean
   attendedById?: string | null
   attendedByUserId?: string | null
   customerId?: string | null
@@ -1011,6 +1017,7 @@ export interface CreateLayawayPayload {
   ticketComment?: string | null
   applyTax?: boolean
   taxRate?: number
+  pricesIncludeTax?: boolean
   customerId?: string | null
   deposit?: { method: SplitPaymentMethod; amount: number }
 }
