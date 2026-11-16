@@ -15,6 +15,8 @@ export interface PlanInfo {
   available: boolean
   /** Precio mensual en MXN, con IVA incluido. Sin precio = aún no se cobra en línea. */
   priceMxn?: number
+  /** El precio solo se muestra si el cobro en línea del plan está activo en este entorno. */
+  priceOnlyIfPayable?: boolean
 }
 
 export const PLANS: PlanInfo[] = [
@@ -32,6 +34,8 @@ export const PLANS: PlanInfo[] = [
       'Usuarios y preferencias del negocio',
     ],
     available: true,
+    priceMxn: 699,
+    priceOnlyIfPayable: true,
   },
   {
     type: 'CITAS_PANEL',
@@ -67,22 +71,6 @@ export const PLANS: PlanInfo[] = [
     priceMxn: 149,
   },
   {
-    type: 'CLINICA',
-    name: 'Clínica',
-    tagline: 'Próximamente',
-    description: 'Agenda de pacientes, recordatorios automáticos e historial médico.',
-    features: ['Agenda de pacientes', 'Recordatorios automáticos', 'Historial médico'],
-    available: false,
-  },
-  {
-    type: 'RESTAURANTE',
-    name: 'Restaurante',
-    tagline: 'Próximamente',
-    description: 'Menú de platillos, comandas de cocina y ventas en punto de venta.',
-    features: ['Menú y platillos', 'Comandas de cocina', 'Ventas y caja'],
-    available: false,
-  },
-  {
     type: 'MARCA',
     name: 'Marca',
     tagline: 'Próximamente',
@@ -94,6 +82,12 @@ export const PLANS: PlanInfo[] = [
 
 export function planInfo(type: PlanType | null | undefined): PlanInfo | undefined {
   return PLANS.find((p) => p.type === type)
+}
+
+/** Precio a mostrar: se oculta en planes cuyo cobro en línea aún no está activo. */
+export function shownPrice(plan: PlanInfo | undefined, payable: boolean): number | undefined {
+  if (!plan?.priceMxn) return undefined
+  return plan.priceOnlyIfPayable && !payable ? undefined : plan.priceMxn
 }
 
 export const TRIAL_BASE_DAYS = 15

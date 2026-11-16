@@ -18,7 +18,7 @@ const returnPathSchema = z
 
 const checkoutSchema = z.object({
   planType: z
-    .enum(['CITAS_RECORDATORIOS', 'CITAS_PANEL', 'CITAS_IA'])
+    .enum(['NEGOCIO', 'CITAS_RECORDATORIOS', 'CITAS_PANEL', 'CITAS_IA'])
     .optional(),
   returnPath: returnPathSchema,
 })
@@ -37,7 +37,8 @@ billingRouter.get('/status', async (req, res) => {
       where: { tenantId: requireTenantId(req.user!) },
     })
     return res.json({
-      stripeConfigured: isStripeConfigured(),
+      // Cobro disponible para ESTE negocio: hay clave de Stripe y su plan tiene precio en este entorno.
+      stripeConfigured: isStripeConfigured() && (!sub || Boolean(priceIdForPlan(sub.planType))),
       taxIncluded: true,
       taxPercent: taxRateId() ? 16 : 0,
       subscription: sub && {

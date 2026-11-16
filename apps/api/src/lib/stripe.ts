@@ -18,6 +18,7 @@ export function isStripeConfigured(): boolean {
 
 /** Plan -> variable de entorno con el price_... de Stripe. */
 const PRICE_ENV: Partial<Record<PlanType, string>> = {
+  NEGOCIO: 'STRIPE_PRICE_NEGOCIO',
   CITAS_RECORDATORIOS: 'STRIPE_PRICE_CITAS_RECORDATORIOS',
   CITAS_PANEL: 'STRIPE_PRICE_CITAS_PANEL',
   CITAS_IA: 'STRIPE_PRICE_CITAS_IA',

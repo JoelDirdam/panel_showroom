@@ -14,8 +14,8 @@
         <div class="mt-6 rounded-xl bg-gray-50 p-4 text-left text-sm dark:bg-white/[0.03]">
           <div class="flex items-start justify-between gap-3">
             <p class="font-medium text-gray-800 dark:text-white">Plan {{ plan?.name ?? 'seleccionado' }}</p>
-            <p v-if="plan?.priceMxn" class="shrink-0 text-right font-semibold text-gray-800 dark:text-white">
-              {{ formatMxn(plan.priceMxn) }}
+            <p v-if="price" class="shrink-0 text-right font-semibold text-gray-800 dark:text-white">
+              {{ formatMxn(price) }}
               <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">al mes, IVA incluido</span>
             </p>
           </div>
@@ -76,7 +76,7 @@ import { useRouter } from 'vue-router'
 import { CreditCard } from 'lucide-vue-next'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { planInfo } from '@/lib/plans'
+import { planInfo, shownPrice } from '@/lib/plans'
 import { skipPayment, extractApiError } from '@/services/api'
 import { fetchBillingStatus, formatDate, formatMxn, startCheckout } from '@/services/billing'
 
@@ -91,7 +91,8 @@ const planType = computed(() => auth.user?.subscription?.planType)
 const plan = computed(() => planInfo(planType.value))
 const promoCodeUsed = computed(() => auth.user?.subscription?.promoCodeUsed)
 const trialEndsLabel = computed(() => formatDate(auth.user?.subscription?.trialEndsAt))
-const canPay = computed(() => stripeConfigured.value && Boolean(plan.value?.priceMxn))
+const price = computed(() => shownPrice(plan.value, stripeConfigured.value))
+const canPay = computed(() => stripeConfigured.value && Boolean(price.value))
 
 onMounted(async () => {
   try {

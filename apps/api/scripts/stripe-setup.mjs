@@ -1,7 +1,7 @@
 // Prepara Stripe para un entorno de COSDI y guarda la configuración en Railway.
 // No imprime ni escribe en disco ningún secreto: los pasa directo a `railway variable set --stdin`.
 //
-// Crea (si faltan): productos y precios de los planes de Citas, tasa de IVA 16 %,
+// Crea (si faltan): productos y precios de los planes (Citas; Negocio solo en prueba), tasa de IVA 16 %,
 // configuración del portal del cliente y el webhook de la API.
 //
 // Uso (desde apps/api, con la CLI de Railway enlazada al proyecto):
@@ -27,7 +27,15 @@ if (envName === 'production' && !live) {
 const stripe = new Stripe(key)
 console.log('modo:', live ? 'REAL' : 'prueba', '| entorno Railway:', envName)
 
-const PLANS = [
+const ALL_PLANS = [
+  {
+    // Por ahora solo en modo de prueba: en real no se crea hasta decidir su lanzamiento.
+    testOnly: true,
+    planType: 'NEGOCIO',
+    name: 'COSDI Negocio',
+    description: 'ERP y punto de venta: marcas, productos, stock, ventas, caja, cortes y agenda',
+    amount: 69900,
+  },
   {
     planType: 'CITAS_RECORDATORIOS',
     name: 'COSDI Recordatorios',
@@ -48,6 +56,7 @@ const PLANS = [
     amount: 54900,
   },
 ]
+const PLANS = ALL_PLANS.filter((p) => !(live && p.testOnly))
 
 const EVENTS = [
   'checkout.session.completed',

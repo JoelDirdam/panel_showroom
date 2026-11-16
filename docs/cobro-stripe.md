@@ -9,7 +9,7 @@
   - cancelación → `CANCELED`. Si cancela "al final del periodo", sigue activa hasta esa fecha.
 - Con la cuenta pausada el negocio ve `/suscripcion-vencida` con el botón **Pagar y reactivar mi cuenta**. La reserva pública sigue funcionando.
 - `/suscripcion` ("Mi suscripción" en el menú): estado, próximo cobro y acceso al portal de Stripe (cambiar tarjeta, recibos, cancelar).
-- Precios: $149 / $349 / $549 MXN al mes **con IVA 16 % incluido** (tasa `STRIPE_TAX_RATE_ID`, inclusiva). Ejemplo: Citas $349 = $300.86 + $48.14 de IVA.
+- Precios: Citas $149 / $349 / $549 MXN al mes (Negocio $699, por ahora solo en Stripe de prueba) **con IVA 16 % incluido** (tasa `STRIPE_TAX_RATE_ID`, inclusiva). Ejemplo: Citas $349 = $300.86 + $48.14 de IVA.
 - Sin `STRIPE_SECRET_KEY` el cobro queda apagado: los botones de pago no aparecen y la prueba gratis funciona igual.
 
 ## Entornos

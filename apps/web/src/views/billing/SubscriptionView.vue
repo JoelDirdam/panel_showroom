@@ -20,8 +20,8 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0">
             <p class="text-lg font-semibold text-gray-800 dark:text-white">Plan {{ plan?.name ?? sub.planType }}</p>
-            <p v-if="plan?.priceMxn" class="text-sm text-gray-500 dark:text-gray-400">
-              {{ formatMxn(plan.priceMxn) }} al mes, IVA incluido
+            <p v-if="price" class="text-sm text-gray-500 dark:text-gray-400">
+              {{ formatMxn(price) }} al mes, IVA incluido
             </p>
           </div>
           <span :class="['shrink-0 rounded-full px-3 py-1 text-xs font-medium', badge.cls]">{{ badge.label }}</span>
@@ -79,7 +79,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import { extractApiError } from '@/services/api'
-import { planInfo } from '@/lib/plans'
+import { planInfo, shownPrice } from '@/lib/plans'
 import { useAuthStore } from '@/stores/auth'
 import {
   fetchBillingStatus,
@@ -103,6 +103,7 @@ const notice = ref<{ kind: 'ok' | 'info'; text: string } | null>(null)
 const sub = computed(() => status.value?.subscription ?? null)
 const stripeConfigured = computed(() => Boolean(status.value?.stripeConfigured))
 const plan = computed(() => planInfo(sub.value?.planType))
+const price = computed(() => shownPrice(plan.value, stripeConfigured.value))
 
 const badge = computed(() => {
   const s = sub.value?.status
@@ -142,7 +143,7 @@ const explanation = computed(() => {
 
 const showPay = computed(() => {
   const s = sub.value
-  if (!s || !plan.value?.priceMxn) return false
+  if (!s || !price.value) return false
   if (s.status === 'EXPIRED' || s.status === 'CANCELED') return true
   return !s.hasPaymentMethod
 })

@@ -20,11 +20,11 @@
           ninguna cita se pierde: las verás completas en cuanto reactives tu plan.
         </p>
 
-        <div v-if="plan?.priceMxn" class="mt-5 rounded-xl bg-gray-50 p-4 text-left text-sm dark:bg-white/[0.04]">
+        <div v-if="price" class="mt-5 rounded-xl bg-gray-50 p-4 text-left text-sm dark:bg-white/[0.04]">
           <div class="flex items-start justify-between gap-3">
-            <span class="font-medium text-gray-800 dark:text-white">Plan {{ plan.name }}</span>
+            <span class="font-medium text-gray-800 dark:text-white">Plan {{ plan?.name }}</span>
             <span class="shrink-0 text-right font-semibold text-gray-800 dark:text-white">
-              {{ formatMxn(plan.priceMxn) }}
+              {{ formatMxn(price) }}
               <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">al mes, IVA incluido</span>
             </span>
           </div>
@@ -67,7 +67,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { extractApiError } from '@/services/api'
-import { planInfo } from '@/lib/plans'
+import { planInfo, shownPrice } from '@/lib/plans'
 import { fetchBillingStatus, formatMxn, startCheckout } from '@/services/billing'
 
 const auth = useAuthStore()
@@ -81,7 +81,8 @@ const stripeConfigured = ref(false)
 const error = ref<string | null>(null)
 
 const plan = computed(() => planInfo(auth.user?.subscription?.planType))
-const canPay = computed(() => stripeConfigured.value && Boolean(plan.value?.priceMxn))
+const price = computed(() => shownPrice(plan.value, stripeConfigured.value))
+const canPay = computed(() => stripeConfigured.value && Boolean(price.value))
 
 const supportLink = computed(() => {
   const raw = import.meta.env.VITE_SUPPORT_WHATSAPP as string | undefined
