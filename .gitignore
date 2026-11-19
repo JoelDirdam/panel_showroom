@@ -37,7 +37,12 @@ apps/api/uploads/
 # Test / coverage
 coverage/
 .testsprite/seed-password.txt
-.testsprite/runs/
+**/.testsprite/runs/
+__pycache__/
+
+# Configuración local de Claude Code (incluye datos de cuentas de prueba).
+# Solo la de la raíz: apps/api/.claude/skills sí se versiona.
+/.claude/
 
 # Graphify (grafo de conocimiento local, se regenera)
 graphify-out/
