@@ -1,6 +1,10 @@
 <template>
   <admin-layout>
-    <page-breadcrumb page-title="Home" />
+    <!-- Planes de Citas: inicio con su día, pendientes y sugerencias. -->
+    <CitasHome v-if="isCitas" />
+
+    <template v-else>
+    <page-breadcrumb page-title="Inicio" />
 
     <div
       v-if="trialBanner"
@@ -195,6 +199,10 @@
       </div>
     </div>
 
+    <div class="mb-8">
+      <TestimonialRequestCard :ready="coreStepsDone" />
+    </div>
+
     <div class="mb-4 flex items-center justify-between gap-3">
       <h2 class="text-sm font-semibold text-gray-800 dark:text-white">Módulos</h2>
       <router-link to="/dashboard" class="text-sm font-medium text-brand-500 hover:text-brand-600">
@@ -232,6 +240,7 @@
         </div>
       </template>
     </div>
+    </template>
   </admin-layout>
 </template>
 
@@ -241,6 +250,8 @@ import { X } from 'lucide-vue-next'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import HomeCalendar from '@/components/home/HomeCalendar.vue'
+import CitasHome from '@/components/home/CitasHome.vue'
+import TestimonialRequestCard from '@/components/home/TestimonialRequestCard.vue'
 import { useAuthStore } from '@/stores/auth'
 import { NEGOCIO_MODULE_LINKS } from '@/lib/modules'
 import {
@@ -255,6 +266,8 @@ import {
 import { formatMoney } from '@/composables/useCajaSession'
 
 const auth = useAuthStore()
+/** Planes de Citas: su inicio es otro (ver CitasHome). */
+const isCitas = computed(() => auth.user?.subscription?.planType?.startsWith('CITAS_') ?? false)
 const summary = ref<HomeSummary | null>(null)
 const homeCalendar = ref<HomeCalendarData | null>(null)
 const cutoffActionLoading = ref<string | null>(null)
@@ -414,6 +427,7 @@ const trialBanner = computed(() => {
 })
 
 onMounted(async () => {
+  if (isCitas.value) return
   loadFirstStepsDismissed()
   try {
     summary.value = await fetchHomeSummary()

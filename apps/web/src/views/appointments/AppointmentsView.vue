@@ -229,6 +229,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { CalendarDays, ChevronLeft, ChevronRight, MessageCircle, Plus } from 'lucide-vue-next'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
@@ -389,6 +390,7 @@ async function setStatus(a: AppointmentItem, status: AppointmentStatus) {
   }
 }
 
+const route = useRoute()
 const showNew = ref(false)
 const saving = ref(false)
 const formError = ref('')
@@ -441,5 +443,7 @@ onMounted(async () => {
     error.value = extractApiError(e, 'No se pudieron cargar los servicios')
   }
   await load()
+  // Acceso directo desde Inicio: /appointments?nueva=1 abre el registro de cita.
+  if (route.query.nueva === '1' && activeServices.value.length) openNew()
 })
 </script>

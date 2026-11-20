@@ -13,7 +13,7 @@
         </UiButton>
       </div>
       <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-        <UiButton variant="wa" :href="whatsappShare" target="_blank">
+        <UiButton variant="wa" :href="whatsappShare" target="_blank" @click="markLinkShared">
           <template #icon><MessageCircle class="h-4 w-4" aria-hidden="true" /></template>
           Compartir por WhatsApp
         </UiButton>
@@ -59,6 +59,7 @@ import { Check, Copy, ExternalLink, Link2, MessageCircle } from 'lucide-vue-next
 import UiCard from '@/components/ui/UiCard.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import { useToast } from '@/composables/useToast'
+import { markLinkShared } from '@/lib/linkShared'
 
 const props = defineProps<{ link: string; hasServices: boolean; showChecklist?: boolean }>()
 const toast = useToast()
@@ -72,6 +73,7 @@ const whatsappShare = computed(
 async function copyLink() {
   try {
     await navigator.clipboard.writeText(props.link)
+    markLinkShared()
     copied.value = true
     toast.success('Link copiado', 'Pégalo en tu bio, estados o mensajes.')
     setTimeout(() => (copied.value = false), 2000)
