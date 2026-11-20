@@ -56,6 +56,36 @@ const ACCOUNTS: { plan: PlanType; planLabel: string; email: string; name: string
   },
 ]
 
+const CITAS_PLANS: PlanType[] = ['CITAS_PANEL', 'CITAS_IA', 'CITAS_RECORDATORIOS']
+
+/** Servicios y horario de ejemplo para probar la agenda (solo si el negocio aún no tiene). */
+const DEMO_SERVICES = [
+  { name: 'Corte de cabello', durationMinutes: 45, price: 250 },
+  { name: 'Tinte completo', durationMinutes: 120, price: 900 },
+  { name: 'Manicure', durationMinutes: 60, price: 300 },
+  { name: 'Pedicure', durationMinutes: 60, price: 350 },
+]
+// 0 = domingo. Lunes a viernes 10:00-19:00, sábado 10:00-15:00, domingo cerrado.
+const DEMO_HOURS = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
+  dayOfWeek,
+  openTime: '10:00',
+  closeTime: dayOfWeek === 6 ? '15:00' : '19:00',
+  isClosed: dayOfWeek === 0,
+}))
+
+async function seedCitasDemo(tenantId: string, email: string): Promise<void> {
+  const services = await prisma.service.count({ where: { tenantId } })
+  if (services === 0) {
+    await prisma.service.createMany({ data: DEMO_SERVICES.map((s) => ({ ...s, tenantId })) })
+    console.log(`[servicios de ejemplo] ${email}: ${DEMO_SERVICES.length}`)
+  }
+  const hours = await prisma.businessHour.count({ where: { tenantId } })
+  if (hours === 0) {
+    await prisma.businessHour.createMany({ data: DEMO_HOURS.map((h) => ({ ...h, tenantId })) })
+    console.log(`[horario de ejemplo] ${email}`)
+  }
+}
+
 function newPassword(): string {
   // 16 caracteres legibles + sufijo que cumple cualquier regla de complejidad.
   return `${randomBytes(12).toString('base64url')}-Cd9`
@@ -77,6 +107,7 @@ async function main() {
     const existing = await prisma.user.findUnique({ where: { email: a.email }, include: { tenant: { select: { name: true, isTest: true } } } })
     if (existing) {
       if (!existing.tenant?.isTest) throw new Error(`${a.email} existe y NO es cuenta de prueba: no se toca`)
+      if (CITAS_PLANS.includes(a.plan) && existing.tenantId) await seedCitasDemo(existing.tenantId, a.email)
       if (!resetPassword) {
         console.log(`[ya existe] ${a.email} (${a.planLabel})`)
         continue
@@ -143,6 +174,7 @@ async function main() {
       })
       return t
     })
+    if (CITAS_PLANS.includes(a.plan)) await seedCitasDemo(tenant.id, a.email)
     lines.push(`| ${env} | ${a.planLabel} | ${tenant.name} | ${a.email} | \`${password}\` |`)
     console.log(`[creada] ${a.email} (${a.planLabel})`)
   }
