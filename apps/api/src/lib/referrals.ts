@@ -21,16 +21,26 @@ const DAY_MS = 24 * 60 * 60 * 1000
 // ---------------------------------------------------------------------------
 
 /** Código legible a partir del nombre del negocio (ej. "Estética Luna" -> ESTETICA-LUNA). */
-function baseCodeFrom(name: string, slug: string): string {
+const CODE_MAX_LENGTH = 18
+const CODE_STOPWORDS = new Set(['DE', 'DEL', 'LA', 'LAS', 'EL', 'LOS', 'Y', 'E', 'EN', 'THE'])
+
+export function baseCodeFrom(name: string, slug: string): string {
   const source = name.replace(/^negocio de\s+/i, '').trim() || slug
-  const clean = source
+  const words = source
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 20)
-    .replace(/-+$/, '')
+    .split(/[^A-Z0-9]+/)
+    .filter(Boolean)
+  const meaningful = words.filter((w) => !CODE_STOPWORDS.has(w))
+  // Palabras completas hasta CODE_MAX_LENGTH: f\u00e1cil de dictar y nunca cortado a media palabra.
+  let clean = ''
+  for (const w of meaningful.length ? meaningful : words) {
+    const next = clean ? `${clean}-${w}` : w
+    if (next.length > CODE_MAX_LENGTH) break
+    clean = next
+  }
+  if (!clean && words.length) clean = (meaningful[0] ?? words[0]).slice(0, CODE_MAX_LENGTH)
   return clean.length >= 3 ? clean : `COSDI-${clean || 'NEG'}`
 }
 

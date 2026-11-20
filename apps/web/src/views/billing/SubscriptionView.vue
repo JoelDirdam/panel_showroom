@@ -237,13 +237,13 @@ const canResume = computed(
 const renewalNotice = computed(() => {
   const s = sub.value
   if (!s || s.cancelAtPeriodEnd) return ''
-  const amount = price.value ? `${formatMxn(price.value)} (IVA incluido)` : 'el precio de tu plan'
+  const amount = price.value ? `${formatMxn(price.value)} con IVA incluido` : 'el precio de tu plan'
   if (s.hasPaymentMethod && s.status === 'TRIALING')
     return `El ${formatDate(s.trialEndsAt)} se hará el primer cobro de ${amount} y después el plan se renueva solo cada mes, hasta que canceles. Te avisamos por correo antes de cada cobro y puedes cancelar aquí mismo cuando quieras.`
   if (s.hasPaymentMethod && s.status === 'ACTIVE')
     return `Tu plan se renueva solo cada mes por ${amount}; el próximo cobro es el ${formatDate(s.currentPeriodEndsAt)}. Te avisamos por correo antes de cada cobro y puedes cancelar aquí mismo cuando quieras.`
   if (showPay.value)
-    return `Al registrar tu tarjeta, el plan se cobra cada mes de forma automática (${amount}) hasta que canceles. Te avisamos por correo antes de cada cobro y puedes cancelar aquí mismo, en dos clics.`
+    return `Al registrar tu tarjeta, el plan se cobra solo cada mes por ${amount} hasta que canceles. Te avisamos por correo antes de cada cobro y puedes cancelar aquí mismo, en dos clics.`
   return ''
 })
 

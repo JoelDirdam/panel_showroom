@@ -33,17 +33,17 @@
         </div>
       </div>
 
-      <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-3 xl:grid-cols-1">
-        <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
-          <dt class="text-gray-500 dark:text-gray-400">Negocios registrados con tu código</dt>
+      <dl class="mt-5 grid grid-cols-3 gap-2 text-center sm:gap-3">
+        <div class="rounded-xl bg-gray-50 px-2 py-3 dark:bg-white/[0.03]">
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Registrados</dt>
           <dd class="mt-0.5 text-lg font-semibold text-gray-800 dark:text-white">{{ summary.registered }}</dd>
         </div>
-        <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
-          <dt class="text-gray-500 dark:text-gray-400">Por pagar su primer mes</dt>
+        <div class="rounded-xl bg-gray-50 px-2 py-3 dark:bg-white/[0.03]">
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Falta su pago</dt>
           <dd class="mt-0.5 text-lg font-semibold text-gray-800 dark:text-white">{{ summary.pending }}</dd>
         </div>
-        <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
-          <dt class="text-gray-500 dark:text-gray-400">Meses gratis ganados</dt>
+        <div class="rounded-xl bg-gray-50 px-2 py-3 dark:bg-white/[0.03]">
+          <dt class="text-xs text-gray-500 dark:text-gray-400">Meses ganados</dt>
           <dd class="mt-0.5 text-lg font-semibold text-gray-800 dark:text-white">
             {{ summary.earned }} <span class="text-sm font-normal text-gray-500">/ {{ summary.maxRewards }}</span>
           </dd>
