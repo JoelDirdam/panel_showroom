@@ -29,7 +29,7 @@
 
         <button
           type="button"
-          class="mt-6 flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
+          class="ui-btn ui-btn-primary mt-6 w-full"
           @click="router.push('/onboarding/payment')"
         >
           {{ hasTrial ? 'Continuar' : 'Continuar al pago' }}

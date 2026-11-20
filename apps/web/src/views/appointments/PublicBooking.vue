@@ -30,7 +30,7 @@
             {{ data.business.name }} confirmará tu cita. Guarda esta pantalla como comprobante.
           </p>
           <button
-            class="mt-5 rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:text-white"
+            class="ui-btn ui-btn-secondary mt-5"
             @click="reset"
           >
             Agendar otra cita
@@ -67,7 +67,7 @@
             <h2 class="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-200">Sucursal</h2>
             <select
               v-model="sucursalId"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              class="ui-input w-full"
               @change="loadSlots"
             >
               <option value="" disabled>Elige una sucursal</option>
@@ -82,7 +82,7 @@
               type="date"
               :min="minDate"
               :max="maxDate"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              class="ui-input w-full"
               @change="loadSlots"
             />
           </section>
@@ -118,7 +118,7 @@
               required
               minlength="2"
               placeholder="Tu nombre"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              class="ui-input w-full"
             />
             <input
               v-model="customerPhone"
@@ -126,14 +126,14 @@
               type="tel"
               inputmode="tel"
               placeholder="Tu WhatsApp (10 dígitos)"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              class="ui-input w-full"
             />
             <textarea
               v-model="notes"
               rows="2"
               maxlength="500"
               placeholder="Notas (opcional)"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              class="ui-input w-full"
             />
             <p class="text-xs text-gray-500">
               Al agendar aceptas que {{ data.business.name }} use tu nombre y teléfono para gestionar tu cita y
@@ -142,7 +142,7 @@
             <p v-if="error" class="text-sm text-error-500">{{ error }}</p>
             <button
               :disabled="submitting"
-              class="w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+              class="ui-btn ui-btn-primary w-full"
             >
               {{ submitting ? 'Agendando…' : 'Confirmar cita' }}
             </button>

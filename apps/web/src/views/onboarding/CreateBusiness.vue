@@ -37,7 +37,7 @@
               type="text"
               required
               placeholder="Nombre comercial"
-              class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+              class="ui-input h-11 w-full"
             />
           </div>
 
@@ -48,7 +48,7 @@
                 v-model="rfc"
                 type="text"
                 placeholder="RFC"
-                class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                class="ui-input h-11 w-full"
               />
             </div>
             <div>
@@ -57,7 +57,7 @@
                 v-model="socialUrl"
                 type="text"
                 placeholder="https://instagram.com/tu-negocio"
-                class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+                class="ui-input h-11 w-full"
               />
             </div>
           </div>
@@ -68,7 +68,7 @@
               v-model="address"
               type="text"
               placeholder="Calle, número, ciudad"
-              class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+              class="ui-input h-11 w-full"
             />
           </div>
 
@@ -77,7 +77,7 @@
           <button
             type="submit"
             :disabled="auth.loading"
-            class="flex w-full items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 disabled:opacity-60"
+            class="ui-btn ui-btn-primary w-full"
           >
             <Loader2 v-if="auth.loading" class="h-4 w-4 animate-spin" />
             {{ auth.loading ? 'Creando negocio...' : 'Finalizar y entrar a mi panel' }}

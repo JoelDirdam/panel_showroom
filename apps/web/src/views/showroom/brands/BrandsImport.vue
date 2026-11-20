@@ -21,7 +21,7 @@
           </ol>
           <button
             type="button"
-            class="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            class="ui-btn ui-btn-secondary mt-4"
             @click="onDownloadTemplate"
           >
             Descargar plantilla
@@ -51,7 +51,7 @@
             </p>
             <button
               type="button"
-              class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              class="ui-btn ui-btn-secondary ui-btn-sm"
               :disabled="importSaving"
               @click="clearPreview"
             >

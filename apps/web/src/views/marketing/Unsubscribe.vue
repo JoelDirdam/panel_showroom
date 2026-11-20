@@ -30,7 +30,7 @@
         <p v-if="error" role="alert" class="mt-4 text-sm text-error-500">{{ error }}</p>
         <button
           type="button"
-          class="mt-6 rounded-lg bg-brand-500 px-6 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+          class="ui-btn ui-btn-primary mt-6"
           :disabled="state === 'sending'"
           @click="confirm"
         >

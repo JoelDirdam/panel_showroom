@@ -31,7 +31,7 @@
                 <input
                   v-model="eventTitle"
                   type="text"
-                  class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  class="ui-input h-11 w-full"
                 />
               </div>
 
@@ -75,7 +75,7 @@
                 <input
                   v-model="eventStartDate"
                   type="date"
-                  class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  class="ui-input h-11 w-full appearance-none pl-4 pr-11"
                 />
               </div>
 
@@ -86,7 +86,7 @@
                 <input
                   v-model="eventEndDate"
                   type="date"
-                  class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  class="ui-input h-11 w-full appearance-none pl-4 pr-11"
                 />
               </div>
             </div>
@@ -94,21 +94,21 @@
             <div class="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
               <button
                 @click="closeModal"
-                class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
+                class="ui-btn ui-btn-secondary w-full sm:w-auto"
               >
                 Close
               </button>
 
               <button
                 @click="handleAddOrUpdateEvent"
-                class="btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
+                class="ui-btn ui-btn-primary btn btn-success btn-update-event w-full sm:w-auto"
               >
                 {{ selectedEvent ? 'Update Changes' : 'Add Event' }}
               </button>
               <button
                 v-if="selectedEvent"
                 @click="handleDeleteEvent"
-                class="flex w-full justify-center rounded-lg border border-error-500 bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 sm:w-auto"
+                class="ui-btn ui-btn-destructive w-full sm:w-auto"
               >
                 Delete Event
               </button>
@@ -137,7 +137,7 @@
                 <input
                   v-model="eventTitle"
                   type="text"
-                  class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  class="ui-input h-11 w-full"
                 />
               </div>
 
@@ -181,7 +181,7 @@
                 <input
                   v-model="eventStartDate"
                   type="date"
-                  class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  class="ui-input h-11 w-full appearance-none pl-4 pr-11"
                 />
               </div>
 
@@ -192,7 +192,7 @@
                 <input
                   v-model="eventEndDate"
                   type="date"
-                  class="dark:bg-dark-900 h-11 w-full appearance-none rounded-lg border border-gray-300 bg-transparent bg-none px-4 py-2.5 pl-4 pr-11 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                  class="ui-input h-11 w-full appearance-none pl-4 pr-11"
                 />
               </div>
             </div>
@@ -200,13 +200,13 @@
             <div class="flex items-center gap-3 mt-6 modal-footer sm:justify-end">
               <button
                 @click="closeModal"
-                class="flex w-full justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-white/[0.03] sm:w-auto"
+                class="ui-btn ui-btn-secondary w-full sm:w-auto"
               >
                 Close
               </button>
               <button
                 @click="handleAddOrUpdateEvent"
-                class="btn btn-success btn-update-event flex w-full justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 sm:w-auto"
+                class="ui-btn ui-btn-primary btn btn-success btn-update-event w-full sm:w-auto"
               >
                 {{ selectedEvent ? 'Update Changes' : 'Add Event' }}
               </button>

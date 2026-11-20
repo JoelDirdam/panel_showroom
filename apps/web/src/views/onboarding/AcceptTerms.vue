@@ -37,7 +37,7 @@
             <button
               type="submit"
               :disabled="auth.loading"
-              class="flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 disabled:opacity-60"
+              class="ui-btn ui-btn-primary w-full"
             >
               {{ auth.loading ? 'Guardando...' : `Aceptar v${terms.version} y continuar` }}
             </button>

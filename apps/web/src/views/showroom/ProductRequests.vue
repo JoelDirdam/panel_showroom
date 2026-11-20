@@ -69,7 +69,7 @@
           <div class="flex flex-wrap gap-2">
             <button
               type="button"
-              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              class="ui-btn ui-btn-secondary"
               :disabled="selectedLabelItems.length === 0"
               @click="showLabelModal = true"
             >
@@ -77,7 +77,7 @@
             </button>
             <button
               type="button"
-              class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-50"
+              class="ui-btn ui-btn-destructive"
               :disabled="selectedPendingIds.length === 0 || rejecting || saving"
               @click="rejectSelected"
             >
@@ -86,7 +86,7 @@
             <button
               data-tour="requests-accept"
               type="button"
-              class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="selectedPendingIds.length === 0 || saving || rejecting"
               @click="acceptSelected"
             >
@@ -910,29 +910,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference "../../assets/main.css";
+
 .field {
-  width: 100%;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  @apply ui-input;
 }
 
 .primary-button {
-  border-radius: 0.5rem;
-  background: #465fff;
-  padding: 0.5rem 1rem;
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 500;
+  @apply ui-btn ui-btn-primary;
 }
 
-.primary-button:disabled {
-  opacity: 0.5;
-}
-
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
-}
 </style>

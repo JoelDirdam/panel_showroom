@@ -6,7 +6,7 @@
         <h1 class="text-xl font-bold text-gray-800 dark:text-white">Tu cuenta está activa</h1>
         <p class="mt-3 text-sm text-gray-600 dark:text-gray-300">Recibimos tu pago. Ya puedes entrar a tu panel.</p>
         <button
-          class="mt-6 block w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600"
+          class="ui-btn ui-btn-primary mt-6 block w-full"
           @click="goHome"
         >
           Ir a mi panel
@@ -35,7 +35,7 @@
 
         <button
           v-if="canPay"
-          class="mt-6 block w-full rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          class="ui-btn ui-btn-primary mt-6 block w-full"
           :disabled="busy || checking"
           @click="pay"
         >

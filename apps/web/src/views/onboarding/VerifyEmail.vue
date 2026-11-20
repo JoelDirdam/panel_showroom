@@ -88,7 +88,7 @@
               type="email"
               required
               placeholder="nuevo@correo.com"
-              class="h-10 flex-1 rounded-lg border border-gray-300 px-3 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              class="ui-input h-10 flex-1"
             />
             <button
               type="submit"

@@ -29,7 +29,7 @@
           <button
             data-tour="brand-generate-code"
             type="button"
-            class="mt-3 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            class="ui-btn ui-btn-primary mt-3"
             :disabled="generating"
             @click="onGenerateCode"
           >
@@ -76,7 +76,7 @@
           <div class="mt-3 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="savingContact"
               @click="saveContact"
             >
@@ -205,16 +205,10 @@ onMounted(load)
 </script>
 
 <style scoped>
+@reference "../../../assets/main.css";
+
 .field {
-  width: 100%;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  @apply ui-input;
 }
 
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
-}
 </style>

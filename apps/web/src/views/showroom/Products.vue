@@ -36,10 +36,10 @@
             Sin Stock
           </label>
           <div class="flex flex-wrap gap-2">
-            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5" @click="clearFilters">
+            <button type="button" class="ui-btn ui-btn-secondary" @click="clearFilters">
               Limpiar filtros
             </button>
-            <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600">
+            <button type="submit" class="ui-btn ui-btn-primary">
               Aplicar Filtros
             </button>
           </div>
@@ -51,16 +51,16 @@
       <template #header-action>
         <div class="flex flex-wrap items-center gap-2">
           <template v-if="auth.isAdmin">
-            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800" @click="router.push('/products/import')">
+            <button type="button" class="ui-btn ui-btn-secondary" @click="router.push('/products/import')">
               Importar
             </button>
-            <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-white/5" @click="router.push('/products/withdraw')">
+            <button type="button" class="ui-btn ui-btn-secondary" @click="router.push('/products/withdraw')">
               Solicitar retiro
             </button>
-            <button data-tour="products-create" type="button" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600" @click="router.push('/products/new')">
+            <button data-tour="products-create" type="button" class="ui-btn ui-btn-primary" @click="router.push('/products/new')">
               Agregar productos
             </button>
-            <button type="button" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-50" :disabled="selected.length === 0" @click="openBulkDelete">
+            <button type="button" class="ui-btn ui-btn-destructive" :disabled="selected.length === 0" @click="openBulkDelete">
               Eliminar ({{ selected.length }})
             </button>
           </template>
@@ -68,7 +68,7 @@
             v-else
             data-tour="products-request-link"
             to="/product-requests"
-            class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+            class="ui-btn ui-btn-primary"
           >
             Solicitar producto o restock
           </router-link>
@@ -176,7 +176,7 @@
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Esta acción no se puede deshacer.</p>
         <div class="mt-5 flex justify-end gap-2">
           <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600" :disabled="deleting" @click="showDeleteModal = false">Cancelar</button>
-          <button type="button" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50" :disabled="deleting" @click="confirmDelete">
+          <button type="button" class="ui-btn ui-btn-destructive" :disabled="deleting" @click="confirmDelete">
             {{ deleting ? 'Eliminando…' : 'Confirmar' }}
           </button>
         </div>
@@ -352,15 +352,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference "../../assets/main.css";
+
 .field {
-  width: 100%;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-}
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
+  @apply ui-input;
 }
 </style>

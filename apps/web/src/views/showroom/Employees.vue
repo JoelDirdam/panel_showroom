@@ -6,7 +6,7 @@
       <div class="mb-4 flex justify-end">
         <button
           type="button"
-          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          class="ui-btn ui-btn-primary"
           @click="openCreate"
         >
           + Nuevo empleado
@@ -102,7 +102,7 @@
               v-model="form.name"
               required
               maxlength="200"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              class="ui-input w-full"
             />
           </div>
           <div>
@@ -110,27 +110,27 @@
             <input
               v-model="form.email"
               type="email"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              class="ui-input w-full"
             />
           </div>
           <div>
             <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Teléfono (opcional)</label>
             <input
               v-model="form.phone"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              class="ui-input w-full"
             />
           </div>
           <div class="flex justify-end gap-2 pt-2">
             <button
               type="button"
-              class="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700"
+              class="ui-btn ui-btn-secondary"
               @click="modalOpen = false"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              class="rounded-lg bg-brand-500 px-4 py-2 text-sm text-white disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="saving"
             >
               Guardar

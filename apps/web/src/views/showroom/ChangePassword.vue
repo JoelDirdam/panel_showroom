@@ -162,7 +162,7 @@
           <p v-if="error" class="text-sm text-error-500">{{ error }}</p>
           <button
             type="submit"
-            class="w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+            class="ui-btn ui-btn-primary w-full"
             :disabled="loading"
           >
             {{ loading ? 'Guardando…' : 'Guardar contraseña' }}

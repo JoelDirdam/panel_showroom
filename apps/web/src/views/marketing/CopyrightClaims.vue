@@ -96,7 +96,7 @@
       <button
         type="submit"
         :disabled="sending"
-        class="rounded-lg bg-brand-500 px-5 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+        class="ui-btn ui-btn-primary"
       >
         {{ sending ? 'Enviando…' : 'Enviar aviso' }}
       </button>

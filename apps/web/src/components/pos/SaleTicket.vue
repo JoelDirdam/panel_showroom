@@ -88,7 +88,7 @@
         <button
           ref="printBtn"
           type="button"
-          class="flex-1 rounded-lg bg-brand-500 px-3 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
+          class="ui-btn ui-btn-primary flex-1"
           @click="print"
         >
           Imprimir
@@ -103,7 +103,7 @@
         </a>
         <button
           type="button"
-          class="flex-1 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          class="ui-btn ui-btn-secondary flex-1"
           @click="$emit('close')"
         >
           Cerrar

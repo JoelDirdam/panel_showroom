@@ -22,7 +22,7 @@
         </router-link>
         <router-link
           to="/register?plan=CITAS_PANEL"
-          class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
+          class="ui-btn ui-btn-primary"
         >
           Crear cuenta
         </router-link>

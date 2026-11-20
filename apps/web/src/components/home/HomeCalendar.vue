@@ -6,7 +6,7 @@
         <div class="flex shrink-0 items-center gap-1">
           <button
             type="button"
-            class="rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-700"
+            class="ui-btn ui-btn-secondary ui-btn-sm"
             @click="shiftMonth(-1)"
           >
             ‹
@@ -16,7 +16,7 @@
           </span>
           <button
             type="button"
-            class="rounded-lg border border-gray-300 px-2 py-1 text-sm dark:border-gray-700"
+            class="ui-btn ui-btn-secondary ui-btn-sm"
             @click="shiftMonth(1)"
           >
             ›

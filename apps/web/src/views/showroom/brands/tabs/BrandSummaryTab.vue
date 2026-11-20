@@ -12,7 +12,7 @@
         </div>
         <button
           type="button"
-          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          class="ui-btn ui-btn-primary"
           :disabled="loading"
           @click="load"
         >
@@ -20,7 +20,7 @@
         </button>
         <button
           type="button"
-          class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          class="ui-btn ui-btn-secondary"
           :disabled="!summary"
           @click="downloadCutPdf"
         >
@@ -225,15 +225,10 @@ onMounted(load)
 </script>
 
 <style scoped>
+@reference "../../../../assets/main.css";
+
 .field {
-  border: 1px solid #d0d5dd;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  @apply ui-input;
 }
 
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
-}
 </style>

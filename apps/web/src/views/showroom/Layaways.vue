@@ -22,7 +22,7 @@
           type="search"
           aria-label="Buscar apartado por código o cliente"
           placeholder="Código o cliente"
-          class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          class="ui-input min-w-0 flex-1"
           @input="scheduleLoad"
         />
       </div>
@@ -89,14 +89,14 @@
           <div v-if="l.status === 'OPEN'" class="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600"
+              class="ui-btn ui-btn-primary ui-btn-sm"
               @click="openPayment(l)"
             >
               Abonar / liquidar
             </button>
             <button
               type="button"
-              class="rounded-lg border border-error-500 px-3 py-1.5 text-sm font-medium text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+              class="ui-btn ui-btn-danger ui-btn-sm"
               @click="openCancel(l)"
             >
               Cancelar apartado
@@ -135,11 +135,11 @@
               min="0.01"
               step="0.01"
               :max="Number(payTarget.balance)"
-              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              class="ui-input min-w-0 flex-1"
             />
             <button
               type="button"
-              class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
+              class="ui-btn ui-btn-secondary"
               @click="payAmount = Number(payTarget.balance)"
             >
               Liquidar todo
@@ -169,14 +169,14 @@
         <div class="mt-5 flex justify-end gap-2">
           <button
             type="button"
-            class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
+            class="ui-btn ui-btn-secondary"
             @click="payTarget = null"
           >
             Cerrar
           </button>
           <button
             type="submit"
-            class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+            class="ui-btn ui-btn-primary"
             :disabled="paying"
           >
             {{ paying ? 'Registrando…' : 'Registrar abono' }}
@@ -209,14 +209,14 @@
           <button
             ref="keepBtn"
             type="button"
-            class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
+            class="ui-btn ui-btn-secondary"
             @click="cancelTarget = null"
           >
             Conservar apartado
           </button>
           <button
             type="button"
-            class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-50"
+            class="ui-btn ui-btn-destructive"
             :disabled="cancelling"
             @click="confirmCancel"
           >

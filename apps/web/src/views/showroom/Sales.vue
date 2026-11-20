@@ -20,7 +20,7 @@
         <button
           v-if="auth.isAdmin"
           data-tour="sales-create"
-          class="ml-auto rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          class="ui-btn ui-btn-primary ml-auto"
           @click="goToCaja"
         >
           Registrar venta
@@ -34,7 +34,7 @@
             v-model="filters.from"
             type="date"
             :max="filters.to || undefined"
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            class="ui-input mt-1 w-full"
             @change="applyFilters"
           />
         </label>
@@ -44,7 +44,7 @@
             v-model="filters.to"
             type="date"
             :min="filters.from || undefined"
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            class="ui-input mt-1 w-full"
             @change="applyFilters"
           />
         </label>
@@ -54,14 +54,14 @@
             v-model="filters.q"
             type="search"
             :placeholder="auth.isAdmin ? 'Ticket, cliente, producto o SKU' : 'Ticket, producto o SKU'"
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            class="ui-input mt-1 w-full"
             @input="scheduleFilters"
           />
         </label>
         <button
           v-if="hasFilters"
           type="button"
-          class="col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 sm:col-span-1 dark:border-gray-700 dark:text-gray-200"
+          class="ui-btn ui-btn-secondary col-span-2 sm:col-span-1"
           @click="clearFilters"
         >
           Limpiar filtros
@@ -117,7 +117,7 @@
               <template v-if="auth.isAdmin">
                 <button
                   type="button"
-                  class="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                  class="ui-btn ui-btn-secondary ui-btn-sm"
                   @click="ticketSale = sale"
                 >
                   Ver ticket
@@ -125,7 +125,7 @@
                 <button
                   v-if="!sale.layawayId"
                   type="button"
-                  class="rounded-lg border border-error-500 px-2.5 py-1 text-xs font-medium text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+                  class="ui-btn ui-btn-danger ui-btn-sm"
                   @click="openCancel(sale)"
                 >
                   Cancelar
@@ -210,7 +210,7 @@
             <span class="text-base font-semibold text-gray-500 line-through">${{ formatMoney(Number(c.total)) }}</span>
             <button
               type="button"
-              class="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+              class="ui-btn ui-btn-secondary ui-btn-sm"
               @click="openCancelledTicket(c)"
             >
               Ver ticket
@@ -222,7 +222,7 @@
       <div v-if="total > pageSize" class="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-gray-600 dark:text-gray-300">
         <button
           type="button"
-          class="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40 dark:border-gray-700"
+          class="ui-btn ui-btn-secondary ui-btn-sm"
           :disabled="page <= 1 || loading"
           @click="goTo(page - 1)"
         >
@@ -231,7 +231,7 @@
         <span>Página {{ page }} de {{ pageCount }} · {{ total }} {{ view === 'sales' ? 'tickets' : 'canceladas' }}</span>
         <button
           type="button"
-          class="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40 dark:border-gray-700"
+          class="ui-btn ui-btn-secondary ui-btn-sm"
           :disabled="page >= pageCount || loading"
           @click="goTo(page + 1)"
         >
@@ -277,21 +277,21 @@
             type="text"
             maxlength="500"
             placeholder="Ej. Devolución, error al cobrar"
-            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            class="ui-input mt-1 w-full"
           />
         </label>
         <p v-if="cancelError" class="mt-3 text-sm text-error-500" role="alert">{{ cancelError }}</p>
         <div class="mt-5 flex justify-end gap-2">
           <button
             type="button"
-            class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
+            class="ui-btn ui-btn-secondary"
             @click="cancelTarget = null"
           >
             Conservar venta
           </button>
           <button
             type="submit"
-            class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-50"
+            class="ui-btn ui-btn-destructive"
             :disabled="cancelling"
           >
             {{ cancelling ? 'Cancelando…' : 'Cancelar venta' }}

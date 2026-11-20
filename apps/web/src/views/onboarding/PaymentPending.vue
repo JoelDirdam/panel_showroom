@@ -34,7 +34,7 @@
         <template v-if="canPay">
           <button
             type="button"
-            class="mt-6 flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 disabled:opacity-50"
+            class="ui-btn ui-btn-primary mt-6 w-full"
             :disabled="busy !== null"
             @click="pay"
           >
@@ -52,7 +52,7 @@
           <button
             v-if="hasTrial"
             type="button"
-            class="mt-4 w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
+            class="ui-btn ui-btn-secondary mt-4 w-full"
             :disabled="busy !== null"
             @click="continueTrial"
           >
@@ -71,7 +71,7 @@
           <button
             v-if="hasTrial"
             type="button"
-            class="mt-6 flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 disabled:opacity-50"
+            class="ui-btn ui-btn-primary mt-6 w-full"
             :disabled="busy !== null || loadingStatus"
             @click="continueTrial"
           >

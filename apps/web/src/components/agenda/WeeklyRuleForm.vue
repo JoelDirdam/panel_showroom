@@ -207,43 +207,18 @@ const summary = computed(() => {
 </script>
 
 <style scoped>
+@reference "../../assets/main.css";
+
 .field {
-  width: 100%;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  @apply ui-input;
 }
 
 .primary-button {
-  border-radius: 0.5rem;
-  background: #465fff;
-  padding: 0.5rem 1rem;
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.primary-button:disabled {
-  opacity: 0.5;
+  @apply ui-btn ui-btn-primary;
 }
 
 .secondary-button {
-  border-radius: 0.5rem;
-  border: 1px solid #d0d5dd;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #344054;
+  @apply ui-btn ui-btn-secondary;
 }
 
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
-}
-
-:global(.dark) .secondary-button {
-  border-color: #344054;
-  color: #d0d5dd;
-}
 </style>

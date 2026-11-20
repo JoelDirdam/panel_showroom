@@ -6,7 +6,7 @@
       <div v-if="!auth.isAdmin" class="mb-4 flex justify-end">
         <router-link
           to="/product-requests"
-          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+          class="ui-btn ui-btn-primary"
         >
           Solicitar restock
         </router-link>
@@ -39,7 +39,7 @@
                   type="number"
                   min="0"
                   :disabled="!auth.isAdmin"
-                  class="w-20 rounded border border-gray-300 px-2 py-1 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  class="ui-input w-20"
                 />
               </td>
               <td class="py-3 pr-4">
@@ -48,7 +48,7 @@
                   type="number"
                   min="0"
                   :disabled="!auth.isAdmin"
-                  class="w-20 rounded border border-gray-300 px-2 py-1 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  class="ui-input w-20"
                 />
               </td>
               <td class="py-3 pr-4">

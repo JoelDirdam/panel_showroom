@@ -10,7 +10,7 @@
         </div>
         <button
           type="button"
-          class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
+          class="ui-btn ui-btn-secondary ui-btn-sm"
           @click="logout"
         >
           Cerrar sesión

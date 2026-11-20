@@ -42,7 +42,7 @@
               type="text"
               :placeholder="t.placeholder"
               autocomplete="off"
-              class="w-full max-w-sm rounded-lg border border-gray-300 bg-transparent px-3 py-2.5 font-mono text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+              class="ui-input w-full max-w-sm font-mono"
             />
           </div>
           <FormCheckbox v-model="settings[t.key].enabled" align="center">Activar en el sitio</FormCheckbox>
@@ -56,7 +56,7 @@
 
       <p v-if="error" role="alert" class="text-sm text-error-500">{{ error }}</p>
       <p v-if="message" role="status" class="text-sm text-success-600 dark:text-success-400">{{ message }}</p>
-      <button type="submit" :disabled="saving" class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60">
+      <button type="submit" :disabled="saving" class="ui-btn ui-btn-primary">
         {{ saving ? 'Guardando…' : 'Guardar integraciones' }}
       </button>
       <p class="max-w-3xl text-xs text-gray-500 dark:text-gray-400">

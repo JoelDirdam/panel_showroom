@@ -28,7 +28,7 @@
           <div class="mt-8 flex flex-wrap items-center gap-3">
             <router-link
               to="/register?plan=CITAS_PANEL"
-              class="rounded-lg bg-brand-500 px-6 py-3.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
+              class="ui-btn ui-btn-primary"
             >
               Crear mi cuenta
             </router-link>
@@ -181,7 +181,7 @@
             <router-link
               v-if="plan.available"
               :to="`/register?plan=${plan.type}`"
-              class="mt-6 flex items-center justify-center rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600"
+              class="ui-btn ui-btn-primary mt-6"
             >
               Registrarme
             </router-link>

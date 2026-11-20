@@ -31,7 +31,7 @@
       <button
         type="button"
         :disabled="busy !== null"
-        class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
+        class="ui-btn ui-btn-secondary ui-btn-sm"
         @click="toggleTest"
       >
         {{ busy === 'test' ? 'Guardando…' : tenant.isTest ? 'Quitar marca de prueba' : 'Marcar como cuenta de prueba' }}
@@ -65,13 +65,13 @@
               +{{ d }} días
             </button>
             <label class="sr-only" :for="`${uid}-days`">Otro número de días</label>
-            <input :id="`${uid}-days`" v-model.number="days" type="number" min="1" max="365" class="w-24 rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            <input :id="`${uid}-days`" v-model.number="days" type="number" min="1" max="365" class="ui-input w-24" />
           </div>
           <div>
             <label :for="`${uid}-ereason`" class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Motivo (interno, opcional)</label>
-            <input :id="`${uid}-ereason`" v-model="extendReason" type="text" maxlength="300" placeholder="Ej. compensación por falla" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            <input :id="`${uid}-ereason`" v-model="extendReason" type="text" maxlength="300" placeholder="Ej. compensación por falla" class="ui-input w-full" />
           </div>
-          <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50">
+          <button type="submit" class="ui-btn ui-btn-primary">
             {{ busy === 'extend' ? 'Extendiendo…' : `Extender ${days || 0} días` }}
           </button>
         </fieldset>
@@ -89,26 +89,26 @@
           <form v-if="confirmingSuspend" class="space-y-3 rounded-xl border border-error-200 p-3 dark:border-error-500/30" @submit.prevent="suspend">
             <div>
               <label :for="`${uid}-sreason`" class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">Motivo (lo verá el negocio) *</label>
-              <textarea :id="`${uid}-sreason`" v-model="suspendReason" rows="2" required minlength="5" maxlength="500" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+              <textarea :id="`${uid}-sreason`" v-model="suspendReason" rows="2" required minlength="5" maxlength="500" class="ui-input w-full" />
             </div>
             <FormCheckbox v-model="notify">Avisar por correo al dueño del negocio</FormCheckbox>
             <div class="flex flex-wrap gap-2">
-              <button type="submit" :disabled="busy !== null || suspendReason.trim().length < 5" class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-50">
+              <button type="submit" :disabled="busy !== null || suspendReason.trim().length < 5" class="ui-btn ui-btn-destructive">
                 {{ busy === 'suspend' ? 'Suspendiendo…' : 'Sí, suspender' }}
               </button>
-              <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200" @click="confirmingSuspend = false">
+              <button type="button" class="ui-btn ui-btn-secondary" @click="confirmingSuspend = false">
                 Cancelar
               </button>
             </div>
           </form>
-          <button v-else type="button" class="rounded-lg border border-error-300 px-4 py-2 text-sm font-medium text-error-600 hover:bg-error-50 dark:border-error-500/40 dark:text-error-400" @click="confirmingSuspend = true">
+          <button v-else type="button" class="ui-btn ui-btn-danger" @click="confirmingSuspend = true">
             Suspender…
           </button>
         </template>
         <template v-else>
           <p class="text-xs text-gray-500 dark:text-gray-400">Recupera el acceso al panel y, si tenía tarjeta, se reanuda el cobro en Stripe.</p>
           <FormCheckbox v-model="notify">Avisar por correo al dueño del negocio</FormCheckbox>
-          <button type="button" :disabled="busy !== null" class="rounded-lg bg-success-500 px-4 py-2 text-sm font-medium text-white hover:bg-success-600 disabled:opacity-50" @click="reactivate">
+          <button type="button" :disabled="busy !== null" class="ui-btn ui-btn-wa" @click="reactivate">
             {{ busy === 'reactivate' ? 'Reactivando…' : 'Reactivar' }}
           </button>
         </template>

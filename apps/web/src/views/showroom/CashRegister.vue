@@ -31,12 +31,12 @@
             inputmode="decimal"
             min="0"
             step="0.01"
-            class="mt-1 block w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            class="ui-input mt-1 w-40"
           />
         </label>
         <button
           type="submit"
-          class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+          class="ui-btn ui-btn-primary"
           :disabled="busy"
         >
           {{ busy ? 'Abriendo…' : 'Abrir turno' }}
@@ -96,7 +96,7 @@
               Tipo
               <select
                 v-model="movement.type"
-                class="mt-1 block w-full rounded-lg border border-gray-300 px-2 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full"
               >
                 <option value="OUT">Retiro</option>
                 <option value="IN">Entrada</option>
@@ -110,7 +110,7 @@
                 inputmode="decimal"
                 min="0.01"
                 step="0.01"
-                class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 sm:w-32 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full sm:w-32"
               />
             </label>
             <label class="col-span-2 text-xs text-gray-500 sm:min-w-48 sm:flex-1">
@@ -120,7 +120,7 @@
                 type="text"
                 maxlength="300"
                 placeholder="Ej. Pago a proveedor, cambio"
-                class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full"
               />
             </label>
             <button
@@ -159,7 +159,7 @@
               inputmode="decimal"
               min="0"
               step="0.01"
-              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              class="ui-input mt-1 w-full"
             />
           </label>
           <p v-if="countedCash !== ''" class="mt-2 text-sm font-medium" :class="differenceClass(liveDifference)">
@@ -171,13 +171,13 @@
               v-model="closeNote"
               rows="2"
               maxlength="500"
-              class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              class="ui-input mt-1 w-full"
             />
           </label>
           <p v-if="formError" class="mt-3 text-sm text-error-500" role="alert">{{ formError }}</p>
           <button
             type="submit"
-            class="mt-4 w-full rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+            class="ui-btn ui-btn-primary mt-4 w-full"
             :disabled="busy"
           >
             {{ busy ? 'Cerrando…' : 'Cerrar turno' }}

@@ -57,7 +57,7 @@
       </div>
       <button
         type="button"
-        class="rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-600 dark:text-gray-300"
+        class="ui-btn ui-btn-secondary ui-btn-sm"
         :disabled="tabs.length >= MAX_CAJAS"
         @click="addTab"
       >
@@ -66,7 +66,7 @@
       <span class="ml-auto text-xs text-gray-500">{{ tabs.length }}/{{ MAX_CAJAS }} abiertas</span>
       <router-link
         to="/corte-caja"
-        class="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+        class="ui-btn ui-btn-secondary ui-btn-sm"
       >
         Corte de caja
       </router-link>
@@ -84,7 +84,7 @@
               ref="searchInputRef"
               v-model="searchQuery"
               type="text"
-              class="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm text-gray-800 outline-none focus:border-brand-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              class="ui-input w-full"
               placeholder="Escanea o busca por código, nombre o marca"
               autocomplete="off"
               autocapitalize="off"
@@ -173,7 +173,7 @@
                     :max="round2(line.unitPrice * line.quantity)"
                     step="0.01"
                     @change="fixLine(line)"
-                    class="mt-1 block w-28 rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                    class="ui-input mt-1 w-28"
                   />
                 </label>
                 <div class="text-xs text-gray-500">
@@ -197,7 +197,7 @@
                       :max="line.stock || undefined"
                       :aria-label="`Cantidad de ${line.name}`"
                       @change="fixLine(line)"
-                      class="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                      class="ui-input w-16 text-center"
                     />
                     <button
                       type="button"
@@ -212,7 +212,7 @@
                 </div>
                 <button
                   type="button"
-                  class="ml-auto rounded-lg border border-error-500 px-3 py-1.5 text-sm text-error-500 hover:bg-error-50 dark:hover:bg-error-500/10"
+                  class="ui-btn ui-btn-danger ui-btn-sm ml-auto"
                   :aria-label="`Quitar ${line.name} de la venta`"
                   @click="removeLine(line.productId)"
                 >
@@ -243,7 +243,7 @@
             id="caja-attendant"
             v-model="activeTab.attendedById"
             data-tour="caja-attendant"
-            class="mb-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            class="ui-input mb-1 w-full"
           >
             <option value="">— Seleccionar —</option>
             <option v-if="auth.user" :value="SELF_ATTENDANT">Yo ({{ auth.user.name }})</option>
@@ -310,20 +310,20 @@
                 type="number"
                 min="0"
                 step="0.01"
-                class="mt-1 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full"
               />
             </label>
             <div class="mt-2 flex gap-2">
               <button
                 type="button"
-                class="rounded-lg border border-gray-300 px-2 py-1 text-xs dark:border-gray-600"
+                class="ui-btn ui-btn-secondary ui-btn-sm"
                 @click="activeTab.converterPesos = totalToPay"
               >
                 Usar total
               </button>
               <button
                 type="button"
-                class="rounded-lg border border-gray-300 px-2 py-1 text-xs dark:border-gray-600"
+                class="ui-btn ui-btn-secondary ui-btn-sm"
                 @click="activeTab.converterPesos = changeDue"
               >
                 Usar cambio
@@ -351,7 +351,7 @@
                 inputmode="decimal"
                 min="0"
                 step="0.01"
-                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full"
               />
             </label>
             <p v-if="cashShort > 0" class="mt-1 text-xs text-error-500">
@@ -406,7 +406,7 @@
                 inputmode="decimal"
                 min="0"
                 step="0.01"
-                class="mt-1 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full"
               />
             </label>
             <p class="text-xs" :class="mixedOk ? 'text-success-600' : 'text-error-500'">
@@ -421,7 +421,7 @@
           <button
             type="button"
             data-tour="caja-confirm"
-            class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+            class="ui-btn ui-btn-primary mt-4 w-full"
             :disabled="saving || activeTab.lines.length === 0"
             @click="confirmSale"
           >
@@ -457,13 +457,13 @@
               autocomplete="off"
               autocapitalize="characters"
               placeholder="Escanea o ingresa el código"
-              class="min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              class="ui-input min-w-0 flex-1"
               @input="onGiftCodeInput"
               @keydown.enter.prevent="applyGiftCard"
             />
             <button
               type="button"
-              class="rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="giftLoading"
               @click="applyGiftCard"
             >
@@ -486,7 +486,7 @@
               type="text"
               autocomplete="off"
               placeholder="Busca por nombre o teléfono"
-              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              class="ui-input w-full"
               @input="searchCustomers"
               @keydown.enter.prevent="createOrSelectCustomer"
               @keydown.esc="closeCustomerDropdown"
@@ -532,7 +532,7 @@
                 type="text"
                 maxlength="200"
                 autocomplete="off"
-                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full"
               />
             </label>
             <label class="block text-xs text-gray-500">
@@ -543,20 +543,20 @@
                 inputmode="tel"
                 maxlength="40"
                 autocomplete="off"
-                class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+                class="ui-input mt-1 w-full"
               />
             </label>
             <div class="flex gap-2">
               <button
                 type="submit"
-                class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                class="ui-btn ui-btn-primary ui-btn-sm"
                 :disabled="newCustomer.saving"
               >
                 {{ newCustomer.saving ? 'Guardando…' : 'Guardar cliente' }}
               </button>
               <button
                 type="button"
-                class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                class="ui-btn ui-btn-secondary ui-btn-sm"
                 @click="newCustomer.open = false"
               >
                 Cancelar
@@ -587,7 +587,7 @@
             maxlength="500"
             rows="3"
             placeholder="Ej. Cliente solicita entregar mañana por la tarde"
-            class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            class="ui-input w-full"
           />
           <p class="mt-1 text-xs text-gray-400">
             Máximo 500 caracteres · {{ activeTab.ticketComment.length }}/500
@@ -607,7 +607,7 @@
       </div>
       <button
         type="button"
-        class="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
+        class="ui-btn ui-btn-primary"
         @click="goToSummary"
       >
         Cobrar

@@ -11,7 +11,7 @@
       </div>
       <button
         type="button"
-        class="rounded-lg bg-brand-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+        class="ui-btn ui-btn-primary ui-btn-sm"
         :disabled="loading"
         @click="load"
       >

@@ -48,7 +48,7 @@
     <div class="mt-8 flex justify-center">
       <router-link
         to="/home"
-        class="rounded-lg bg-brand-500 px-6 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
+        class="ui-btn ui-btn-primary"
       >
         Ir a Home
       </router-link>

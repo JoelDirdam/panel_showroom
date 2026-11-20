@@ -69,7 +69,7 @@
         </div>
       </div>
       <p v-if="formError" role="alert" class="mt-3 text-sm text-error-500">{{ formError }}</p>
-      <button type="submit" :disabled="saving" class="mt-4 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60">
+      <button type="submit" :disabled="saving" class="ui-btn ui-btn-primary mt-4">
         {{ saving ? 'Creando…' : 'Crear código' }}
       </button>
     </form>

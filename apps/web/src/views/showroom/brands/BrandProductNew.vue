@@ -12,13 +12,13 @@
                 <option value="">Sin categoría</option>
                 <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
-              <button type="button" class="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200" @click="showNewCategory = !showNewCategory">
+              <button type="button" class="ui-btn ui-btn-secondary whitespace-nowrap" @click="showNewCategory = !showNewCategory">
                 Nueva
               </button>
             </div>
             <div v-if="showNewCategory" class="mt-2 flex gap-2">
               <input v-model="newCategoryName" class="field" placeholder="Nombre de categoría" />
-              <button type="button" class="whitespace-nowrap rounded-lg bg-brand-500 px-3 py-2 text-sm text-white" @click="addCategory">
+              <button type="button" class="ui-btn ui-btn-primary whitespace-nowrap" @click="addCategory">
                 Crear
               </button>
             </div>
@@ -71,7 +71,7 @@
           <button type="button" class="rounded-lg px-4 py-2 text-sm text-gray-600 dark:text-gray-300" :disabled="saving" @click="router.push(`/brands/${brandId}/products`)">
             Cancelar
           </button>
-          <button type="submit" class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50" :disabled="saving">
+          <button type="submit" class="ui-btn ui-btn-primary" :disabled="saving">
             {{ saving ? 'Guardando…' : 'Guardar' }}
           </button>
         </div>
@@ -196,16 +196,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference "../../../assets/main.css";
+
 .field {
-  width: 100%;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  @apply ui-input;
 }
 
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
-}
 </style>

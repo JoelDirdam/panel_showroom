@@ -52,7 +52,7 @@
                 :inputmode="useRecovery ? 'text' : 'numeric'"
                 autocomplete="one-time-code"
                 required
-                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 tracking-widest dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                class="ui-input w-full tracking-widest"
               />
             </div>
             <p v-if="auth.error" role="alert" class="text-sm text-error-500">{{ auth.error }}</p>
@@ -82,7 +82,7 @@
                 type="email"
                 autocomplete="username"
                 required
-                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                class="ui-input w-full"
                 placeholder="Ingresa tu email"
               />
             </div>

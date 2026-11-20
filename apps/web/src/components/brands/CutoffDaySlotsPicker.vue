@@ -105,7 +105,7 @@
             </button>
             <button
               type="button"
-              class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="draft.length === 0"
               @click="confirmDialog"
             >

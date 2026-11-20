@@ -125,16 +125,9 @@ function inputMode(col: ImportColumn): 'numeric' | 'decimal' | 'email' | undefin
 </template>
 
 <style scoped>
+@reference "../../assets/main.css";
+
 .field {
-  width: 100%;
-  min-width: 6rem;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.375rem;
-  padding: 0.35rem 0.5rem;
-}
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
+  @apply ui-input;
 }
 </style>

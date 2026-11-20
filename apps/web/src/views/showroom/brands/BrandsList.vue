@@ -31,7 +31,7 @@
         <router-link
           v-if="!setup?.hasHouseBrand"
           to="/brands/mine"
-          class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-600"
+          class="ui-btn ui-btn-primary ui-btn-sm"
         >
           Registrar mi marca
         </router-link>
@@ -76,7 +76,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            class="ui-btn ui-btn-secondary"
             @click="router.push('/brands/import')"
           >
             Importar
@@ -84,14 +84,14 @@
           <button
             data-tour="brands-create"
             type="button"
-            class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+            class="ui-btn ui-btn-primary"
             @click="router.push('/brands/new')"
           >
             Nueva marca
           </button>
           <button
             type="button"
-            class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-50"
+            class="ui-btn ui-btn-destructive"
             :disabled="selected.length === 0"
             @click="openBulkDeleteModal"
           >
@@ -105,7 +105,7 @@
           v-model="search"
           type="search"
           placeholder="Buscar por nombre, espacio o slug…"
-          class="w-full max-w-sm rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          class="ui-input w-full max-w-sm"
         />
       </div>
 
@@ -246,7 +246,7 @@
           type="text"
           autocomplete="off"
           :placeholder="deleteTarget.slug"
-          class="mt-4 w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-gray-800 outline-none focus:border-error-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          class="ui-input mt-4 w-full font-mono"
           @input="deleteError = null"
           @keyup.enter="removeBrand"
         />
@@ -262,7 +262,7 @@
           </button>
           <button
             type="button"
-            class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-50"
+            class="ui-btn ui-btn-destructive"
             :disabled="deleting || deleteConfirmation !== deleteTarget.slug"
             @click="removeBrand"
           >
@@ -294,7 +294,7 @@
           </button>
           <button
             type="button"
-            class="rounded-lg bg-error-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-error-600 disabled:cursor-not-allowed disabled:opacity-50"
+            class="ui-btn ui-btn-destructive"
             :disabled="bulkDeleting"
             @click="confirmBulkDelete"
           >

@@ -55,7 +55,7 @@
             v-model="promoCode"
             type="text"
             :placeholder="`Ej. ${TRIAL_CODE_EXAMPLE}`"
-            class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm uppercase text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
+            class="ui-input h-11 w-full uppercase"
           />
           <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
             Según el código obtienes días de prueba gratis o un descuento en tus mensualidades. Si te recomendó otro
@@ -67,7 +67,7 @@
           <button
             type="button"
             :disabled="!selectedPlan || auth.loading"
-            class="mt-5 flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600 disabled:opacity-60"
+            class="ui-btn ui-btn-primary mt-5 w-full"
             @click="handleContinue"
           >
             {{ auth.loading ? 'Guardando...' : 'Continuar' }}

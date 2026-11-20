@@ -11,7 +11,7 @@
       </p>
       <router-link
         :to="{ path: '/product-requests', query: { brandId: brand.id } }"
-        class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600"
+        class="ui-btn ui-btn-primary"
       >
         Ir a Órdenes de esta marca
       </router-link>

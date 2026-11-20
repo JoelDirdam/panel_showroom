@@ -55,7 +55,7 @@
               />
               <button
                 type="button"
-                class="rounded-lg bg-brand-500 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                class="ui-btn ui-btn-primary ui-btn-sm"
                 :disabled="phoneVerifying || phoneCode.trim().length !== 6"
                 @click="submitPhoneCode"
               >
@@ -140,7 +140,7 @@
               <input
                 v-model="profileForm.name"
                 required
-                class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                class="ui-input h-11 w-full"
               />
             </div>
             <EmailField
@@ -165,7 +165,7 @@
           <div class="flex justify-end">
             <button
               type="submit"
-              class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="profileSaving"
             >
               {{ profileSaving ? 'Guardando…' : 'Guardar información' }}
@@ -348,7 +348,7 @@
                 </button>
                 <button
                   type="button"
-                  class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  class="ui-btn ui-btn-primary"
                   :disabled="prefsSaving"
                   @click="confirmSavePreferences"
                 >
@@ -361,7 +361,7 @@
           <div class="flex justify-end">
             <button
               type="submit"
-              class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="prefsSaving"
             >
               {{ prefsSaving ? 'Guardando…' : 'Guardar preferencias' }}
@@ -400,7 +400,7 @@
           <div class="flex justify-end">
             <button
               type="submit"
-              class="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              class="ui-btn ui-btn-primary"
               :disabled="pwSaving"
             >
               {{ pwSaving ? 'Guardando…' : 'Cambiar contraseña' }}
@@ -901,16 +901,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference "../../assets/main.css";
+
 .field {
-  width: 100%;
-  border: 1px solid #d0d5dd;
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
+  @apply ui-input;
 }
 
-:global(.dark) .field {
-  border-color: #344054;
-  background: #1d2939;
-  color: white;
-}
 </style>
