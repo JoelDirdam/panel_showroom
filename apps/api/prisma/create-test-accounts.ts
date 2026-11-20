@@ -8,6 +8,7 @@
  * Las contraseñas se escriben SOLO en el archivo indicado en OUT_FILE (no en pantalla).
  *
  * Uso: OUT_FILE=../../cuentas-de-prueba.local.md npx tsx prisma/create-test-accounts.ts [--reset-password]
+ * Solo algunos planes: ONLY=CITAS_PANEL,CITAS_IA
  */
 import { randomBytes } from 'node:crypto'
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
@@ -38,6 +39,14 @@ const ACCOUNTS: { plan: PlanType; planLabel: string; email: string; name: string
     slug: 'prueba-recordatorios-cosdi',
   },
   {
+    plan: 'CITAS_PANEL',
+    planLabel: 'Citas',
+    email: 'prueba.citas@cosdi.mx',
+    name: 'Prueba Citas',
+    business: 'Estética de Prueba COSDI',
+    slug: 'prueba-citas-cosdi',
+  },
+  {
     plan: 'CITAS_IA',
     planLabel: 'Citas + IA',
     email: 'prueba.citas-ia@cosdi.mx',
@@ -63,7 +72,8 @@ async function main() {
   const contentHash = createHash('sha256').update(terms.content).digest('hex')
 
   const lines: string[] = []
-  for (const a of ACCOUNTS) {
+  const only = (process.env.ONLY ?? '').split(',').map((x) => x.trim()).filter(Boolean)
+  for (const a of ACCOUNTS.filter((x) => only.length === 0 || only.includes(x.plan))) {
     const existing = await prisma.user.findUnique({ where: { email: a.email }, include: { tenant: { select: { name: true, isTest: true } } } })
     if (existing) {
       if (!existing.tenant?.isTest) throw new Error(`${a.email} existe y NO es cuenta de prueba: no se toca`)
