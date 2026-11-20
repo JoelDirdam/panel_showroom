@@ -1,170 +1,87 @@
 <template>
-  <FullScreenLayout>
-    <div class="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0">
-      <div
-        class="relative flex flex-col justify-center w-full min-h-screen lg:flex-row dark:bg-gray-900"
-      >
-        <div class="flex flex-col flex-1 w-full lg:w-1/2">
-          <div class="w-full max-w-md pt-10 mx-auto">
-            <router-link
-              to="/"
-              class="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-            >
-              <ArrowLeft class="mr-1.5 h-4 w-4" />
-              Ver planes
-            </router-link>
-          </div>
+  <AuthShell title="Crea tu cuenta" subtitle="Registra tu negocio y activa tu plan en minutos. Sin plazos forzosos.">
+    <form class="space-y-5" novalidate @submit.prevent="handleSubmit">
+      <UiField v-slot="f" label="Nombre completo" required>
+        <input :id="f.id" v-model="name" type="text" autocomplete="name" placeholder="Tu nombre y apellido" class="ui-input" />
+      </UiField>
 
-          <div class="flex flex-col justify-center flex-1 w-full max-w-md py-8 mx-auto">
-            <div class="mb-6">
-              <h1 class="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
-                Crea tu cuenta
-              </h1>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                Registra tu negocio y activa tu plan en minutos.
-              </p>
-            </div>
+      <UiField v-slot="f" label="Correo electrónico" required help="Ahí te enviaremos un código para verificarlo.">
+        <input
+          :id="f.id"
+          v-model="email"
+          type="email"
+          autocomplete="email"
+          placeholder="tucorreo@negocio.com"
+          class="ui-input"
+          :aria-describedby="f.describedBy"
+        />
+      </UiField>
 
-            <form @submit.prevent="handleSubmit">
-              <div class="space-y-5">
-                <div>
-                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Nombre completo<span class="text-error-500">*</span>
-                  </label>
-                  <input
-                    v-model="name"
-                    type="text"
-                    required
-                    placeholder="Tu nombre y apellido"
-                    class="ui-input h-11 w-full"
-                  />
-                </div>
+      <UiField v-slot="f" label="Teléfono" optional help="10 dígitos. Solo para ayudarte si lo necesitas.">
+        <input
+          :id="f.id"
+          v-model="phone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="tel"
+          placeholder="618 123 4567"
+          class="ui-input"
+          :aria-describedby="f.describedBy"
+        />
+      </UiField>
 
-                <div>
-                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Correo electrónico<span class="text-error-500">*</span>
-                  </label>
-                  <input
-                    v-model="email"
-                    type="email"
-                    required
-                    placeholder="tucorreo@negocio.com"
-                    class="ui-input h-11 w-full"
-                  />
-                </div>
-
-                <div>
-                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Teléfono <span class="font-normal text-gray-500">(opcional)</span>
-                  </label>
-                  <input
-                    v-model="phone"
-                    type="tel"
-                    autocomplete="tel"
-                    placeholder="10 dígitos"
-                    class="ui-input h-11 w-full"
-                  />
-                </div>
-
-                <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                      Contraseña<span class="text-error-500">*</span>
-                    </label>
-                    <input
-                      v-model="password"
-                      type="password"
-                      required
-                      minlength="8"
-                      placeholder="Mínimo 8 caracteres"
-                      class="ui-input h-11 w-full"
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                      Confirmar contraseña<span class="text-error-500">*</span>
-                    </label>
-                    <input
-                      v-model="confirmPassword"
-                      type="password"
-                      required
-                      minlength="8"
-                      placeholder="Repite tu contraseña"
-                      class="ui-input h-11 w-full"
-                    />
-                  </div>
-                </div>
-
-                <!-- Casillas SIN marcar por defecto: la aceptación debe ser un acto expreso. -->
-                <div class="space-y-3">
-                  <FormCheckbox v-model="agreeToTerms" required align="start">
-                    He leído y acepto los
-                    <router-link to="/terminos" target="_blank" class="text-brand-500 underline hover:text-brand-600">
-                      Términos y Condiciones{{ terms ? ` (v${terms.version})` : '' }}</router-link
-                    >, incluida la renovación automática de los planes de pago, y el
-                    <router-link to="/privacidad" target="_blank" class="text-brand-500 underline hover:text-brand-600">
-                      Aviso de Privacidad</router-link
-                    >.<span class="text-error-500">*</span>
-                  </FormCheckbox>
-                  <!-- Consentimiento de marketing: aparte, opcional y desmarcado. -->
-                  <FormCheckbox v-model="marketingOptIn" align="start">
-                    Quiero recibir novedades y promociones de COSDI por correo. (Opcional; puedes darte de baja cuando
-                    quieras.)
-                  </FormCheckbox>
-                </div>
-
-                <p v-if="validationError" class="text-sm text-error-500">{{ validationError }}</p>
-                <p v-if="auth.error" class="text-sm text-error-500">{{ auth.error }}</p>
-
-                <button
-                  type="submit"
-                  :disabled="auth.loading"
-                  class="ui-btn ui-btn-primary w-full"
-                >
-                  {{ auth.loading ? 'Creando cuenta...' : 'Crear cuenta' }}
-                </button>
-              </div>
-            </form>
-
-            <div class="mt-5">
-              <p class="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
-                ¿Ya tienes cuenta?
-                <router-link to="/login" class="text-brand-500 hover:text-brand-600 dark:text-brand-400">
-                  Inicia sesión
-                </router-link>
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="relative hidden w-full bg-brand-950 dark:bg-white/5 lg:flex lg:w-1/2 lg:items-center lg:justify-center"
-        >
-          <common-grid-shape />
-          <div class="relative z-1 flex max-w-xs flex-col items-center px-6">
-            <router-link to="/" class="mb-4 block text-center">
-              <span class="text-2xl font-semibold tracking-tight text-white">COSDI</span>
-            </router-link>
-            <p class="text-center text-gray-400 dark:text-white/60">
-              Agenda en línea con recordatorios por WhatsApp, y si vendes productos: inventario, ventas, caja y
-              cortes en un solo panel.
-            </p>
-            <p class="mt-3 text-center text-sm italic text-gray-400 dark:text-white/50">
-              Te ofrecemos una solución tecnológica a tu negocio, si no la tenemos te la creamos.
-            </p>
-          </div>
-        </div>
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <UiField v-slot="f" label="Contraseña" required help="Mínimo 8 caracteres.">
+          <input
+            :id="f.id"
+            v-model="password"
+            type="password"
+            minlength="8"
+            autocomplete="new-password"
+            class="ui-input"
+            :aria-describedby="f.describedBy"
+          />
+        </UiField>
+        <UiField v-slot="f" label="Confirmar contraseña" required>
+          <input :id="f.id" v-model="confirmPassword" type="password" minlength="8" autocomplete="new-password" class="ui-input" />
+        </UiField>
       </div>
-    </div>
-  </FullScreenLayout>
+
+      <!-- Casillas SIN marcar por defecto: la aceptación debe ser un acto expreso. -->
+      <div class="space-y-3 rounded-xl bg-white p-4 ring-1 ring-gray-200 dark:bg-white/[0.03] dark:ring-gray-800">
+        <FormCheckbox v-model="agreeToTerms" required align="start">
+          He leído y acepto los
+          <router-link to="/terminos" target="_blank" class="font-medium text-brand-600 underline">
+            Términos y Condiciones{{ terms ? ` (v${terms.version})` : '' }}</router-link
+          >, incluida la renovación automática de los planes de pago, y el
+          <router-link to="/privacidad" target="_blank" class="font-medium text-brand-600 underline">Aviso de Privacidad</router-link
+          >.<span class="text-error-600">*</span>
+        </FormCheckbox>
+        <!-- Consentimiento de marketing: aparte, opcional y desmarcado. -->
+        <FormCheckbox v-model="marketingOptIn" align="start">
+          Quiero recibir novedades y promociones de COSDI por correo. (Opcional; puedes darte de baja cuando quieras.)
+        </FormCheckbox>
+      </div>
+
+      <p v-if="validationError" class="ui-error" role="alert">{{ validationError }}</p>
+      <p v-if="auth.error" class="ui-error" role="alert">{{ auth.error }}</p>
+
+      <UiButton type="submit" block :loading="auth.loading" loading-text="Creando cuenta…">Crear cuenta</UiButton>
+
+      <p class="text-center text-sm text-gray-600 dark:text-gray-400">
+        ¿Ya tienes cuenta?
+        <router-link to="/login" class="font-semibold text-brand-600 hover:underline dark:text-brand-300">Inicia sesión</router-link>
+      </p>
+    </form>
+  </AuthShell>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft } from 'lucide-vue-next'
-import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
-import CommonGridShape from '@/components/common/CommonGridShape.vue'
+import AuthShell from '@/components/marketing/AuthShell.vue'
+import UiField from '@/components/ui/UiField.vue'
+import UiButton from '@/components/ui/UiButton.vue'
 import FormCheckbox from '@/components/forms/FormCheckbox.vue'
 import { useAuthStore } from '@/stores/auth'
 import { trackSignup } from '@/lib/trackers'
