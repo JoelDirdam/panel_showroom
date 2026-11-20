@@ -6,7 +6,14 @@ import { ensureTrackers, initTrackers, trackPageView, trackersActive } from '@/l
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior(to, from, savedPosition) {
-    return savedPosition || { left: 0, top: 0 }
+    if (savedPosition) return savedPosition
+    // Anclas dentro del panel (ej. /appointments/config#vacaciones): espera a que carguen los datos.
+    if (to.hash && !to.meta.tracking) {
+      return new Promise((resolve) =>
+        setTimeout(() => resolve({ el: to.hash, top: 88, behavior: 'smooth' }), 450),
+      )
+    }
+    return { left: 0, top: 0 }
   },
   routes: [
     {
@@ -14,6 +21,12 @@ const router = createRouter({
       name: 'Login',
       component: () => import('../views/showroom/Login.vue'),
       meta: { title: 'Iniciar sesión', public: true },
+    },
+    {
+      path: '/recuperar-contrasena',
+      name: 'ForgotPassword',
+      component: () => import('../views/showroom/ForgotPassword.vue'),
+      meta: { title: 'Recuperar contraseña', public: true },
     },
     {
       path: '/change-password',
@@ -142,7 +155,7 @@ const router = createRouter({
       path: '/home',
       name: 'Home',
       component: () => import('../views/showroom/Home.vue'),
-      meta: { title: 'Home' },
+      meta: { title: 'Inicio' },
     },
     {
       path: '/dashboard',
@@ -375,6 +388,18 @@ const router = createRouter({
       meta: { title: 'Plataforma', platformOnly: true },
     },
     {
+      path: '/platform/redes',
+      name: 'PlatformSocial',
+      component: () => import('../views/platform/PlatformSocial.vue'),
+      meta: { title: 'Redes sociales', platformOnly: true },
+    },
+    {
+      path: '/platform/testimonios',
+      name: 'PlatformTestimonials',
+      component: () => import('../views/platform/PlatformTestimonials.vue'),
+      meta: { title: 'Testimonios', platformOnly: true },
+    },
+    {
       path: '/platform/promociones',
       name: 'PlatformPromoCodes',
       component: () => import('../views/platform/PlatformPromoCodes.vue'),
@@ -534,6 +559,8 @@ router.beforeEach(async (to, _from, next) => {
       auth.user &&
       !auth.mustChangePassword &&
       auth.user.twoFactorEnabled === false &&
+      // En dev la API no lo exige (twoFactorRequired = false).
+      auth.user.twoFactorRequired !== false &&
       to.path.startsWith('/platform') &&
       to.path !== '/platform/seguridad'
     ) {
@@ -598,11 +625,6 @@ router.beforeEach(async (to, _from, next) => {
       // Ya completó el onboarding: no tiene sentido volver a esas vistas.
       return next(appHome)
     }
-  }
-
-  // Plan de Citas: el panel de inicio es la agenda, no el showroom.
-  if (to.path === '/home' && auth.user?.subscription?.planType?.startsWith('CITAS_')) {
-    return next('/appointments')
   }
 
   if (to.meta.adminOnly && auth.user?.role !== 'BUSINESS') {

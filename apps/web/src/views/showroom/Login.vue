@@ -60,7 +60,15 @@
         />
       </div>
       <div>
-        <label for="login-password" class="ui-label">Contraseña</label>
+        <div class="flex items-baseline justify-between gap-2">
+          <label for="login-password" class="ui-label">Contraseña</label>
+          <router-link
+            to="/recuperar-contrasena"
+            class="-my-2 inline-flex min-h-11 items-center text-sm font-semibold text-brand-600 hover:underline dark:text-brand-300"
+          >
+            ¿La olvidaste?
+          </router-link>
+        </div>
         <div class="relative">
           <input
             id="login-password"
