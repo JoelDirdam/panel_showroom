@@ -6,6 +6,8 @@
       <RouterView />
       <TourHost />
       <CookieBanner />
+      <ToastHost />
+      <ConfirmHost />
     </SidebarProvider>
   </ThemeProvider>
 </template>
@@ -15,6 +17,8 @@ import ThemeProvider from './components/layout/ThemeProvider.vue'
 import SidebarProvider from './components/layout/SidebarProvider.vue'
 import TourHost from './tours/TourHost.vue'
 import CookieBanner from './components/common/CookieBanner.vue'
+import ToastHost from './components/ui/ToastHost.vue'
+import ConfirmHost from './components/ui/ConfirmHost.vue'
 
 function skipToContent() {
   const target =

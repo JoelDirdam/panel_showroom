@@ -1,15 +1,15 @@
 <template>
   <div
     :class="[
-      'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]',
+      'ui-card',
       className,
     ]"
   >
     <!-- Card Header -->
-    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+    <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5">
       <div>
         <slot name="title">
-          <h3 class="text-base font-medium text-gray-800 dark:text-white/90">
+          <h3 class="text-[17px] font-semibold text-gray-900 dark:text-white/90">
             {{ title }}
           </h3>
         </slot>
