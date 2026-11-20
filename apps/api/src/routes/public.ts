@@ -13,6 +13,12 @@ import {
   zonedJsWeekday,
 } from '../modules/ai/availability.js'
 import { parseTimeHm, zonedLocalToUtc } from '../lib/timezone.js'
+import {
+  effectivePause,
+  onlineBookingBlock,
+  todayIso,
+  upcomingClosures,
+} from '../services/bookingAvailability.service.js'
 
 /**
  * Reserva pública (sin login): el cliente del negocio agenda desde /reservar/:slug.
@@ -30,7 +36,18 @@ async function loadTenant(slugRaw: string) {
   const slug = slugRaw.trim().toLowerCase()
   const tenant = await prisma.tenant.findUnique({
     where: { slug },
-    select: { id: true, name: true, slug: true, active: true, logoUrl: true, address: true, socialUrl: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      active: true,
+      logoUrl: true,
+      address: true,
+      socialUrl: true,
+      bookingPaused: true,
+      bookingPauseMessage: true,
+      bookingPauseUntil: true,
+    },
   })
   if (!tenant || !tenant.active) throw new HttpError(404, 'Negocio no encontrado')
   return tenant
@@ -81,6 +98,10 @@ async function computeSlots(params: {
   if (dayStartUtc.getTime() > now + MAX_DAYS_AHEAD * 86_400_000) {
     throw new HttpError(400, 'Fecha demasiado lejana')
   }
+
+  // Vacaciones, días festivos o reservas en pausa: no hay horarios.
+  const block = await onlineBookingBlock(params.tenantId, params.date, params.timezone)
+  if (block.blocked) return []
 
   const hours = await listBusinessHours(params.tenantId)
   const weekday = zonedJsWeekday(parsed.year, parsed.month, parsed.day, params.timezone)
@@ -137,7 +158,9 @@ async function computeSlots(params: {
 router.get('/:slug', async (req, res) => {
   try {
     const tenant = await loadTenant(getParam(req.params.slug))
-    const [services, sucursales, hours] = await Promise.all([
+    const timezone = await loadTimezone(tenant.id)
+    const today = todayIso(timezone)
+    const [services, sucursales, hours, closures] = await Promise.all([
       prisma.service.findMany({
         where: { tenantId: tenant.id, isActive: true },
         select: { id: true, name: true, durationMinutes: true, price: true },
@@ -149,7 +172,9 @@ router.get('/:slug', async (req, res) => {
         orderBy: { name: 'asc' },
       }),
       listBusinessHours(tenant.id),
+      upcomingClosures(tenant.id, today),
     ])
+    const pause = effectivePause(tenant, today)
     return res.json({
       business: {
         name: tenant.name,
@@ -169,6 +194,14 @@ router.get('/:slug', async (req, res) => {
         breakEnd: h.breakEnd,
       })),
       maxDaysAhead: MAX_DAYS_AHEAD,
+      today,
+      bookingStatus: pause,
+      closures: closures.map((c) => ({
+        startDate: c.startDate,
+        endDate: c.endDate,
+        label: c.label,
+        publicMessage: c.publicMessage,
+      })),
     })
   } catch (e) {
     return sendError(res, e)
@@ -236,6 +269,9 @@ router.post(
       if (!service) throw new HttpError(404, 'Servicio no encontrado')
       const { sucursalId } = await resolveSucursal(tenant.id, input.sucursalId)
       const timezone = await loadTimezone(tenant.id)
+
+      const block = await onlineBookingBlock(tenant.id, input.date, timezone)
+      if (block.blocked) throw new HttpError(409, block.message)
 
       // Revalida contra la disponibilidad real: nunca confiar en la hora que manda el navegador.
       const slots = await computeSlots({

@@ -5,6 +5,7 @@ import { zonedLocalToUtc, parseTimeHm } from '../../lib/timezone.js'
 import { createAppointment, listAppointments } from '../../services/appointments.service.js'
 import { listBusinessHours } from '../../services/businessHours.service.js'
 import { dayBoundsUtc, findFreeBlocks, parseIsoDate, zonedJsWeekday } from './availability.js'
+import { onlineBookingBlock } from '../../services/bookingAvailability.service.js'
 import type { AiRuntimeContext } from './types.js'
 
 export const OPENAI_TOOLS: ChatCompletionTool[] = [
@@ -134,6 +135,18 @@ async function checkAvailability(ctx: AiRuntimeContext, args: Record<string, unk
     return { ok: false, error: 'durationMinutes debe estar entre 15 y 480.' }
   }
 
+  // Vacaciones o reservas en pausa: el asistente no ofrece horarios.
+  const block = await onlineBookingBlock(ctx.tenantId, asString(args.date), ctx.timezone)
+  if (block.blocked) {
+    return {
+      ok: true,
+      date: asString(args.date),
+      closed: true,
+      blocks: [] as Array<{ start: string; end: string }>,
+      message: block.message,
+    }
+  }
+
   const hours = await listBusinessHours(ctx.tenantId)
   const weekday = zonedJsWeekday(parsedDate.year, parsedDate.month, parsedDate.day, ctx.timezone)
   const dayHours = hours.find((h) => h.dayOfWeek === weekday)
@@ -197,6 +210,11 @@ async function createAppointmentTool(ctx: AiRuntimeContext, args: Record<string,
   const service = ctx.services.find((s) => s.id === serviceId)
   if (!service) {
     return { ok: false, error: 'Servicio no encontrado o inactivo.' }
+  }
+
+  const block = await onlineBookingBlock(ctx.tenantId, dateRaw, ctx.timezone)
+  if (block.blocked) {
+    return { ok: false, error: block.message }
   }
 
   const startTime = zonedLocalToUtc(
