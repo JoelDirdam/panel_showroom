@@ -1,4 +1,4 @@
-import type { InboundTextMessage, WhatsappWebhookPayload } from './types.js'
+import type { InboundButtonReply, InboundTextMessage, WhatsappWebhookPayload } from './types.js'
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
@@ -65,4 +65,43 @@ export function parseInboundTextMessages(payload: unknown): InboundTextMessage[]
   }
 
   return extracted
+}
+
+/**
+ * Extrae las respuestas con botón: botones de plantilla (type "button", con payload)
+ * y botones interactivos (type "interactive" -> button_reply.id).
+ */
+export function parseInboundButtonReplies(payload: unknown): InboundButtonReply[] {
+  const root = asRecord(payload) as WhatsappWebhookPayload | null
+  if (!root) return []
+  const out: InboundButtonReply[] = []
+  for (const entry of asArray(root.entry)) {
+    for (const change of asArray(asRecord(entry)?.changes)) {
+      const value = asRecord(asRecord(change)?.value)
+      if (!value) continue
+      const tenantPhoneNumberId = tenantPhoneNumberIdFromMetadata(value.metadata)
+      if (!tenantPhoneNumberId) continue
+      for (const message of asArray(value.messages)) {
+        const msg = asRecord(message)
+        if (!msg) continue
+        const type = asString(msg.type)
+        let buttonPayload = ''
+        let text = ''
+        if (type === 'button') {
+          const button = asRecord(msg.button)
+          buttonPayload = asString(button?.payload)
+          text = asString(button?.text)
+        } else if (type === 'interactive') {
+          const reply = asRecord(asRecord(msg.interactive)?.button_reply)
+          buttonPayload = asString(reply?.id)
+          text = asString(reply?.title)
+        }
+        const customerPhone = asString(msg.from)
+        const messageId = asString(msg.id)
+        if (!buttonPayload || !customerPhone || !messageId) continue
+        out.push({ tenantPhoneNumberId, customerPhone, messageId, payload: buttonPayload, text })
+      }
+    }
+  }
+  return out
 }

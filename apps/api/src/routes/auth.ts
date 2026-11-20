@@ -3,7 +3,11 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
-import { authenticate, signToken } from '../middleware/auth.js'
+import { createHash } from 'node:crypto'
+import { authenticate, signPurposeToken, signToken, verifyPurposeToken } from '../middleware/auth.js'
+import { clientIp, clientUserAgent } from '../lib/clientIp.js'
+import { verifySecondFactor } from '../lib/twoFactor.js'
+import { audit } from '../lib/audit.js'
 import { notify } from '../lib/notify.js'
 import { slugify } from '../lib/slug.js'
 import { buildMeResponse } from '../lib/meShape.js'
@@ -36,16 +40,35 @@ const changePasswordSchema = z.object({
 const registerSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email(),
-  phone: z.string().min(7).max(30),
+  // Opcional: no hace falta un teléfono para abrir la cuenta (minimización de datos).
+  phone: z
+    .string()
+    .trim()
+    .max(30)
+    .optional()
+    .nullable()
+    .refine((v) => !v || v.length >= 7, 'Teléfono inválido'),
   password: z.string().min(8),
   signedName: z.string().min(1).max(200),
   termsVersion: z.string().min(1),
+  // Aceptación expresa: la casilla debe venir marcada por el usuario.
+  acceptTerms: z.literal(true),
+  // Consentimiento aparte y opcional para correos de marketing (apagado por defecto).
+  marketingOptIn: z.boolean().optional().default(false),
 })
 
 const acceptTermsSchema = z.object({
   signedName: z.string().min(1).max(200),
   termsVersion: z.string().min(1),
+  acceptTerms: z.literal(true),
 })
+
+const twoFactorLoginSchema = z.object({
+  challengeToken: z.string().min(10).max(2000),
+  code: z.string().trim().min(6).max(20),
+})
+
+const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex')
 
 const verifyCodeSchema = z.object({
   code: z.string().regex(/^\d{6}$/, 'El código debe tener 6 dígitos'),
@@ -84,8 +107,17 @@ router.post('/login', authRateLimit, async (req, res) => {
   }
 
   const valid = await bcrypt.compare(password, user.password)
-  if (!valid) {
+  if (!valid || user.deletedAt) {
     return res.status(401).json({ error: 'Credenciales incorrectas' })
+  }
+
+  // Con 2FA activo la contraseña sola no abre sesión: se entrega un reto de
+  // 5 minutos que solo sirve para /login/2fa.
+  if (user.totpEnabledAt && user.totpSecret) {
+    return res.json({
+      twoFactorRequired: true,
+      challengeToken: signPurposeToken('2fa-login', { uid: user.id }, '5m'),
+    })
   }
 
   const authUser = {
@@ -107,6 +139,50 @@ router.post('/login', authRateLimit, async (req, res) => {
   })
 })
 
+/** Segundo paso del inicio de sesión: código de la app de autenticación o de recuperación. */
+router.post('/login/2fa', authRateLimit, async (req, res) => {
+  const parsed = twoFactorLoginSchema.safeParse(req.body)
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Escribe el código de 6 dígitos de tu app' })
+  }
+  const challenge = verifyPurposeToken<{ uid?: string }>('2fa-login', parsed.data.challengeToken)
+  if (!challenge?.uid) {
+    return res.status(401).json({
+      error: 'La verificación expiró. Vuelve a escribir tu correo y contraseña.',
+      code: 'CHALLENGE_EXPIRED',
+    })
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: challenge.uid } })
+  if (!user || user.deletedAt || !user.totpEnabledAt) {
+    return res.status(401).json({ error: 'Credenciales incorrectas' })
+  }
+
+  const result = await verifySecondFactor(user, parsed.data.code, { allowRecoveryCode: true })
+  if (!result.ok) return res.status(result.status).json({ error: result.error })
+
+  if (user.role === 'SUPER_ADMIN') {
+    req.user = { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: '', brandId: null }
+    await audit(req, 'auth.login', { type: 'account', id: user.id, label: user.email }, {
+      usedRecoveryCode: result.usedRecoveryCode,
+    })
+  }
+
+  const me = await buildMeResponse(user.id)
+  return res.json({
+    token: signToken({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      tenantId: user.tenantId ?? '',
+      brandId: user.brandId,
+    }),
+    user: me,
+    usedRecoveryCode: result.usedRecoveryCode,
+  })
+})
+
 /**
  * Alta de un nuevo negocio (tenant borrador) + usuario BUSINESS. Deja el flujo
  * listo para continuar en /verify-email → /onboarding/select-plan →
@@ -117,7 +193,12 @@ router.post('/register', authRateLimit, async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
   }
-  const { name, email, phone, password, signedName, termsVersion } = parsed.data
+  const { name, password, signedName, termsVersion, marketingOptIn } = parsed.data
+  // Mismo formato que usa /login para buscar la cuenta.
+  const email = parsed.data.email.trim().toLowerCase()
+  const phone = parsed.data.phone?.trim() || null
+  const ip = clientIp(req)
+  const userAgent = clientUserAgent(req)
 
   const currentTerms = await prisma.termsDocument.findFirst({ orderBy: { publishedAt: 'desc' } })
   if (currentTerms && currentTerms.version !== termsVersion) {
@@ -166,21 +247,43 @@ router.post('/register', authRateLimit, async (req, res) => {
         email,
         password: passwordHash,
         name,
-        phone: phone.trim(),
+        phone,
         role: 'BUSINESS',
         tenantId: tenant.id,
         onboardingStep: 'REGISTERED',
+        marketingOptIn,
+        marketingOptInAt: marketingOptIn ? new Date() : null,
       },
     })
 
+    // Evidencia: quién aceptó, qué versión (y su huella), cuándo y desde dónde.
     await tx.termsAcceptance.create({
       data: {
         userId: user.id,
         version: termsVersion,
         signedName,
-        ip: req.ip ?? null,
+        ip,
+        email,
+        userAgent,
+        contentHash: currentTerms ? sha256(currentTerms.content) : null,
+        source: 'register',
       },
     })
+
+    // El consentimiento de marketing se registra aparte (solo si se otorgó).
+    if (marketingOptIn) {
+      await tx.consentEvent.create({
+        data: {
+          userId: user.id,
+          email,
+          kind: 'MARKETING_EMAIL',
+          granted: true,
+          source: 'register',
+          ip,
+          userAgent,
+        },
+      })
+    }
 
     await tx.emailVerificationCode.create({
       data: {
@@ -228,10 +331,26 @@ router.post('/accept-terms', authenticate, async (req, res) => {
     })
   }
 
+  const account = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { email: true, deletedAt: true },
+  })
+  if (!account || account.deletedAt) return res.status(401).json({ error: 'No autorizado' })
+
+  // Si ya había aceptado esta versión se conserva la constancia original (fecha e IP).
   await prisma.termsAcceptance.upsert({
     where: { userId_version: { userId: req.user!.id, version: termsVersion } },
-    update: { signedName, ip: req.ip ?? null },
-    create: { userId: req.user!.id, version: termsVersion, signedName, ip: req.ip ?? null },
+    update: {},
+    create: {
+      userId: req.user!.id,
+      version: termsVersion,
+      signedName,
+      ip: clientIp(req),
+      email: account.email,
+      userAgent: clientUserAgent(req),
+      contentHash: currentTerms ? sha256(currentTerms.content) : null,
+      source: 'reaccept',
+    },
   })
 
   const me = await buildMeResponse(req.user!.id)
@@ -322,7 +441,7 @@ router.post('/change-email', authenticate, async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: 'Correo inválido' })
   }
-  const { email } = parsed.data
+  const email = parsed.data.email.trim().toLowerCase()
 
   const taken = await prisma.user.findUnique({ where: { email } })
   if (taken && taken.id !== req.user!.id) {
@@ -444,7 +563,8 @@ router.post('/resend-phone-code', authenticate, async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   const me = await buildMeResponse(req.user!.id)
   if (!me) {
-    return res.status(404).json({ error: 'Usuario no encontrado' })
+    // Cuenta eliminada o inexistente: el token ya no es válido.
+    return res.status(401).json({ error: 'No autorizado' })
   }
   return res.json(me)
 })
@@ -454,7 +574,8 @@ router.patch('/profile', authenticate, async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
   }
-  const { name, email, phone, timezone } = parsed.data
+  const { name, phone, timezone } = parsed.data
+  const email = parsed.data.email?.trim().toLowerCase()
 
   const current = await prisma.user.findUnique({ where: { id: req.user!.id } })
   if (!current) return res.status(404).json({ error: 'Usuario no encontrado' })

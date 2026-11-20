@@ -15,7 +15,7 @@ export const BUSINESS = {
   privacyEmail: 'privacidad@cosdi.mx',
   phone: '618 292 3010',
   whatsappLink: 'https://wa.me/526182923010',
-  legalUpdated: '8 de noviembre de 2026',
+  legalUpdated: '16 de noviembre de 2026',
 } as const
 
 export const BUSINESS_ADDRESS = `${BUSINESS.city}, ${BUSINESS.state}, ${BUSINESS.country}`

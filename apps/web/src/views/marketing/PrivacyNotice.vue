@@ -14,13 +14,18 @@
 
     <h2>2. ¿Qué datos personales recabamos?</h2>
     <ul>
-      <li><strong>Datos de cuenta:</strong> nombre, correo electrónico, teléfono y contraseña (almacenada cifrada).</li>
+      <li><strong>Datos de cuenta:</strong> nombre, correo electrónico y contraseña (almacenada cifrada). El teléfono es opcional.</li>
+      <li><strong>Constancias de consentimiento:</strong> versión de los términos que aceptaste, fecha y hora, dirección IP y navegador; y, si lo autorizas, tu consentimiento para recibir correos de marketing.</li>
       <li><strong>Datos del negocio:</strong> nombre del negocio, marcas, productos, inventario, ventas, cortes de caja y citas que registras en el panel.</li>
-      <li><strong>Datos de tus clientes</strong> que tú captures o que ellos mismos ingresen al agendar una cita: nombre, teléfono, correo y servicio solicitado.</li>
+      <li><strong>Datos de tus clientes</strong> que tú captures o que ellos mismos ingresen al agendar una cita: nombre, teléfono y servicio solicitado.</li>
       <li><strong>Datos técnicos:</strong> dirección IP, navegador, sistema operativo y registros de acceso.</li>
       <li><strong>Mensajes de WhatsApp:</strong> número de teléfono y contenido de los mensajes cuando se usan los recordatorios y la atención por WhatsApp.</li>
     </ul>
-    <p>No recabamos datos personales sensibles ni datos financieros completos (por ejemplo, no almacenamos números de tarjeta).</p>
+    <p>
+      Solo pedimos los datos que necesitamos para darte el servicio. No recabamos datos personales sensibles ni datos
+      financieros completos (por ejemplo, no almacenamos números de tarjeta: los captura directamente nuestro
+      procesador de pagos).
+    </p>
 
     <h2>3. ¿Para qué usamos tus datos?</h2>
     <p><strong>Finalidades necesarias</strong> para brindarte el servicio:</p>
@@ -37,7 +42,9 @@
       <li>Elaborar estadísticas internas para mejorar el producto.</li>
     </ul>
     <p>
-      Si no deseas el tratamiento para las finalidades secundarias, escríbenos a
+      Los correos de novedades y promociones <strong>solo se envían si lo autorizas</strong> mediante una casilla
+      aparte de la aceptación de los términos, que aparece desmarcada. Puedes retirar esa autorización en cualquier
+      momento desde <strong>Mi cuenta</strong>, con el enlace “Darme de baja” de cada correo, o escribiendo a
       <a :href="`mailto:${B.privacyEmail}`">{{ B.privacyEmail }}</a>.
     </p>
 
@@ -46,9 +53,16 @@
     <ul>
       <li><strong>Meta Platforms (WhatsApp Business Platform):</strong> para enviar y recibir mensajes de WhatsApp.</li>
       <li><strong>Proveedores de infraestructura y alojamiento</strong> (servidores y base de datos) y de <strong>correo electrónico</strong>.</li>
-      <li><strong>Procesadores de pago</strong>, cuando contrates un plan de pago.</li>
+      <li><strong>Procesadores de pago</strong> (Stripe), cuando registras una tarjeta o contratas un plan de pago.</li>
+      <li><strong>Proveedor de inteligencia artificial</strong>, solo en el plan Citas + IA, para que el asistente responda los mensajes de WhatsApp.</li>
+      <li><strong>Herramientas de analítica y publicidad</strong> del sitio público, solo si aceptas esas cookies.</li>
       <li>Autoridades competentes cuando exista un requerimiento legal.</li>
     </ul>
+    <p>
+      La lista completa, con el nombre de cada proveedor, qué datos trata, para qué y dónde se ubica, está en
+      <router-link to="/proveedores">Proveedores que tratan datos</router-link>. Varios de ellos se encuentran fuera
+      de México (principalmente en Estados Unidos); al usar el servicio consientes estas transferencias.
+    </p>
 
     <h2>5. Datos de los clientes de tu negocio</h2>
     <p>
@@ -65,19 +79,34 @@
       responderte, descripción clara del derecho que ejerces y copia de una identificación oficial. Responderemos en un
       máximo de 20 días hábiles.
     </p>
+    <p>
+      Además, sin necesidad de enviar una solicitud, desde <strong>Mi cuenta → Privacidad y datos</strong> puedes en
+      cualquier momento <strong>descargar una copia de tus datos</strong> en formato electrónico y
+      <strong>eliminar tu cuenta</strong> y la información asociada.
+    </p>
 
     <h2>7. Cookies y tecnologías similares</h2>
     <p>
       Usamos cookies y almacenamiento local estrictamente necesarios para mantener tu sesión y recordar preferencias
-      (por ejemplo, el tema claro u oscuro). Puedes configurar tu navegador para bloquearlas, aunque el panel podría no
-      funcionar correctamente.
+      (por ejemplo, el tema claro u oscuro). En las páginas públicas del sitio podemos usar, además, herramientas de
+      analítica (Google Analytics, Hotjar, Contentsquare) y de publicidad (Pixel de Meta), que <strong>permanecen bloqueadas hasta
+      que las aceptas</strong> en el aviso de cookies y nunca se usan dentro de tu panel. Puedes cambiar tu decisión
+      cuando quieras desde “Preferencias de cookies”, al pie del sitio. Más detalle en la
+      <router-link to="/cookies">política de cookies</router-link>.
     </p>
 
     <h2>8. Conservación y seguridad</h2>
     <p>
-      Conservamos tus datos mientras tu cuenta esté activa y durante el tiempo que exijan las obligaciones legales y
-      fiscales. Aplicamos medidas técnicas, administrativas y físicas razonables (cifrado en tránsito, contraseñas
-      cifradas, control de accesos) para protegerlos contra pérdida, uso o acceso no autorizado.
+      Conservamos tus datos mientras tu cuenta exista. Las cuentas que pasan {{ R.inactiveAccountMonths }} meses sin
+      una suscripción vigente se eliminan, previo aviso por correo con {{ R.inactiveNoticeDays }} días de
+      anticipación. Después de eliminar una cuenta conservamos solo, bloqueados y por {{ R.evidenceYears }} años, los
+      registros que la ley permite o exige (como la constancia de aceptación de los términos). Los plazos completos
+      están en <router-link to="/conservacion-de-datos">Conservación de datos</router-link>.
+    </p>
+    <p>
+      Aplicamos medidas técnicas, administrativas y físicas razonables (cifrado en tránsito, contraseñas cifradas,
+      verificación en dos pasos opcional, control de accesos) para protegerlos contra pérdida, uso o acceso no
+      autorizado.
     </p>
 
     <h2>9. Cambios a este aviso</h2>
@@ -102,4 +131,5 @@
 <script setup lang="ts">
 import LegalPage from '@/components/marketing/LegalPage.vue'
 import { BUSINESS as B, BUSINESS_ADDRESS as ADDRESS } from '@/lib/business'
+import { RETENTION as R } from '@/lib/legal'
 </script>

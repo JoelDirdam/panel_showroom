@@ -63,6 +63,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
             "password": password,
             "signedName": "QA Register Flow",
             "termsVersion": version,
+            "acceptTerms": True,
         },
         timeout=30,
     )
@@ -91,6 +92,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
             "password": password,
             "signedName": "Duplicado",
             "termsVersion": version,
+            "acceptTerms": True,
         },
         timeout=30,
     )
@@ -106,6 +108,7 @@ def test_register_accepts_terms_and_verify_email_completes_onboarding_step():
             "password": password,
             "signedName": "QA Stale Terms",
             "termsVersion": f"{version}-obsoleta",
+            "acceptTerms": True,
         },
         timeout=30,
     )

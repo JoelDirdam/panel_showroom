@@ -8,6 +8,7 @@ import { advanceStep } from '../lib/onboarding.js'
 import { ensurePrincipalSucursal } from '../lib/sucursal.js'
 import { storage } from '../lib/storage.js'
 import { imageUpload, safeImageOriginalName } from '../lib/upload.js'
+import { CodeError, resolveSignupCode } from '../lib/referrals.js'
 
 const router = Router()
 
@@ -20,7 +21,6 @@ const PLAN_TYPES: PlanType[] = [
   'CITAS_PANEL',
   'CITAS_IA',
 ]
-const TRIAL_BASE_DAYS = 15
 const DAY_MS = 24 * 60 * 60 * 1000
 
 const selectPlanSchema = z.object({
@@ -38,8 +38,9 @@ const createBusinessSchema = z.object({
 router.use(authenticate, authorize('BUSINESS'))
 
 /**
- * Selecciona el plan y activa el trial. Sin promo: 15 días. Con COSDI30
- * (extraTrialDays=15): 15 + 15 = 30 días.
+ * Selecciona el plan. La prueba gratis solo existe con código. El código puede ser:
+ * - promocional: días de prueba gratis (PRUEBA15) y/o descuento que se aplica en Checkout (FUNDADOR);
+ * - de recomendación de otro negocio: crea un Referral (descuento en su primer mes).
  */
 router.post('/select-plan', async (req, res) => {
   const parsed = selectPlanSchema.safeParse(req.body)
@@ -48,23 +49,34 @@ router.post('/select-plan', async (req, res) => {
   }
   const { planType, promoCode } = parsed.data
 
-  let extraTrialDays = 0
-  let appliedPromoCode: string | null = null
-
-  if (promoCode) {
-    const promo = await prisma.promoCode.findUnique({ where: { code: promoCode.toUpperCase() } })
-    if (!promo || !promo.active || (promo.maxUses !== null && promo.usedCount >= promo.maxUses)) {
-      return res.status(400).json({ error: 'Código promocional inválido o expirado' })
-    }
-    extraTrialDays = promo.extraTrialDays
-    appliedPromoCode = promo.code
-  }
-
-  const trialEndsAt = new Date(Date.now() + (TRIAL_BASE_DAYS + extraTrialDays) * DAY_MS)
   const tenantId = req.user!.tenantId
 
+  let trialDays = 0
+  let appliedPromoCode: string | null = null
+  let referrerTenantId: string | null = null
+
+  if (promoCode) {
+    try {
+      const resolved = await resolveSignupCode(promoCode, planType, tenantId)
+      if (resolved.kind === 'promo') {
+        trialDays = resolved.promo.trialDays
+        appliedPromoCode = resolved.promo.code
+      } else {
+        appliedPromoCode = resolved.code
+        referrerTenantId = resolved.referrerTenantId
+      }
+    } catch (e) {
+      if (e instanceof CodeError) return res.status(400).json({ error: e.message })
+      throw e
+    }
+  }
+
+  // Sin código de prueba, la prueba termina hoy: para empezar hay que pagar.
+  const trialEndsAt = new Date(Date.now() + trialDays * DAY_MS)
+
   const existing = await prisma.tenantSubscription.findUnique({ where: { tenantId } })
-  const isNewPromoUsage = Boolean(appliedPromoCode) && existing?.promoCodeUsed !== appliedPromoCode
+  const isNewPromoUsage =
+    Boolean(appliedPromoCode) && !referrerTenantId && existing?.promoCodeUsed !== appliedPromoCode
 
   await prisma.$transaction(async (tx) => {
     await tx.tenantSubscription.upsert({
@@ -83,6 +95,20 @@ router.post('/select-plan', async (req, res) => {
         promoCodeUsed: appliedPromoCode,
       },
     })
+
+    // Referido: solo mientras no haya pagado (un referido ya calificado no se cambia).
+    const currentReferral = await tx.referral.findUnique({ where: { referredTenantId: tenantId } })
+    if (!currentReferral || currentReferral.status === 'PENDING') {
+      if (referrerTenantId) {
+        await tx.referral.upsert({
+          where: { referredTenantId: tenantId },
+          update: { referrerTenantId },
+          create: { referrerTenantId, referredTenantId: tenantId },
+        })
+      } else if (currentReferral) {
+        await tx.referral.delete({ where: { id: currentReferral.id } })
+      }
+    }
 
     if (appliedPromoCode && isNewPromoUsage) {
       await tx.promoCode.update({
@@ -103,7 +129,7 @@ router.post('/select-plan', async (req, res) => {
 })
 
 /**
- * Stub de pago: el usuario continúa con la prueba gratis sin Stripe/MP.
+ * Continuar sin tarjeta: solo mientras dure la prueba que dio un código.
  * TODO: integrar Stripe / Mercado Pago y reemplazar este bypass.
  */
 router.post('/skip-payment', async (req, res) => {
@@ -111,6 +137,14 @@ router.post('/skip-payment', async (req, res) => {
   const sub = await prisma.tenantSubscription.findUnique({ where: { tenantId } })
   if (!sub) {
     return res.status(400).json({ error: 'Debes seleccionar un plan antes de continuar' })
+  }
+
+  // Sin prueba vigente (no usó código de prueba) no se puede continuar sin pagar.
+  if (sub.status !== 'ACTIVE' && sub.trialEndsAt.getTime() <= Date.now()) {
+    return res.status(402).json({
+      error: 'Para empezar sin pagar necesitas un código de prueba. Agrega tu tarjeta o vuelve a elegir tu plan con un código.',
+      code: 'PAYMENT_REQUIRED',
+    })
   }
 
   await prisma.tenantSubscription.update({

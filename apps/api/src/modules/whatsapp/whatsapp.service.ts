@@ -14,7 +14,8 @@ const MAX_BUTTON_TITLE_LENGTH = 20
 export async function findActiveConfigByPhoneNumberId(phoneNumberId: string) {
   if (!phoneNumberId) return null
   return prisma.whatsappConfig.findFirst({
-    where: { phoneNumberId, isActive: true },
+    // Negocio suspendido desde la plataforma: el asistente no responde.
+    where: { phoneNumberId, isActive: true, tenant: { active: true } },
     select: {
       id: true,
       tenantId: true,
@@ -155,6 +156,8 @@ export interface TemplateMessageInput {
   languageCode: string
   /** Valores de {{1}}, {{2}}, ... del cuerpo de la plantilla, en orden. */
   bodyParams: ReadonlyArray<string>
+  /** Payload de cada botón de respuesta rápida de la plantilla, en orden (índice 0, 1, ...). */
+  quickReplyPayloads?: ReadonlyArray<string>
 }
 
 /**
@@ -178,15 +181,17 @@ export async function sendTemplateMessage(
     template: {
       name: input.templateName,
       language: { code: input.languageCode },
-      components:
-        input.bodyParams.length > 0
-          ? [
-              {
-                type: 'body',
-                parameters: input.bodyParams.map((text) => ({ type: 'text', text })),
-              },
-            ]
-          : [],
+      components: [
+        ...(input.bodyParams.length > 0
+          ? [{ type: 'body', parameters: input.bodyParams.map((text) => ({ type: 'text', text })) }]
+          : []),
+        ...(input.quickReplyPayloads ?? []).map((payload, index) => ({
+          type: 'button',
+          sub_type: 'quick_reply',
+          index: String(index),
+          parameters: [{ type: 'payload', payload }],
+        })),
+      ],
     },
   })
 }

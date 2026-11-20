@@ -60,6 +60,7 @@ def test_create_business_completes_onboarding_without_auto_house_brand():
             "password": password,
             "signedName": "QA Create Business",
             "termsVersion": version,
+            "acceptTerms": True,
         },
         timeout=30,
     )

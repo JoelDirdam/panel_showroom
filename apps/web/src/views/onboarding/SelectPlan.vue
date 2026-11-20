@@ -5,13 +5,13 @@
         <div class="mb-8 text-center">
           <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Elige el plan de tu negocio</h1>
           <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Comienza con {{ TRIAL_BASE_DAYS }} días de prueba gratis. ¿Tienes un código promocional? Extiéndelo.
+            ¿Tienes un código de prueba gratis, de descuento o de recomendación? Escríbelo abajo antes de continuar.
           </p>
         </div>
 
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <button
-            v-for="plan in PLANS"
+            v-for="plan in orderedPlans"
             :key="plan.type"
             type="button"
             class="relative flex flex-col rounded-2xl border p-5 text-left transition"
@@ -27,9 +27,12 @@
               class="absolute -top-2.5 left-4 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white"
               :class="plan.available ? 'bg-brand-500' : 'bg-gray-400 dark:bg-gray-600'"
             >
-              {{ plan.available ? 'Recomendado' : 'Próximamente' }}
+              {{ !plan.available ? 'Próximamente' : plan.type === 'CITAS_PANEL' ? 'Recomendado' : 'Disponible' }}
             </span>
             <h3 class="mt-2 text-base font-semibold text-gray-800 dark:text-white">{{ plan.name }}</h3>
+            <p v-if="shownPrice(plan, false)" class="mt-1 text-sm font-semibold text-gray-800 dark:text-white">
+              ${{ shownPrice(plan, false) }} <span class="text-xs font-normal text-gray-500 dark:text-gray-400">MXN/mes · IVA incluido</span>
+            </p>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ plan.description }}</p>
             <ul class="mt-3 space-y-1.5">
               <li
@@ -46,16 +49,17 @@
 
         <div class="mx-auto mt-8 max-w-md">
           <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-            Código promocional (opcional)
+            Código promocional o de recomendación (opcional)
           </label>
           <input
             v-model="promoCode"
             type="text"
-            placeholder="Ej. COSDI30"
+            :placeholder="`Ej. ${TRIAL_CODE_EXAMPLE}`"
             class="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 text-sm uppercase text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
           />
           <p class="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
-            Con un código válido extiendes tu prueba gratuita más allá de los {{ TRIAL_BASE_DAYS }} días base.
+            Según el código obtienes días de prueba gratis o un descuento en tus mensualidades. Si te recomendó otro
+            negocio, escribe su código. Sin código, pagas tu primer mes al agregar tu tarjeta.
           </p>
 
           <p v-if="auth.error" class="mt-3 text-sm text-error-500">{{ auth.error }}</p>
@@ -80,7 +84,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { CheckIcon } from 'lucide-vue-next'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { PLANS, TRIAL_BASE_DAYS } from '@/lib/plans'
+import { PLANS, TRIAL_CODE_EXAMPLE, shownPrice } from '@/lib/plans'
 import type { PlanType } from '@/lib/entitlements'
 
 const router = useRouter()
@@ -95,13 +99,22 @@ try {
   planFromStorage = null
 }
 const preferredPlan = planFromQuery || planFromStorage
+/** Citas primero: es el plan de entrada. */
+const ORDER: PlanType[] = ['CITAS_PANEL', 'CITAS_IA', 'NEGOCIO', 'CITAS_RECORDATORIOS', 'MARCA']
+const orderedPlans = [...PLANS].sort((a, b) => ORDER.indexOf(a.type) - ORDER.indexOf(b.type))
 const initialPlan =
-  PLANS.find((p) => p.type === preferredPlan && p.available)?.type ??
-  PLANS.find((p) => p.available)?.type ??
-  'NEGOCIO'
+  orderedPlans.find((p) => p.type === preferredPlan && p.available)?.type ??
+  orderedPlans.find((p) => p.available)?.type ??
+  'CITAS_PANEL'
 
 const selectedPlan = ref<PlanType>(initialPlan)
-const promoCode = ref('')
+let codeFromStorage = ''
+try {
+  codeFromStorage = sessionStorage.getItem('pendingPromoCode') ?? ''
+} catch {
+  codeFromStorage = ''
+}
+const promoCode = ref(codeFromStorage)
 
 async function handleContinue() {
   if (!selectedPlan.value) return
@@ -114,6 +127,7 @@ async function handleContinue() {
   if (ok) {
     try {
       sessionStorage.removeItem('pendingPlanType')
+      sessionStorage.removeItem('pendingPromoCode')
     } catch {
       /* ignore */
     }

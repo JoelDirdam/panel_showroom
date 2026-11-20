@@ -21,10 +21,10 @@
           Ingresar
         </router-link>
         <router-link
-          to="/register?plan=NEGOCIO"
+          to="/register?plan=CITAS_PANEL"
           class="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
         >
-          Probar gratis
+          Crear cuenta
         </router-link>
       </div>
     </div>

@@ -1,7 +1,12 @@
 <template>
-  <div class="relative" ref="dropdownRef">
+  <div class="relative" ref="dropdownRef" @keydown.esc="closeAndRefocus">
     <button
+      ref="triggerRef"
+      type="button"
       class="flex items-center text-gray-700 dark:text-gray-400"
+      aria-haspopup="true"
+      :aria-expanded="dropdownOpen"
+      aria-label="Menú de la cuenta"
       @click.prevent="toggleDropdown"
     >
       <span
@@ -44,11 +49,22 @@
         Preferencias
       </router-link>
 
+      <router-link
+        to="/cuenta"
+        class="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
+        :class="showPreferences ? 'mt-1' : 'mt-3'"
+        @click="closeDropdown"
+      >
+        <UserCircleIcon
+          class="h-6 w-6 text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
+        />
+        Mi cuenta: seguridad y datos
+      </router-link>
+
       <button
         type="button"
         @click="signOut"
-        class="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-        :class="showPreferences ? 'mt-1' : 'mt-3'"
+        class="mt-1 flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
       >
         <LogoutIcon
           class="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300"
@@ -69,6 +85,14 @@ const auth = useAuthStore()
 const router = useRouter()
 const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
+const triggerRef = ref(null)
+
+// Esc cierra el menú y devuelve el foco al botón que lo abrió.
+const closeAndRefocus = () => {
+  if (!dropdownOpen.value) return
+  dropdownOpen.value = false
+  triggerRef.value?.focus()
+}
 
 // Misma regla que el ítem previo del sidebar y la ruta `/preferences`
 // (`adminOnly` + módulo `preferences` por entitlements).

@@ -56,7 +56,12 @@
           {{ canPay ? 'Hablar con soporte por WhatsApp' : 'Reactivar mi cuenta' }}
         </a>
         <p v-else-if="!canPay" class="mt-6 text-sm text-gray-500">Contacta a soporte de COSDI para reactivar tu cuenta.</p>
-        <button class="mt-4 text-sm text-gray-500 underline" @click="logout">Cerrar sesión</button>
+        <p class="mt-5 text-xs text-gray-500 dark:text-gray-400">
+          Tus datos siguen guardados. Puedes
+          <router-link to="/cuenta" class="text-brand-500 underline">descargarlos o eliminar tu cuenta</router-link>
+          cuando quieras.
+        </p>
+        <button type="button" class="mt-4 text-sm text-gray-500 underline" @click="logout">Cerrar sesión</button>
       </template>
     </div>
   </div>

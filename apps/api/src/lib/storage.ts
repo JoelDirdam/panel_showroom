@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 /**
@@ -17,6 +17,8 @@ export interface StoredFile {
 
 export interface StorageProvider {
   save(buffer: Buffer, originalName: string, folder?: string): Promise<StoredFile>
+  /** Borra un archivo por su URL pública (`/uploads/...`). No falla si ya no existe. */
+  remove(url: string): Promise<void>
 }
 
 export const UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads')
@@ -41,6 +43,14 @@ export class LocalStorageAdapter implements StorageProvider {
 
     const relativePath = [folder, filename].join('/')
     return { path: relativePath, url: `/uploads/${relativePath}` }
+  }
+
+  async remove(url: string): Promise<void> {
+    if (!url.startsWith('/uploads/')) return
+    const target = path.resolve(UPLOADS_ROOT, url.slice('/uploads/'.length))
+    // Nunca fuera de la carpeta de uploads.
+    if (!target.startsWith(UPLOADS_ROOT + path.sep)) return
+    await unlink(target).catch(() => undefined)
   }
 }
 

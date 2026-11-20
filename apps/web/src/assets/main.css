@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap')
-layer(base);
+/* Fuente alojada en el propio sitio (sin peticiones a Google Fonts). */
+@import '@fontsource-variable/outfit/index.css' layer(base);
 
 @import 'tailwindcss';
 
@@ -7,7 +7,7 @@ layer(base);
 
 @theme {
   --font-*: initial;
-  --font-outfit: Outfit, sans-serif;
+  --font-outfit: 'Outfit Variable', Outfit, sans-serif;
 
   --breakpoint-*: initial;
   --breakpoint-2xsm: 375px;
@@ -182,6 +182,30 @@ layer(base);
   button:not(:disabled),
   [role='button']:not(:disabled) {
     cursor: pointer;
+  }
+
+  /*
+   * Navegación con teclado: todo elemento enfocable muestra un anillo de foco
+   * visible al llegar con Tab (no al hacer clic con el ratón). No lo quites con
+   * `outline-none` sin dar una alternativa visible.
+   */
+  :where(a, button, input, select, textarea, summary, [tabindex], [role='button'], [contenteditable='true']):focus-visible {
+    outline: 3px solid var(--color-brand-500, #465fff);
+    outline-offset: 2px;
+  }
+  .dark :where(a, button, input, select, textarea, summary, [tabindex], [role='button']):focus-visible {
+    outline-color: var(--color-brand-300, #9cb9ff);
+  }
+  /* Casillas e interruptores con el input real oculto (sr-only): el foco se pinta en su parte visible. */
+  input.sr-only:focus-visible + *,
+  input.sr-only:focus-visible ~ .focus-target {
+    outline: 3px solid var(--color-brand-500, #465fff);
+    outline-offset: 2px;
+  }
+  /* El destino de "Saltar al contenido" recibe foco por código: sin anillo propio. */
+  main:focus,
+  #contenido:focus {
+    outline: none;
   }
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50;
@@ -789,4 +813,38 @@ span.flatpickr-weekday,
 .dark input:not([type='checkbox']):not([type='radio'])::placeholder,
 .dark textarea::placeholder {
   color: rgb(255 255 255 / 0.4);
+}
+
+/* Enlace "Saltar al contenido": invisible hasta que recibe el foco con Tab. */
+.skip-link {
+  position: fixed;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 1000000;
+  border-radius: 0.5rem;
+  background: #101828;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* El destino del salto no queda oculto bajo la cabecera fija. */
+#contenido {
+  scroll-margin-top: 6rem;
 }

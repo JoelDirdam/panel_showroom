@@ -7,14 +7,14 @@
       <input
         :id="inputId"
         type="checkbox"
-        class="sr-only"
+        class="peer sr-only"
         :checked="modelValue"
         :disabled="disabled"
         :required="required"
         @change="onChange"
       />
       <div
-        class="mr-3 flex h-5 w-5 items-center justify-center rounded-md border-[1.25px] hover:border-brand-500 dark:hover:border-brand-500"
+        class="mr-3 flex h-5 w-5 items-center justify-center rounded-md border-[1.25px] hover:border-brand-500 peer-focus-visible:ring-3 peer-focus-visible:ring-brand-500/60 dark:hover:border-brand-500"
         :class="
           modelValue
             ? 'border-brand-500 bg-brand-500'

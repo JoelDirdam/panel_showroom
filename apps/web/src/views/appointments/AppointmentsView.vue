@@ -80,11 +80,22 @@
               <a :href="`https://wa.me/${waNumber(a.customerPhone)}`" target="_blank" rel="noopener" class="underline">{{ a.customerPhone }}</a>
               <span v-if="a.notes"> · {{ a.notes }}</span>
             </div>
+            <div v-if="a.customerReply" class="mt-0.5 text-xs font-medium text-brand-600 dark:text-brand-400">
+              {{ CUSTOMER_REPLY_LABELS[a.customerReply] }}
+            </div>
           </div>
           <span :class="['w-fit rounded-full px-2.5 py-1 text-xs font-medium', badge[a.status]]">{{ STATUS_LABELS[a.status] }}</span>
           <div class="flex gap-1">
             <button v-if="a.status === 'PENDING'" class="act" @click="setStatus(a, 'CONFIRMED')">Confirmar</button>
             <button v-if="a.status === 'CONFIRMED'" class="act" @click="setStatus(a, 'COMPLETED')">Completar</button>
+            <button
+              v-if="(a.status === 'PENDING' || a.status === 'CONFIRMED') && new Date(a.startTime) < new Date()"
+              class="act"
+              title="El cliente no llegó"
+              @click="setStatus(a, 'NO_SHOW')"
+            >
+              No asistió
+            </button>
             <button v-if="a.status === 'PENDING' || a.status === 'CONFIRMED'" class="act text-error-600" @click="setStatus(a, 'CANCELLED')">Cancelar</button>
           </div>
         </li>
@@ -132,6 +143,7 @@ import {
   listServices,
   setAppointmentStatus,
   STATUS_LABELS,
+  CUSTOMER_REPLY_LABELS,
   type AppointmentItem,
   type AppointmentStatus,
   type ServiceItem,
@@ -144,6 +156,7 @@ const badge: Record<AppointmentStatus, string> = {
   CONFIRMED: 'bg-success-50 text-success-600',
   CANCELLED: 'bg-error-50 text-error-600',
   COMPLETED: 'bg-blue-light-50 text-blue-light-600',
+  NO_SHOW: 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-gray-300',
 }
 
 function isoLocal(d: Date) {

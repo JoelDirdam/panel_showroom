@@ -9,13 +9,10 @@ const prisma = new PrismaClient()
 async function main() {
   const password = process.env.SEED_PASSWORD || 'Showroom2026!'
 
+  // Una versión publicada no se modifica (las aceptaciones guardan la huella del texto).
   await prisma.termsDocument.upsert({
     where: { version: TERMS_VERSION },
-    update: {
-      title: TERMS_TITLE,
-      content: TERMS_CONTENT,
-      publishedAt: new Date(),
-    },
+    update: {},
     create: {
       version: TERMS_VERSION,
       title: TERMS_TITLE,
@@ -28,7 +25,30 @@ async function main() {
     update: {},
     create: {
       code: 'COSDI30',
-      extraTrialDays: 15,
+      trialDays: 30,
+      active: true,
+    },
+  })
+
+  // Prueba gratis de 15 días sin tarjeta (la prueba ya no es automática).
+  await prisma.promoCode.upsert({
+    where: { code: 'PRUEBA15' },
+    update: {},
+    create: { code: 'PRUEBA15', trialDays: 15, note: 'Prueba gratis de 15 días', active: true },
+  })
+
+  // Oferta de lanzamiento: plan Citas a $249 (en vez de $349) por 12 meses, primeros 20 negocios.
+  await prisma.promoCode.upsert({
+    where: { code: 'FUNDADOR' },
+    update: {},
+    create: {
+      code: 'FUNDADOR',
+      trialDays: 0,
+      discountAmountMxn: 100,
+      discountMonths: 12,
+      planTypes: ['CITAS_PANEL'],
+      maxUses: 20,
+      note: 'Socio fundador: $249/mes por 12 meses en plan Citas',
       active: true,
     },
   })

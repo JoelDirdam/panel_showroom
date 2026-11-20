@@ -2,6 +2,7 @@ import type Stripe from 'stripe'
 import type { Prisma, SubscriptionStatus } from '@prisma/client'
 import { prisma } from '../../lib/prisma.js'
 import { getStripe, planForPriceId } from '../../lib/stripe.js'
+import { qualifyReferralOnPayment } from '../../lib/referrals.js'
 
 const toDate = (unix: number | null | undefined): Date | null =>
   typeof unix === 'number' ? new Date(unix * 1000) : null
@@ -125,6 +126,18 @@ export async function handleInvoicePaid(invoice: Stripe.Invoice): Promise<void> 
     where: { externalCustomerId: cid },
     data: { lastPaymentAt: new Date() },
   })
+
+  // Primer cobro real (no la factura en $0 de la prueba): premia a quien lo recomendó.
+  if ((invoice.amount_paid ?? 0) > 0) {
+    const sub = await prisma.tenantSubscription.findFirst({
+      where: { externalCustomerId: cid },
+      select: { tenantId: true },
+    })
+    if (sub) {
+      // Si falla, el webhook responde 500 y Stripe lo reintenta.
+      await qualifyReferralOnPayment(sub.tenantId)
+    }
+  }
 }
 
 export async function dispatchStripeEvent(event: Stripe.Event): Promise<void> {

@@ -15,7 +15,14 @@ export async function buildMeResponse(userId: string) {
       termsAcceptances: true,
     },
   })
-  if (!user) return null
+  if (!user || user.deletedAt) return null
+
+  const security = {
+    twoFactorEnabled: Boolean(user.totpEnabledAt),
+    // El SUPER_ADMIN no puede usar el panel de plataforma sin 2FA.
+    twoFactorRequired: user.role === 'SUPER_ADMIN',
+    marketingOptIn: user.marketingOptIn,
+  }
 
   const currentTerms = await prisma.termsDocument.findFirst({ orderBy: { publishedAt: 'desc' } })
   const acceptance = currentTerms
@@ -36,6 +43,7 @@ export async function buildMeResponse(userId: string) {
       emailVerifiedAt: user.emailVerifiedAt,
       timezone: user.timezone,
       onboardingStep: user.onboardingStep,
+      ...security,
       brand: null,
       terms: {
         currentVersion: currentTerms?.version ?? null,
@@ -83,6 +91,7 @@ export async function buildMeResponse(userId: string) {
     emailVerifiedAt: user.emailVerifiedAt,
     timezone: user.timezone,
     onboardingStep: user.onboardingStep,
+    ...security,
     brand: user.brand ?? null,
     terms: {
       currentVersion: currentTerms?.version ?? null,
@@ -99,6 +108,8 @@ export async function buildMeResponse(userId: string) {
       address: tenant.address,
       logoUrl: tenant.logoUrl,
       onboardingComplete: tenant.onboardingComplete,
+      suspended: !tenant.active,
+      suspendedReason: tenant.active ? null : tenant.suspendedReason,
     },
     subscription: freshSub
       ? {

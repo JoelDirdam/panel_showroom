@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const appointmentStatusSchema = z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED'])
+export const appointmentStatusSchema = z.enum(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'])
 
 function refineRange(
   val: { startTime?: Date; endTime?: Date },

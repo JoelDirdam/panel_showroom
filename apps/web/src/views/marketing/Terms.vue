@@ -1,54 +1,51 @@
 <template>
-  <div class="min-h-screen bg-white dark:bg-gray-900">
-    <header class="border-b border-gray-200 dark:border-gray-800">
-      <div class="mx-auto flex max-w-4xl items-center justify-between px-6 py-5">
-        <router-link to="/" class="text-lg font-semibold text-gray-800 dark:text-white">
-          COSDI
-        </router-link>
-        <router-link
-          to="/register"
-          class="text-sm font-medium text-brand-500 hover:text-brand-600"
-        >
-          Volver al registro
-        </router-link>
-      </div>
-    </header>
-
-    <main class="mx-auto max-w-4xl px-6 py-12">
-      <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando términos…</div>
-      <div v-else-if="loadError" class="rounded-lg bg-error-50 p-4 text-sm text-error-600 dark:bg-error-500/15 dark:text-error-400">
-        {{ loadError }}
-      </div>
-      <template v-else-if="terms">
-        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">{{ terms.title }}</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Versión {{ terms.version }} · Publicado el {{ formatDate(terms.publishedAt) }}
-        </p>
-        <div
-          class="mt-6 whitespace-pre-wrap rounded-2xl border border-gray-200 bg-gray-50 p-6 text-sm leading-relaxed text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
-        >{{ terms.content }}</div>
-      </template>
-    </main>
-  </div>
+  <LegalPage :title="terms?.title ?? 'Términos y condiciones'" :updated="updatedLabel">
+    <p v-if="loading">Cargando términos…</p>
+    <template v-else-if="terms">
+      <p>
+        Versión <strong>{{ terms.version }}</strong>. Este es el documento que se acepta al crear una cuenta. Se
+        complementa con el <router-link to="/privacidad">aviso de privacidad</router-link>, la
+        <router-link to="/reembolsos">política de reembolsos</router-link> y la política de
+        <router-link to="/conservacion-de-datos">conservación de datos</router-link>.
+      </p>
+      <div
+        class="whitespace-pre-wrap rounded-2xl border border-gray-200 bg-gray-50 p-5 text-sm leading-relaxed text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
+      >{{ terms.content }}</div>
+    </template>
+    <template v-else>
+      <p role="alert">
+        No pudimos cargar los términos en este momento. Intenta de nuevo en unos minutos o escríbenos a
+        <a :href="`mailto:${B.email}`">{{ B.email }}</a> y te los enviamos.
+      </p>
+    </template>
+  </LegalPage>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { fetchCurrentTerms, extractApiError, type TermsDocument } from '@/services/api'
+import { computed, onMounted, ref } from 'vue'
+import LegalPage from '@/components/marketing/LegalPage.vue'
+import { BUSINESS as B } from '@/lib/business'
+import { fetchCurrentTerms, type TermsDocument } from '@/services/api'
 
+/**
+ * Términos vigentes: se leen del mismo documento versionado que el usuario
+ * acepta en el registro (TermsDocument), para que lo publicado y lo aceptado
+ * sean siempre el mismo texto.
+ */
 const terms = ref<TermsDocument | null>(null)
 const loading = ref(true)
-const loadError = ref<string | null>(null)
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
-}
+const updatedLabel = computed(() =>
+  terms.value
+    ? new Date(terms.value.publishedAt).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
+    : undefined,
+)
 
 onMounted(async () => {
   try {
     terms.value = await fetchCurrentTerms()
-  } catch (e) {
-    loadError.value = extractApiError(e, 'No hay términos y condiciones publicados')
+  } catch {
+    terms.value = null
   } finally {
     loading.value = false
   }

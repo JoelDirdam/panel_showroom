@@ -1,6 +1,8 @@
 import { EventEmitter } from 'node:events'
-import { parseInboundTextMessages } from './whatsapp.parser.js'
-import type { InboundMessageHandler, InboundTextMessage } from './types.js'
+import { parseInboundButtonReplies, parseInboundTextMessages } from './whatsapp.parser.js'
+import type { InboundButtonReply, InboundMessageHandler, InboundTextMessage } from './types.js'
+
+export type InboundButtonHandler = (reply: InboundButtonReply) => Promise<unknown> | unknown
 
 const DEDUP_TTL_MS = 10 * 60 * 1000
 const DEDUP_SWEEP_EVERY = 200
@@ -18,6 +20,7 @@ class InboundQueue {
   private readonly emitter = new EventEmitter()
   private readonly seen = new Map<string, number>()
   private handler: InboundMessageHandler = defaultInboundHandler
+  private buttonHandler: InboundButtonHandler | null = null
   private enqueueCount = 0
 
   constructor() {
@@ -32,6 +35,11 @@ class InboundQueue {
 
   setHandler(handler: InboundMessageHandler): void {
     this.handler = handler
+  }
+
+  /** Respuestas con botón (p. ej. confirmar o cancelar una cita desde el recordatorio). */
+  setButtonHandler(handler: InboundButtonHandler): void {
+    this.buttonHandler = handler
   }
 
   /**
@@ -57,6 +65,14 @@ class InboundQueue {
     for (const message of messages) {
       if (this.isDuplicate(message.messageId)) continue
       this.emitter.emit('inbound.message', message)
+    }
+
+    for (const reply of parseInboundButtonReplies(payload)) {
+      if (this.isDuplicate(reply.messageId) || !this.buttonHandler) continue
+      const handler = this.buttonHandler
+      void Promise.resolve()
+        .then(() => handler(reply))
+        .catch((err: unknown) => console.error('[whatsapp.queue] button handler failed', err))
     }
   }
 

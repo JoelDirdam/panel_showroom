@@ -30,6 +30,9 @@ import { sendError } from './lib/httpError.js'
 import rentPaymentsRoutes from './routes/rentPayments.js'
 import chatRoutes from './routes/chat.js'
 import publicRoutes from './routes/public.js'
+import accountRoutes from './routes/account.js'
+import siteRoutes from './routes/site.js'
+import { startComplianceScheduler } from './services/compliance.service.js'
 import { billingRouter, stripeWebhookRouter } from './routes/billing.js'
 import { whatsappWebhookRoutes } from './modules/whatsapp/index.js'
 import { registerInboundAiHandler } from './modules/ai/index.js'
@@ -111,6 +114,8 @@ app.use(requireTerms, requireOnboarding)
 
 app.use('/api/auth', authRoutes)
 app.use('/api/terms', termsRoutes)
+app.use('/api/account', accountRoutes)
+app.use('/api/site', siteRoutes)
 app.use('/api/onboarding', onboardingRoutes)
 app.use('/api/billing', billingRouter)
 app.use('/api/brands', brandsRoutes)
@@ -173,4 +178,5 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`API listening on port ${PORT}`)
   console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`)
   startReminderScheduler()
+  startComplianceScheduler()
 })

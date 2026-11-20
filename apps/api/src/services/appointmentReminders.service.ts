@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js'
 import { sendTemplateMessage } from '../modules/whatsapp/index.js'
+import { buttonPayload } from './appointmentReplies.service.js'
 
 /**
  * Recordatorios de cita por WhatsApp.
@@ -9,6 +10,10 @@ import { sendTemplateMessage } from '../modules/whatsapp/index.js'
  * - WHATSAPP_REMINDER_TEMPLATE             nombre de la plantilla aprobada (def. recordatorio_cita)
  * - WHATSAPP_REMINDER_LANG                 idioma de la plantilla (def. es_MX)
  * - WHATSAPP_REMINDER_HOURS_BEFORE         horas de anticipación (def. 24)
+ * - WHATSAPP_REMINDER_BUTTONS=true         usa la plantilla con botones (Sí asistiré / Cancelar cita /
+ *                                          Cambiar día) en el número de COSDI. Activar solo cuando Meta
+ *                                          la apruebe.
+ * - WHATSAPP_REMINDER_BUTTONS_TEMPLATE     nombre de esa plantilla (def. recordatorio_cita_botones)
  * - WHATSAPP_PHONE_NUMBER_ID / WHATSAPP_ACCESS_TOKEN
  *       número y token de la plataforma COSDI, usados cuando el negocio no tiene
  *       su propia configuración activa (modo piloto).
@@ -54,6 +59,15 @@ function formatWhen(date: Date, timeZone: string): string {
     hour12: true,
   }).format(date)
   return `${day} a las ${time}`
+}
+
+/** Plantilla con botones (solo número de COSDI): cuerpo con las mismas 4 variables + 3 respuestas rápidas. */
+export function buttonsTemplate(): { name: string; language: string } | null {
+  if (process.env.WHATSAPP_REMINDER_BUTTONS?.trim().toLowerCase() !== 'true') return null
+  return {
+    name: envString('WHATSAPP_REMINDER_BUTTONS_TEMPLATE', 'recordatorio_cita_botones'),
+    language: envString('WHATSAPP_REMINDER_LANG', 'es_MX'),
+  }
 }
 
 export function reminderTemplate(): { name: string; language: string } {
@@ -137,12 +151,24 @@ export async function runReminderTick(now: Date = new Date()): Promise<number> {
     })
     const timeZone = settings?.timezone?.trim() || DEFAULT_TIMEZONE
 
+    // Botones solo desde el número de COSDI (los números propios usan su plantilla aprobada).
+    const withButtons = ownReady ? null : buttonsTemplate()
+
     try {
-      await sendTemplateMessage(
+      const sentMsg = await sendTemplateMessage(
         {
           to,
-          templateName,
-          languageCode,
+          templateName: withButtons?.name ?? templateName,
+          languageCode: withButtons?.language ?? languageCode,
+          ...(withButtons
+            ? {
+                quickReplyPayloads: [
+                  buttonPayload('CONFIRM', appt.id),
+                  buttonPayload('CANCEL', appt.id),
+                  buttonPayload('RESCHEDULE', appt.id),
+                ],
+              }
+            : {}),
           bodyParams: [
             appt.customerName.trim() || 'cliente',
             appt.tenant.name,
@@ -155,7 +181,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<number> {
       )
       await prisma.appointment.update({
         where: { id: appt.id },
-        data: { reminderSentAt: new Date() },
+        data: { reminderSentAt: new Date(), reminderMessageId: sentMsg.messages?.[0]?.id ?? null },
       })
       sent += 1
     } catch (err) {
@@ -174,22 +200,35 @@ export async function runReminderTick(now: Date = new Date()): Promise<number> {
   return sent
 }
 
+/** Estado del programador, para el panel de estado de la plataforma. */
+export const reminderSchedulerStatus = {
+  running: false,
+  lastTickAt: null as Date | null,
+  lastSent: 0,
+  lastError: null as string | null,
+}
+
 export function startReminderScheduler(): void {
   if (!remindersEnabled()) {
     console.log('[reminders] desactivados (WHATSAPP_REMINDERS_ENABLED != true)')
     return
   }
   console.log('[reminders] programador activo')
+  reminderSchedulerStatus.running = true
   let running = false
   const tick = async () => {
     if (running) return
     running = true
     try {
       const sent = await runReminderTick()
+      reminderSchedulerStatus.lastSent = sent
+      reminderSchedulerStatus.lastError = null
       if (sent > 0) console.log(`[reminders] enviados: ${sent}`)
     } catch (err) {
+      reminderSchedulerStatus.lastError = err instanceof Error ? err.message : String(err)
       console.error('[reminders] tick falló', err)
     } finally {
+      reminderSchedulerStatus.lastTickAt = new Date()
       running = false
     }
   }

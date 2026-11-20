@@ -46,3 +46,6 @@ __pycache__/
 
 # Graphify (grafo de conocimiento local, se regenera)
 graphify-out/
+
+# Contraseñas de cuentas de prueba (solo locales)
+*.local.md

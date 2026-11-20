@@ -5,7 +5,16 @@ import { prisma } from '../lib/prisma.js'
 import { authenticate, authorize, requireTenantId } from '../middleware/auth.js'
 import { HttpError, sendError } from '../lib/httpError.js'
 import { appUrl, getStripe, isStripeConfigured, priceIdForPlan, taxRateId } from '../lib/stripe.js'
-import { dispatchStripeEvent } from '../modules/billing/stripeSync.js'
+import { dispatchStripeEvent, syncStripeSubscription } from '../modules/billing/stripeSync.js'
+import { sendCancellationConfirmation } from '../lib/email.js'
+import { planDisplayName } from '../services/compliance.service.js'
+import {
+  REFERRED_PERCENT_OFF,
+  applyPendingReferralRewards,
+  couponForCheckout,
+  promoBenefitLabel,
+  referralSummary,
+} from '../lib/referrals.js'
 
 const MIN_TRIAL_AHEAD_MS = 49 * 60 * 60 * 1000 // Stripe exige trial_end >= 48 h
 
@@ -30,13 +39,34 @@ export const billingRouter = Router()
 
 billingRouter.use(authenticate, authorize('BUSINESS'))
 
+/** Con el negocio suspendido no se inician ni reanudan cobros (cancelar sí se permite). */
+async function assertNotSuspended(tenantId: string): Promise<void> {
+  const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { active: true } })
+  if (tenant && !tenant.active) {
+    throw new HttpError(403, 'Tu cuenta está suspendida. Escríbenos a contacto@cosdi.mx para resolverlo.')
+  }
+}
+
 /** Estado de cobro y planes disponibles (para pintar la pantalla de pago). */
 billingRouter.get('/status', async (req, res) => {
   try {
     const sub = await prisma.tenantSubscription.findUnique({
       where: { tenantId: requireTenantId(req.user!) },
     })
+    let discountLabel: string | null = null
+    if (sub?.promoCodeUsed && !sub.externalSubscriptionId) {
+      const promo = await prisma.promoCode.findUnique({ where: { code: sub.promoCodeUsed } })
+      if (promo && (promo.discountPercent || promo.discountAmountMxn)) {
+        discountLabel = `Código ${promo.code}: ${promoBenefitLabel({ ...promo, trialDays: 0 })}`
+      } else if (!promo) {
+        const referral = await prisma.referral.findUnique({ where: { referredTenantId: sub.tenantId } })
+        if (referral?.status === 'PENDING') {
+          discountLabel = `Recomendación ${sub.promoCodeUsed}: ${REFERRED_PERCENT_OFF}% de descuento en tu primera mensualidad`
+        }
+      }
+    }
     return res.json({
+      discountLabel,
       // Cobro disponible para ESTE negocio: hay clave de Stripe y su plan tiene precio en este entorno.
       stripeConfigured: isStripeConfigured() && (!sub || Boolean(priceIdForPlan(sub.planType))),
       taxIncluded: true,
@@ -68,6 +98,7 @@ billingRouter.post('/checkout', async (req, res) => {
       return res.status(400).json({ error: 'Datos inválidos', details: parsed.error.flatten() })
     }
     const tenantId = requireTenantId(req.user!)
+    await assertNotSuspended(tenantId)
     const sub = await prisma.tenantSubscription.findUnique({ where: { tenantId } })
     if (!sub) throw new HttpError(400, 'Debes seleccionar un plan antes de pagar')
 
@@ -94,9 +125,19 @@ billingRouter.post('/checkout', async (req, res) => {
         data: { externalCustomerId: customerId, paymentProvider: 'stripe' },
       })
     }
+    // Meses ganados por recomendar antes de tener cliente en Stripe: se abonan ahora.
+    await applyPendingReferralRewards(tenantId).catch((e) =>
+      console.error('[billing] no se pudieron abonar premios de referidos', e),
+    )
 
     const trialMsLeft = sub.trialEndsAt.getTime() - Date.now()
     const keepTrial = sub.status === 'TRIALING' && trialMsLeft > MIN_TRIAL_AHEAD_MS
+    const coupon = await couponForCheckout(
+      tenantId,
+      planType,
+      sub.promoCodeUsed,
+      keepTrial ? sub.trialEndsAt : null,
+    )
 
     const taxRate = taxRateId()
     const base = appUrl()
@@ -106,7 +147,16 @@ billingRouter.post('/checkout', async (req, res) => {
       customer: customerId,
       client_reference_id: tenantId,
       line_items: [{ price, quantity: 1 }],
+      ...(coupon ? { discounts: [{ coupon }] } : {}),
       locale: 'es',
+      // Aviso de renovación automática justo antes de confirmar el pago.
+      custom_text: {
+        submit: {
+          message: keepTrial
+            ? 'Suscripción mensual con renovación automática. El primer cobro se hace al terminar tu prueba gratuita y después cada mes, hasta que canceles. Puedes cancelar en línea cuando quieras desde "Mi suscripción".'
+            : 'Suscripción mensual con renovación automática: se cobra hoy y después cada mes, hasta que canceles. Puedes cancelar en línea cuando quieras desde "Mi suscripción".',
+        },
+      },
       billing_address_collection: 'auto',
       metadata: { tenantId, planType },
       subscription_data: {
@@ -119,6 +169,15 @@ billingRouter.post('/checkout', async (req, res) => {
     })
 
     return res.json({ url: session.url })
+  } catch (e) {
+    return sendError(res, e)
+  }
+})
+
+/** Código para recomendar COSDI y premios obtenidos. */
+billingRouter.get('/referrals', async (req, res) => {
+  try {
+    return res.json(await referralSummary(requireTenantId(req.user!)))
   } catch (e) {
     return sendError(res, e)
   }
@@ -142,6 +201,67 @@ billingRouter.post('/portal', async (req, res) => {
       ...(portalConfig ? { configuration: portalConfig } : {}),
     })
     return res.json({ url: session.url })
+  } catch (e) {
+    return sendError(res, e)
+  }
+})
+
+/**
+ * Cancelar la renovación automática, directo desde el panel (sin salir a otro
+ * sitio ni escribir a soporte): tan fácil como suscribirse. El acceso sigue
+ * hasta el final del periodo ya pagado (o de la prueba) y no se vuelve a cobrar.
+ */
+billingRouter.post('/cancel', async (req, res) => {
+  try {
+    const sub = await prisma.tenantSubscription.findUnique({
+      where: { tenantId: requireTenantId(req.user!) },
+    })
+    if (!sub) throw new HttpError(400, 'Tu cuenta no tiene un plan asignado')
+    if (!sub.externalSubscriptionId) {
+      throw new HttpError(400, 'No tienes un cobro recurrente activo: no se te cobrará nada.')
+    }
+    if (sub.status !== 'ACTIVE' && sub.status !== 'TRIALING') {
+      throw new HttpError(400, 'Tu suscripción ya no está activa')
+    }
+
+    const updated = await getStripe().subscriptions.update(sub.externalSubscriptionId, {
+      cancel_at_period_end: true,
+    })
+    await syncStripeSubscription(updated)
+
+    const fresh = await prisma.tenantSubscription.findUnique({ where: { id: sub.id } })
+    const accessUntil =
+      fresh?.status === 'TRIALING' ? fresh.trialEndsAt : (fresh?.currentPeriodEndsAt ?? null)
+
+    // Constancia por correo de la cancelación.
+    void sendCancellationConfirmation({
+      to: req.user!.email,
+      name: req.user!.name,
+      planName: planDisplayName(sub.planType),
+      accessUntil,
+    })
+
+    return res.json({ ok: true, cancelAtPeriodEnd: true, accessUntil })
+  } catch (e) {
+    return sendError(res, e)
+  }
+})
+
+/** Deshacer la cancelación mientras el periodo siga vigente. */
+billingRouter.post('/resume', async (req, res) => {
+  try {
+    await assertNotSuspended(requireTenantId(req.user!))
+    const sub = await prisma.tenantSubscription.findUnique({
+      where: { tenantId: requireTenantId(req.user!) },
+    })
+    if (!sub?.externalSubscriptionId || (sub.status !== 'ACTIVE' && sub.status !== 'TRIALING')) {
+      throw new HttpError(400, 'No hay una suscripción vigente que reanudar')
+    }
+    const updated = await getStripe().subscriptions.update(sub.externalSubscriptionId, {
+      cancel_at_period_end: false,
+    })
+    await syncStripeSubscription(updated)
+    return res.json({ ok: true, cancelAtPeriodEnd: false })
   } catch (e) {
     return sendError(res, e)
   }

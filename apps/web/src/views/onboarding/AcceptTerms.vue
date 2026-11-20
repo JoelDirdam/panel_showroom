@@ -13,6 +13,13 @@
 
         <template v-else-if="terms">
           <div
+            v-if="terms.summary"
+            class="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-gray-700 dark:border-brand-500/30 dark:bg-brand-500/10 dark:text-gray-200"
+          >
+            <p class="font-semibold text-gray-800 dark:text-white">Qué cambió en la versión {{ terms.version }}</p>
+            <p class="mt-1">{{ terms.summary }}</p>
+          </div>
+          <div
             class="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-xl border border-gray-200 bg-gray-50 p-4 text-xs leading-relaxed text-gray-600 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
           >{{ terms.content }}</div>
 
@@ -34,6 +41,11 @@
             >
               {{ auth.loading ? 'Guardando...' : `Aceptar v${terms.version} y continuar` }}
             </button>
+
+            <p class="text-center text-xs text-gray-500 dark:text-gray-400">
+              Si no estás de acuerdo, puedes
+              <router-link to="/cuenta" class="text-brand-500 underline">descargar tus datos o eliminar tu cuenta</router-link>.
+            </p>
 
             <button
               type="button"

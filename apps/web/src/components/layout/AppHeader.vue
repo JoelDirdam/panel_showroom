@@ -7,6 +7,8 @@
         class="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4"
       >
         <button
+          type="button"
+          aria-label="Mostrar u ocultar el menú lateral"
           @click="handleToggle"
           class="flex items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-lg z-99999 dark:border-gray-800 dark:text-gray-400 lg:h-11 lg:w-11 lg:border"
           :class="[
@@ -49,6 +51,9 @@
         </button>
         <HeaderLogo />
         <button
+          type="button"
+          aria-label="Mostrar u ocultar opciones de la cuenta"
+          :aria-expanded="isApplicationMenuOpen"
           @click="toggleApplicationMenu"
           class="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
         >

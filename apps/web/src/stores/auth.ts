@@ -24,6 +24,8 @@ export const useAuthStore = defineStore('auth', () => {
   const terms = ref<TermsDocument | null>(null)
   /** Código de verificación devuelto solo en dev (`NODE_ENV !== 'production'`) para probar sin correo real. */
   const devCode = ref<string | null>(null)
+  /** Reto pendiente del segundo paso (2FA): existe entre la contraseña y el código. */
+  const twoFactorChallenge = ref<string | null>(null)
 
   const isAuthenticated = computed(() => !!token.value)
   const isBusiness = computed(() => user.value?.role === 'BUSINESS')
@@ -58,6 +60,11 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
     try {
       const { data } = await api.post('/auth/login', { email, password })
+      if (data.twoFactorRequired) {
+        // Contraseña correcta, pero falta el código de la app de autenticación.
+        twoFactorChallenge.value = data.challengeToken
+        return false
+      }
       token.value = data.token
       user.value = data.user
       localStorage.setItem('token', data.token)
@@ -68,6 +75,36 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  /** Segundo paso del inicio de sesión: código de 6 dígitos o código de recuperación. */
+  async function verifyTwoFactor(code: string) {
+    if (!twoFactorChallenge.value) return false
+    loading.value = true
+    error.value = null
+    try {
+      const { data } = await api.post('/auth/login/2fa', {
+        challengeToken: twoFactorChallenge.value,
+        code,
+      })
+      token.value = data.token
+      user.value = data.user
+      localStorage.setItem('token', data.token)
+      twoFactorChallenge.value = null
+      return true
+    } catch (e: unknown) {
+      const code401 = (e as { response?: { data?: { code?: string } } })?.response?.data?.code
+      if (code401 === 'CHALLENGE_EXPIRED') twoFactorChallenge.value = null
+      error.value = extractApiError(e, 'Código incorrecto')
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  function cancelTwoFactor() {
+    twoFactorChallenge.value = null
+    error.value = null
   }
 
   async function fetchMe() {
@@ -205,6 +242,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     devCode.value = null
+    twoFactorChallenge.value = null
     localStorage.removeItem('token')
   }
 
@@ -215,6 +253,7 @@ export const useAuthStore = defineStore('auth', () => {
     error,
     terms,
     devCode,
+    twoFactorChallenge,
     isAuthenticated,
     isBusiness,
     isAdmin,
@@ -225,6 +264,8 @@ export const useAuthStore = defineStore('auth', () => {
     canAccess,
     hasFlag,
     login,
+    verifyTwoFactor,
+    cancelTwoFactor,
     fetchMe,
     fetchTerms,
     register,

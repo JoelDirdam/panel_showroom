@@ -1,6 +1,6 @@
 export { default as whatsappWebhookRoutes } from './whatsapp.routes.js'
 export { inboundQueue } from './whatsapp.queue.js'
-export { parseInboundTextMessages } from './whatsapp.parser.js'
+export { parseInboundButtonReplies, parseInboundTextMessages } from './whatsapp.parser.js'
 export {
   findActiveConfigByPhoneNumberId,
   findActiveConfigByTenantId,

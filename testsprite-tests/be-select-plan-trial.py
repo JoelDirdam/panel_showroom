@@ -29,6 +29,7 @@ def register_fresh_tenant(tag: str) -> dict:
             "password": password,
             "signedName": f"QA Plan {tag}",
             "termsVersion": version,
+            "acceptTerms": True,
         },
         timeout=30,
     )

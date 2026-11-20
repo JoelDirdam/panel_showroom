@@ -7,7 +7,7 @@ const publicApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED'
+export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW'
 
 export interface ServiceItem {
   id: string
@@ -33,6 +33,9 @@ export interface AppointmentItem {
   endTime: string
   status: AppointmentStatus
   notes: string | null
+  /** Respuesta del cliente con los botones del recordatorio de WhatsApp. */
+  customerReply?: 'CONFIRM' | 'CANCEL' | 'RESCHEDULE' | null
+  customerRepliedAt?: string | null
   service: { id: string; name: string; durationMinutes: number } | null
   sucursal: { id: string; name: string } | null
 }
@@ -44,6 +47,13 @@ export const STATUS_LABELS: Record<AppointmentStatus, string> = {
   CONFIRMED: 'Confirmada',
   CANCELLED: 'Cancelada',
   COMPLETED: 'Completada',
+  NO_SHOW: 'No asistió',
+}
+
+export const CUSTOMER_REPLY_LABELS: Record<'CONFIRM' | 'CANCEL' | 'RESCHEDULE', string> = {
+  CONFIRM: 'Confirmó por WhatsApp',
+  CANCEL: 'Canceló por WhatsApp',
+  RESCHEDULE: 'Pidió cambiar de día',
 }
 
 // --- Panel del negocio -------------------------------------------------

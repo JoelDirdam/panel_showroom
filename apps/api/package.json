@@ -16,7 +16,8 @@
     "db:create-admin": "tsx prisma/create-admin.ts",
     "db:create-super-admin": "tsx prisma/create-super-admin.ts",
     "db:cleanup-qa": "tsx prisma/cleanup-qa.ts",
-    "db:publish-terms": "tsx prisma/publish-terms.ts"
+    "db:publish-terms": "tsx prisma/publish-terms.ts",
+    "db:reset-2fa": "tsx prisma/reset-2fa.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

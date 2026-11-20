@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import type { EntitlementModule } from '@/lib/entitlements'
+import { ensureTrackers, initTrackers, trackPageView, trackersActive } from '@/lib/trackers'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -25,7 +26,9 @@ const router = createRouter({
       path: '/',
       name: 'LandingPlanes',
       component: () => import('../views/marketing/LandingPlanes.vue'),
-      meta: { title: 'Inicio', public: true },
+      // `tracking`: páginas públicas de COSDI donde puede haber analítica/publicidad,
+      // siempre después del consentimiento (ver lib/trackers.ts).
+      meta: { title: 'Inicio', public: true, tracking: true },
     },
     {
       // Compat: la landing vivía en /planes
@@ -36,26 +39,62 @@ const router = createRouter({
       path: '/privacidad',
       name: 'PrivacyNotice',
       component: () => import('../views/marketing/PrivacyNotice.vue'),
-      meta: { title: 'Aviso de privacidad', public: true },
+      meta: { title: 'Aviso de privacidad', public: true, tracking: true, legal: true },
     },
     {
+      // Una sola fuente: el documento versionado que se acepta al registrarse.
       path: '/terminos',
-      name: 'TermsPublic',
-      component: () => import('../views/marketing/TermsPublic.vue'),
-      meta: { title: 'Términos y condiciones', public: true },
+      name: 'Terms',
+      component: () => import('../views/marketing/Terms.vue'),
+      meta: { title: 'Términos y condiciones', public: true, tracking: true, legal: true },
     },
     {
       path: '/terms',
-      name: 'Terms',
-      component: () => import('../views/marketing/Terms.vue'),
-      meta: { title: 'Términos y Condiciones', public: true },
+      redirect: '/terminos',
+    },
+    {
+      path: '/reembolsos',
+      name: 'RefundPolicy',
+      component: () => import('../views/marketing/RefundPolicy.vue'),
+      meta: { title: 'Política de reembolsos', public: true, tracking: true, legal: true },
+    },
+    {
+      path: '/conservacion-de-datos',
+      name: 'DataRetention',
+      component: () => import('../views/marketing/DataRetention.vue'),
+      meta: { title: 'Conservación de datos', public: true, tracking: true, legal: true },
+    },
+    {
+      path: '/proveedores',
+      name: 'Subprocessors',
+      component: () => import('../views/marketing/Subprocessors.vue'),
+      meta: { title: 'Proveedores que tratan datos', public: true, tracking: true, legal: true },
+    },
+    {
+      path: '/derechos-de-autor',
+      name: 'CopyrightClaims',
+      component: () => import('../views/marketing/CopyrightClaims.vue'),
+      meta: { title: 'Reclamos de derechos de autor', public: true, tracking: true, legal: true },
+    },
+    {
+      path: '/cookies',
+      name: 'CookiePolicy',
+      component: () => import('../views/marketing/CookiePolicy.vue'),
+      meta: { title: 'Política de cookies', public: true, tracking: true, legal: true },
+    },
+    {
+      // Sin rastreo: llega desde un correo con un token personal en la URL.
+      path: '/baja-correos',
+      name: 'Unsubscribe',
+      component: () => import('../views/marketing/Unsubscribe.vue'),
+      meta: { title: 'Baja de correos', public: true, legal: true },
     },
     // --- Alta / onboarding ---------------------------------------------
     {
       path: '/register',
       name: 'Register',
       component: () => import('../views/onboarding/Register.vue'),
-      meta: { title: 'Crear cuenta', public: true },
+      meta: { title: 'Crear cuenta', public: true, tracking: true },
     },
     {
       path: '/onboarding/accept-terms',
@@ -256,6 +295,20 @@ const router = createRouter({
       meta: { title: 'Recordatorios por WhatsApp', adminOnly: true },
     },
     {
+      // Seguridad (2FA), privacidad, descarga y eliminación de datos. Disponible
+      // siempre: con la cuenta pausada o con términos nuevos por aceptar.
+      path: '/cuenta',
+      name: 'Account',
+      component: () => import('../views/account/AccountView.vue'),
+      meta: { title: 'Mi cuenta', allowMustChangePassword: true, alwaysAllowed: true },
+    },
+    {
+      path: '/cuenta-suspendida',
+      name: 'AccountSuspended',
+      component: () => import('../views/account/AccountSuspended.vue'),
+      meta: { title: 'Cuenta suspendida', allowMustChangePassword: true, alwaysAllowed: true },
+    },
+    {
       path: '/suscripcion',
       name: 'Subscription',
       component: () => import('../views/billing/SubscriptionView.vue'),
@@ -320,6 +373,48 @@ const router = createRouter({
       name: 'PlatformDashboard',
       component: () => import('../views/platform/PlatformDashboard.vue'),
       meta: { title: 'Plataforma', platformOnly: true },
+    },
+    {
+      path: '/platform/promociones',
+      name: 'PlatformPromoCodes',
+      component: () => import('../views/platform/PlatformPromoCodes.vue'),
+      meta: { title: 'Códigos de promoción', platformOnly: true },
+    },
+    {
+      path: '/platform/integraciones',
+      name: 'PlatformIntegrations',
+      component: () => import('../views/platform/PlatformIntegrations.vue'),
+      meta: { title: 'Integraciones', platformOnly: true },
+    },
+    {
+      path: '/platform/legal',
+      name: 'PlatformLegal',
+      component: () => import('../views/platform/PlatformLegal.vue'),
+      meta: { title: 'Legal y cumplimiento', platformOnly: true },
+    },
+    {
+      path: '/platform/terminos',
+      name: 'PlatformTerms',
+      component: () => import('../views/platform/PlatformTerms.vue'),
+      meta: { title: 'Términos', platformOnly: true },
+    },
+    {
+      path: '/platform/bitacora',
+      name: 'PlatformAuditLog',
+      component: () => import('../views/platform/PlatformAuditLog.vue'),
+      meta: { title: 'Bitácora', platformOnly: true },
+    },
+    {
+      path: '/platform/estado',
+      name: 'PlatformHealth',
+      component: () => import('../views/platform/PlatformHealth.vue'),
+      meta: { title: 'Estado de la plataforma', platformOnly: true },
+    },
+    {
+      path: '/platform/seguridad',
+      name: 'PlatformSecurity',
+      component: () => import('../views/platform/PlatformSecurity.vue'),
+      meta: { title: 'Seguridad', platformOnly: true },
     },
     {
       path: '/platform/tenants/:id',
@@ -396,8 +491,21 @@ router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
   const appHome = '/home'
 
+  // Los rastreadores solo viven en páginas públicas de COSDI. Si ya se cargó
+  // alguno y se navega a una página sin rastreo (panel, login, reservas), se
+  // hace una carga completa para que sus scripts desaparezcan de la página.
+  if (trackersActive() && to.meta.tracking !== true) {
+    window.location.assign(to.fullPath)
+    return next(false)
+  }
+
   if (!to.meta.public && !auth.isAuthenticated) {
     return next('/login')
+  }
+
+  // Las páginas legales se pueden leer siempre, con o sin sesión.
+  if (to.meta.legal) {
+    return next()
   }
 
   // Con sesión, "/" (landing) va al Home del panel
@@ -421,6 +529,16 @@ router.beforeEach(async (to, _from, next) => {
     if (!to.path.startsWith('/platform') && to.path !== '/login' && to.path !== '/change-password') {
       return next('/platform')
     }
+    // Sin verificación en dos pasos el SUPER_ADMIN solo puede entrar a configurarla.
+    if (
+      auth.user &&
+      !auth.mustChangePassword &&
+      auth.user.twoFactorEnabled === false &&
+      to.path.startsWith('/platform') &&
+      to.path !== '/platform/seguridad'
+    ) {
+      return next('/platform/seguridad')
+    }
   }
 
   if (to.meta.platformOnly && !auth.isSuperAdmin) {
@@ -440,10 +558,19 @@ router.beforeEach(async (to, _from, next) => {
     return next()
   }
 
+  // Negocio suspendido desde la plataforma: solo la pantalla de aviso y "Mi cuenta".
+  if (auth.isAuthenticated && auth.user?.tenant?.suspended) {
+    if (to.path !== '/cuenta-suspendida' && to.path !== '/cuenta') return next('/cuenta-suspendida')
+    return next()
+  }
+  if (to.path === '/cuenta-suspendida') {
+    return next(appHome)
+  }
+
   // Mientras deba cambiar contraseña, no se evalúan términos/onboarding
   // todavía (evita rebotes entre /change-password y estas vistas): una vez
   // resuelto el cambio de contraseña, este bloque se vuelve a evaluar.
-  if (auth.isAuthenticated && !auth.mustChangePassword) {
+  if (auth.isAuthenticated && !auth.mustChangePassword && !to.meta.alwaysAllowed) {
     // Términos vigentes: si hay una versión publicada y el usuario no la
     // aceptó (ver `terms.currentVersion`/`terms.accepted` en meShape.ts),
     // se bloquea todo menos la vista de aceptación.
@@ -460,7 +587,10 @@ router.beforeEach(async (to, _from, next) => {
       const allowed =
         to.path === target ||
         (auth.onboardingStep === 'PLAN_SELECTED' &&
-          (to.path === '/onboarding/create-business' || to.path === '/onboarding/payment'))
+          (to.path === '/onboarding/create-business' ||
+            to.path === '/onboarding/payment' ||
+            // Volver a elegir plan o escribir un código antes de pagar.
+            to.path === '/onboarding/select-plan'))
       if (target && !allowed) {
         return next(target)
       }
@@ -495,6 +625,18 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   next()
+})
+
+/** Rastreo (solo con consentimiento y solo en rutas `tracking`). */
+initTrackers(
+  () => router.currentRoute.value.meta.tracking === true,
+  () => router.currentRoute.value.path,
+)
+
+router.afterEach((to) => {
+  if (to.meta.tracking !== true) return
+  // Se envía la ruta sin query: nunca parámetros que pudieran traer datos personales.
+  void ensureTrackers().then(() => trackPageView(to.path))
 })
 
 export default router

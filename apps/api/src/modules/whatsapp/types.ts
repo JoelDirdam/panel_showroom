@@ -5,6 +5,15 @@ export interface InboundTextMessage {
   messageId: string
 }
 
+/** Respuesta del cliente tocando un botón (de plantilla o interactivo). */
+export interface InboundButtonReply {
+  tenantPhoneNumberId: string
+  customerPhone: string
+  messageId: string
+  payload: string
+  text: string
+}
+
 export interface InteractiveButton {
   id: string
   title: string

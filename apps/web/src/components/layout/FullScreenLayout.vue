@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen">
-    <main>
+    <main id="contenido" tabindex="-1">
       <slot></slot>
     </main>
   </div>

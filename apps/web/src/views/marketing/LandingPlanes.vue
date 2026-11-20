@@ -15,27 +15,33 @@
             Hecho en Durango, México
           </span>
           <h1 class="mt-5 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-            El panel que ordena tu negocio y llena tu agenda
+            Tu agenda en línea con recordatorios por WhatsApp
           </h1>
           <p class="mt-5 max-w-xl text-lg leading-relaxed text-gray-500 dark:text-gray-400">
-            COSDI es un software en línea para administrar productos, inventario, ventas, caja y citas en un solo
-            lugar, con recordatorios por WhatsApp para que tus clientes no falten.
+            Para estéticas, barberías, consultorios, spas y cualquier negocio que trabaja con citas. Tus clientes
+            agendan desde un link, tú ves todo en un panel y COSDI les recuerda su cita por WhatsApp para que no falten.
+          </p>
+          <p class="mt-4 text-base font-semibold">
+            Plan Citas desde <span class="text-brand-500">${{ citasPrice }} MXN al mes</span>
+            <span class="text-sm font-normal text-gray-500 dark:text-gray-400"> · IVA incluido</span>
           </p>
           <div class="mt-8 flex flex-wrap items-center gap-3">
             <router-link
-              to="/register?plan=NEGOCIO"
+              to="/register?plan=CITAS_PANEL"
               class="rounded-lg bg-brand-500 px-6 py-3.5 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
             >
-              Empezar 15 días gratis
+              Crear mi cuenta
             </router-link>
             <a
-              href="#que-es"
+              :href="BUSINESS.whatsappLink"
+              target="_blank"
+              rel="noopener"
               class="rounded-lg px-6 py-3.5 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-white/5"
             >
-              Conocer COSDI
+              Pedir una demostración
             </a>
           </div>
-          <p class="mt-4 text-xs text-gray-500 dark:text-gray-500">Sin tarjeta para empezar · Cancela cuando quieras</p>
+          <p class="mt-4 text-xs text-gray-500 dark:text-gray-500">Pago mensual · Sin plazos forzosos · Cancela cuando quieras</p>
         </div>
 
         <!-- Mockup del panel -->
@@ -83,11 +89,9 @@
         <p class="text-sm font-semibold uppercase tracking-wider text-brand-500">Qué es COSDI</p>
         <h2 class="mt-3 text-3xl font-bold sm:text-4xl">Un solo sistema para el día a día de tu negocio</h2>
         <p class="mx-auto mt-5 max-w-3xl text-base leading-relaxed text-gray-600 dark:text-gray-400">
-          COSDI significa <strong>Consultoría y Soluciones Digitales</strong>: desarrollamos software y apps a la medida y ofrecemos nuestra propia app en línea (nombre por definir) para pequeños y medianos negocios en México: tiendas, showrooms con marcas en
-          consignación, consultorios, estéticas y cualquier negocio que trabaje con productos o con citas. Sustituye
-          libretas, hojas de cálculo y mensajes sueltos por un panel claro, accesible desde tu celular o computadora.
-          ¿Quieres un software o una app hecha para tu negocio?
-          <a :href="`mailto:${BUSINESS.email}`" class="font-medium text-brand-500 hover:underline">Escríbenos</a>.
+          COSDI es un software en línea para pequeños y medianos negocios en México. Sustituye la libreta de citas,
+          las hojas de cálculo y los mensajes sueltos por un panel claro, accesible desde tu celular o computadora.
+          Empieza con tu agenda y, si vendes productos, suma inventario, ventas y caja con el plan Negocio.
         </p>
         <div class="mt-12 grid gap-6 text-left sm:grid-cols-3">
           <div v-for="p in pilares" :key="p.title" class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
@@ -139,7 +143,7 @@
           <p class="text-sm font-semibold uppercase tracking-wider text-brand-500">Planes</p>
           <h2 class="mt-3 text-3xl font-bold sm:text-4xl">Elige el plan de tu negocio</h2>
           <p class="mt-4 text-gray-500 dark:text-gray-400">
-            Prueba gratuita de 15 días, hasta 30 con un código promocional.
+            Pago mensual con IVA incluido. Sin plazos forzosos: cancela cuando quieras.
           </p>
         </div>
         <div class="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -160,7 +164,14 @@
               {{ plan.available ? 'Disponible' : 'Próximamente' }}
             </span>
             <h3 class="mt-2 text-lg font-semibold">Plan {{ plan.name }}</h3>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ plan.description }}</p>
+            <p class="mt-3">
+              <template v-if="shownPrice(plan, false)">
+                <span class="text-3xl font-bold">${{ shownPrice(plan, false) }}</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400"> MXN/mes · IVA incluido</span>
+              </template>
+              <span v-else class="text-sm font-medium text-gray-500 dark:text-gray-400">Precio al contratar</span>
+            </p>
+            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">{{ plan.description }}</p>
             <ul class="mt-5 flex-1 space-y-2.5">
               <li v-for="feature in plan.features" :key="feature" class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <CheckIcon class="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
@@ -205,9 +216,9 @@
     <section class="py-20">
       <div class="mx-auto max-w-4xl rounded-3xl bg-brand-500 px-8 py-14 text-center text-white shadow-theme-xl">
         <h2 class="text-3xl font-bold">Ordena tu negocio desde hoy</h2>
-        <p class="mx-auto mt-3 max-w-xl text-brand-50">Crea tu cuenta en minutos y prueba COSDI 15 días sin costo.</p>
+        <p class="mx-auto mt-3 max-w-xl text-brand-50">Crea tu cuenta en minutos. ¿Quieres verlo antes? Te hacemos una demostración por WhatsApp.</p>
         <div class="mt-8 flex flex-wrap justify-center gap-3">
-          <router-link to="/register?plan=NEGOCIO" class="rounded-lg bg-white px-6 py-3.5 text-sm font-semibold text-brand-600 hover:bg-brand-50">
+          <router-link to="/register?plan=CITAS_PANEL" class="rounded-lg bg-white px-6 py-3.5 text-sm font-semibold text-brand-600 hover:bg-brand-50">
             Crear mi cuenta
           </router-link>
           <a :href="BUSINESS.whatsappLink" target="_blank" rel="noopener" class="rounded-lg px-6 py-3.5 text-sm font-semibold text-white ring-1 ring-inset ring-white/50 hover:bg-white/10">
@@ -237,16 +248,21 @@ import {
 } from 'lucide-vue-next'
 import MarketingHeader from '@/components/marketing/MarketingHeader.vue'
 import MarketingFooter from '@/components/marketing/MarketingFooter.vue'
-import { PLANS } from '@/lib/plans'
+import { planInfo, shownPrice } from '@/lib/plans'
+import type { PlanType } from '@/lib/entitlements'
 import { BUSINESS } from '@/lib/business'
 
-/** Home pública: Negocio / Citas / próximos planes (sin plan Marca). */
-const displayPlans = computed(() => PLANS.filter((p) => p.type !== 'MARCA'))
+/** Home pública: el plan Citas va primero porque es la oferta de entrada (sin plan Marca). */
+const PLAN_ORDER: PlanType[] = ['CITAS_PANEL', 'CITAS_IA', 'NEGOCIO', 'CITAS_RECORDATORIOS']
+const displayPlans = computed(() =>
+  PLAN_ORDER.map((t) => planInfo(t)).filter((p): p is NonNullable<typeof p> => Boolean(p)),
+)
+const citasPrice = planInfo('CITAS_PANEL')?.priceMxn ?? 349
 
 const stats = [
-  { label: 'Ventas del día', value: '$4,820' },
-  { label: 'Productos', value: '312' },
   { label: 'Citas hoy', value: '9' },
+  { label: 'Esta semana', value: '42' },
+  { label: 'Recordatorios', value: '38' },
 ]
 const citas = [
   { hora: '10:00', nombre: 'Ana López · Corte', estado: 'Confirmada' },
@@ -255,17 +271,17 @@ const citas = [
 ]
 
 const pilares = [
+  { icon: CalendarCheckIcon, title: 'Agenda', text: 'Citas en línea con un link para tus clientes y recordatorios automáticos.' },
   { icon: StoreIcon, title: 'Administra', text: 'Marcas, productos y stock siempre al día, con consignaciones y solicitudes de producto.' },
   { icon: ReceiptIcon, title: 'Vende y cobra', text: 'Punto de venta con tickets, caja y cortes para saber cuánto entra cada día.' },
-  { icon: CalendarCheckIcon, title: 'Agenda', text: 'Citas en línea con un link para tus clientes y recordatorios automáticos.' },
 ]
 
 const funciones = [
+  { icon: CalendarCheckIcon, title: 'Citas en línea', text: 'Define servicios, precios y horarios, y comparte tu link de reservas en redes.' },
+  { icon: MessageCircleIcon, title: 'Recordatorios por WhatsApp', text: 'Reduce las faltas avisando a tus clientes antes de su cita.' },
   { icon: TagsIcon, title: 'Marcas y consignaciones', text: 'Registra las marcas que vendes, sus productos y lo que le corresponde a cada una.' },
   { icon: PackageIcon, title: 'Inventario y stock', text: 'Catálogo con importación desde Excel, entradas, salidas y etiquetas con código de barras.' },
   { icon: ReceiptIcon, title: 'Caja y ventas', text: 'Cobra en mostrador, imprime tickets y haz cortes de caja sin hojas de cálculo.' },
-  { icon: CalendarCheckIcon, title: 'Citas en línea', text: 'Define servicios, precios y horarios, y comparte tu link de reservas en redes.' },
-  { icon: MessageCircleIcon, title: 'Recordatorios por WhatsApp', text: 'Reduce las faltas avisando a tus clientes antes de su cita.' },
   { icon: UsersIcon, title: 'Equipo y permisos', text: 'Da acceso a tus empleados y controla qué puede ver y hacer cada quien.' },
   { icon: BarChart3Icon, title: 'Reportes claros', text: 'Consulta ventas, movimientos de stock y actividad de tu negocio.' },
   { icon: ShieldCheckIcon, title: 'Datos seguros', text: 'Acceso con contraseña cifrada y respaldo en la nube. Consulta nuestro aviso de privacidad.' },
@@ -273,15 +289,16 @@ const funciones = [
 
 const pasos = [
   { title: 'Crea tu cuenta', text: 'Regístrate con tu correo y elige el plan de tu negocio.' },
-  { title: 'Configura tu negocio', text: 'Carga tus productos o servicios, o impórtalos desde Excel.' },
-  { title: 'Empieza a operar', text: 'Vende, agenda citas y revisa tus números desde cualquier dispositivo.' },
+  { title: 'Configura tu agenda', text: 'Da de alta tus servicios y horarios; te ayudamos si lo necesitas.' },
+  { title: 'Comparte tu link', text: 'Tus clientes agendan solos y reciben su recordatorio por WhatsApp.' },
 ]
 
 const faq = [
-  { q: '¿Qué es COSDI?', a: 'COSDI significa Consultoría y Soluciones Digitales. Desarrollamos software a la medida y también ofrecemos nuestra propia app (nombre por definir): un software en línea para administrar un negocio con inventario, ventas, caja y agenda de citas, con recordatorios por WhatsApp. Se usa desde el navegador, sin instalar nada.' },
+  { q: '¿Qué es COSDI?', a: 'COSDI (Consultoría y Soluciones Digitales) es un software en línea para administrar tu agenda de citas con recordatorios por WhatsApp y, si lo necesitas, inventario, ventas y caja. Se usa desde el navegador, sin instalar nada.' },
   { q: '¿Pueden crear una app o software para mi negocio?', a: 'Sí. Si necesitas una app, un sistema o una automatización a la medida, escríbenos a contacto@cosdi.mx contándonos tu idea y te respondemos con una propuesta.' },
-  { q: '¿Cuánto cuesta?', a: 'Puedes probarlo 15 días sin costo (hasta 30 con código promocional). Después eliges un plan de pago según las funciones que necesites.' },
-  { q: '¿Necesito tarjeta para probarlo?', a: 'No. Creas tu cuenta y empiezas a usarlo; decides si contratar un plan cuando termine la prueba.' },
+  { q: '¿Cuánto cuesta?', a: `El plan Citas cuesta $${citasPrice} MXN al mes con IVA incluido. Se paga mes a mes y puedes cancelar cuando quieras. Si tienes un código de prueba o de descuento, escríbelo al elegir tu plan.` },
+  { q: '¿Me ayudan a configurarlo?', a: 'Sí. Te ayudamos a dar de alta tus servicios y horarios y a dejar listos tu link de citas y los recordatorios. Escríbenos por WhatsApp.' },
+  { q: '¿Puedo probarlo antes de pagar?', a: 'Sí. Te hacemos una demostración por WhatsApp o en tu negocio, y si tienes un código de prueba gratis lo usas sin tarjeta. Sin código, el plan se activa al pagar tu primer mes y puedes cancelar cuando quieras.' },
   { q: '¿Cómo protegen mis datos?', a: 'Tratamos tu información conforme a la LFPDPPP. No vendemos tus datos; puedes leer los detalles en el aviso de privacidad y ejercer tus derechos ARCO escribiendo a privacidad@cosdi.mx.' },
   { q: '¿Cómo funcionan los recordatorios de WhatsApp?', a: 'COSDI usa la plataforma oficial WhatsApp Business de Meta para enviar avisos de cita a tus clientes, siempre con su consentimiento.' },
   { q: '¿Quién está detrás de COSDI?', a: 'COSDI es operado por Joel Andrés Violante Madrid, desde Durango, Durango. Puedes escribirnos a contacto@cosdi.mx.' },

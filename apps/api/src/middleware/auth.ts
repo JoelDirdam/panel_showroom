@@ -57,11 +57,48 @@ export function signToken(user: AuthUser): string {
   )
 }
 
+/** Secreto base para derivar otras claves del servidor (p. ej. cifrado de 2FA). */
+export function serverSecret(): string {
+  return JWT_SECRET
+}
+
+/**
+ * Tokens de un solo propósito (reto de 2FA, baja de correos). Llevan `purpose`
+ * y por eso NUNCA sirven como sesión: `verifyToken` los rechaza.
+ */
+export type TokenPurpose = '2fa-login' | 'unsubscribe'
+
+export function signPurposeToken(
+  purpose: TokenPurpose,
+  payload: Record<string, unknown>,
+  expiresIn?: jwt.SignOptions['expiresIn'],
+): string {
+  return jwt.sign({ ...payload, purpose }, JWT_SECRET, expiresIn ? { expiresIn } : {})
+}
+
+export function verifyPurposeToken<T extends Record<string, unknown>>(
+  purpose: TokenPurpose,
+  token: string,
+): T | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET)
+    if (typeof decoded !== 'object' || decoded === null) return null
+    if ((decoded as { purpose?: unknown }).purpose !== purpose) return null
+    return decoded as T
+  } catch {
+    return null
+  }
+}
+
 function verifyToken(req: Request): AuthUser | null {
   const header = req.headers.authorization
   if (!header?.startsWith('Bearer ')) return null
   try {
-    return jwt.verify(header.slice(7), JWT_SECRET) as AuthUser
+    const decoded = jwt.verify(header.slice(7), JWT_SECRET) as AuthUser & { purpose?: unknown }
+    // Un token de propósito (2FA, baja de correos) no es una sesión.
+    if (decoded.purpose !== undefined) return null
+    if (typeof decoded.id !== 'string' || typeof decoded.role !== 'string') return null
+    return decoded
   } catch {
     return null
   }
@@ -123,6 +160,10 @@ const GUARD_ALLOWLIST_PREFIXES = [
   '/api/auth',
   '/api/terms',
   '/api/onboarding',
+  // Descargar/borrar datos, 2FA y preferencias de privacidad deben funcionar siempre
+  // (aunque la cuenta esté pausada o falte aceptar una versión nueva de los términos).
+  '/api/account',
+  '/api/site',
   // Pagar debe seguir disponible con la cuenta pausada (402) o sin onboarding terminado.
   '/api/billing',
   '/api/v1/whatsapp',
@@ -184,9 +225,26 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
 
   const dbUser = await prisma.user.findUnique({
     where: { id: user.id },
-    select: { onboardingStep: true, tenant: { select: { id: true, onboardingComplete: true } } },
+    select: {
+      onboardingStep: true,
+      deletedAt: true,
+      tenant: { select: { id: true, onboardingComplete: true, active: true, suspendedReason: true } },
+    },
   })
-  if (!dbUser) return next()
+  // Cuenta eliminada: su token deja de servir aunque no haya expirado.
+  if (!dbUser || dbUser.deletedAt) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
+
+  // Negocio suspendido desde la plataforma. Siguen disponibles /api/account
+  // (descargar o eliminar datos) y /api/billing (cancelar) por el allowlist.
+  if (dbUser.tenant && !dbUser.tenant.active) {
+    return res.status(403).json({
+      error: 'Tu cuenta está suspendida. Escríbenos a contacto@cosdi.mx para resolverlo.',
+      code: 'ACCOUNT_SUSPENDED',
+      reason: dbUser.tenant.suspendedReason,
+    })
+  }
 
   if (dbUser.onboardingStep !== 'DONE' && !dbUser.tenant?.onboardingComplete) {
     return res.status(403).json({
@@ -209,5 +267,27 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
     }
   }
 
+  next()
+}
+
+/**
+ * El SUPER_ADMIN debe tener la verificación en dos pasos activa para usar el
+ * panel de plataforma. Sin ella solo puede entrar a configurarla (/api/account).
+ */
+export async function requireSuperAdminTwoFactor(req: Request, res: Response, next: NextFunction) {
+  if (!req.user) return res.status(401).json({ error: 'No autorizado' })
+  const dbUser = await prisma.user.findUnique({
+    where: { id: req.user.id },
+    select: { role: true, totpEnabledAt: true, deletedAt: true },
+  })
+  if (!dbUser || dbUser.deletedAt || dbUser.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acceso denegado' })
+  }
+  if (!dbUser.totpEnabledAt) {
+    return res.status(403).json({
+      error: 'Activa la verificación en dos pasos para usar el panel de plataforma',
+      code: 'TWO_FACTOR_SETUP_REQUIRED',
+    })
+  }
   next()
 }

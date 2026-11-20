@@ -28,8 +28,19 @@
       <div>
         <h3 class="text-sm font-semibold text-gray-800 dark:text-white">Legal</h3>
         <ul class="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-          <li><router-link to="/privacidad" class="hover:text-brand-500">Aviso de privacidad</router-link></li>
           <li><router-link to="/terminos" class="hover:text-brand-500">Términos y condiciones</router-link></li>
+          <li><router-link to="/privacidad" class="hover:text-brand-500">Aviso de privacidad</router-link></li>
+          <li><router-link to="/reembolsos" class="hover:text-brand-500">Reembolsos y cancelación</router-link></li>
+          <li><router-link to="/conservacion-de-datos" class="hover:text-brand-500">Conservación de datos</router-link></li>
+          <li><router-link to="/proveedores" class="hover:text-brand-500">Proveedores que tratan datos</router-link></li>
+          <li><router-link to="/derechos-de-autor" class="hover:text-brand-500">Reclamos de derechos de autor</router-link></li>
+          <li><router-link to="/cookies" class="hover:text-brand-500">Política de cookies</router-link></li>
+          <li>
+            <button type="button" class="text-left underline hover:text-brand-500" @click="openCookiePreferences">
+              Preferencias de cookies
+            </button>
+          </li>
+          <li><a href="/licencias-terceros.txt" class="hover:text-brand-500">Licencias de software de terceros</a></li>
           <li><router-link to="/login" class="hover:text-brand-500">Ingresar al panel</router-link></li>
         </ul>
       </div>
@@ -45,6 +56,7 @@
 
 <script setup lang="ts">
 import { BUSINESS } from '@/lib/business'
+import { openCookiePreferences } from '@/lib/consent'
 
 const year = new Date().getFullYear()
 </script>

@@ -117,6 +117,8 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   COMPLETED
+  /// El cliente no llegó (permite medir la tasa de inasistencia).
+  NO_SHOW
 }
 
 enum ConversationRole {
@@ -125,43 +127,55 @@ enum ConversationRole {
 }
 
 model Tenant {
-  id                 String                  @id @default(cuid())
-  name               String
-  slug               String                  @unique
-  active             Boolean                 @default(true)
-  rfc                String?
-  socialUrl          String?
-  address            String?
-  logoUrl            String?
-  onboardingComplete Boolean                 @default(true)
-  users              User[]
-  employees          Employee[]
-  brands             Brand[]
-  sales              Sale[]
-  customers          Customer[]
-  giftCards          GiftCard[]
-  layaways           Layaway[]
-  productRequests    ProductRequest[]
-  agendaSettings     AgendaSettings?
-  weeklyRules        WeeklyScheduleRule[]
-  scheduleSlots      ScheduleSlot[]
-  stockAppointments  StockAppointment[]
-  appointments       Appointment[]
-  sucursales         Sucursal[]
-  conversations      Conversation[]
-  whatsappConfig     WhatsappConfig?
-  services           Service[]
-  businessHours      BusinessHour[]
-  categories         Category[]
-  subscription       TenantSubscription?
-  preferences        BusinessPreferences?
-  saleCounter        TenantSaleCounter?
-  rentPayments       BrandRentPayment[]
-  cutoffSettlements  BrandCutoffSettlement[]
-  cancelledSales     CancelledSale[]
-  cashSessions       CashSession[]
-  createdAt          DateTime                @default(now())
-  updatedAt          DateTime                @updatedAt
+  id                    String                  @id @default(cuid())
+  name                  String
+  slug                  String                  @unique
+  active                Boolean                 @default(true)
+  rfc                   String?
+  socialUrl             String?
+  address               String?
+  logoUrl               String?
+  onboardingComplete    Boolean                 @default(true)
+  users                 User[]
+  employees             Employee[]
+  brands                Brand[]
+  sales                 Sale[]
+  customers             Customer[]
+  giftCards             GiftCard[]
+  layaways              Layaway[]
+  productRequests       ProductRequest[]
+  agendaSettings        AgendaSettings?
+  weeklyRules           WeeklyScheduleRule[]
+  scheduleSlots         ScheduleSlot[]
+  stockAppointments     StockAppointment[]
+  appointments          Appointment[]
+  sucursales            Sucursal[]
+  conversations         Conversation[]
+  whatsappConfig        WhatsappConfig?
+  services              Service[]
+  businessHours         BusinessHour[]
+  categories            Category[]
+  subscription          TenantSubscription?
+  preferences           BusinessPreferences?
+  saleCounter           TenantSaleCounter?
+  rentPayments          BrandRentPayment[]
+  cutoffSettlements     BrandCutoffSettlement[]
+  cancelledSales        CancelledSale[]
+  cashSessions          CashSession[]
+  /// Retención: fecha en que se avisó por correo que la cuenta inactiva será eliminada.
+  retentionNoticeSentAt DateTime?
+  /// Suspensión desde el panel de plataforma (`active = false`): cuándo y por qué.
+  suspendedAt           DateTime?
+  suspendedReason       String?
+  /// Código para recomendar COSDI (ej. ESTETICA-ANA). Se genera al consultarlo por primera vez.
+  referralCode          String?                 @unique
+  referralsMade         Referral[]              @relation("ReferralReferrer")
+  referredBy            Referral?               @relation("ReferralReferred")
+  /// Cuenta de prueba interna: aparece en el panel, pero no recibe correos masivos ni automáticos
+  /// (avisos de términos, renovación o eliminación por inactividad) y nunca se elimina por inactividad.
+  isTest                Boolean                 @default(false)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 }
 
 model User {
@@ -192,6 +206,20 @@ model User {
   termsAcceptances   TermsAcceptance[]
   emailCodes         EmailVerificationCode[]
   smsCodes           SmsVerificationCode[]
+  consentEvents      ConsentEvent[]
+  /// 2FA (TOTP): secreto cifrado con AES-256-GCM (ver lib/totp.ts). Sin `totpEnabledAt` está pendiente de confirmar.
+  totpSecret         String?
+  totpEnabledAt      DateTime?
+  /// Último paso TOTP aceptado: impide reutilizar el mismo código.
+  totpLastStep       Int?
+  /// Códigos de recuperación de un solo uso (hash SHA-256).
+  totpRecoveryCodes  String[]                @default([])
+  /// Consentimiento de correos de marketing (aparte de los términos; apagado por defecto).
+  marketingOptIn     Boolean                 @default(false)
+  marketingOptInAt   DateTime?
+  marketingOptOutAt  DateTime?
+  /// Cuenta eliminada a petición del titular (datos anonimizados; no puede iniciar sesión).
+  deletedAt          DateTime?
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
@@ -698,25 +726,30 @@ model ConversationMessage {
 
 /// Citas a clientes (WhatsApp / clínica). Tabla nueva, sin brandId/slotId/bookedById.
 model Appointment {
-  id               String            @id @default(cuid())
-  tenantId         String
-  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sucursalId       String?
-  sucursal         Sucursal?         @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
-  serviceId        String?
-  service          Service?          @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  customerName     String
-  customerPhone    String
-  startTime        DateTime
-  endTime          DateTime
-  status           AppointmentStatus @default(PENDING)
-  notes            String?
+  id                String            @id @default(cuid())
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sucursalId        String?
+  sucursal          Sucursal?         @relation(fields: [sucursalId], references: [id], onDelete: SetNull)
+  serviceId         String?
+  service           Service?          @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  customerName      String
+  customerPhone     String
+  startTime         DateTime
+  endTime           DateTime
+  status            AppointmentStatus @default(PENDING)
+  notes             String?
   /// Recordatorio por WhatsApp: fecha de envío exitoso (null = pendiente).
-  reminderSentAt   DateTime?
+  reminderSentAt    DateTime?
   /// Intentos fallidos de recordatorio (se detiene tras el máximo).
-  reminderAttempts Int               @default(0)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  reminderAttempts  Int               @default(0)
+  /// Id del mensaje de WhatsApp del recordatorio (wamid).
+  reminderMessageId String?
+  /// Respuesta del cliente con los botones del recordatorio: CONFIRM | CANCEL | RESCHEDULE.
+  customerReply     String?
+  customerRepliedAt DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@index([tenantId, startTime])
   @@index([tenantId, status])
@@ -724,26 +757,128 @@ model Appointment {
   @@index([status, reminderSentAt, startTime])
 }
 
+/// Versión publicada de los términos. Una versión publicada NO se edita:
+/// los cambios se publican como versión nueva (la constancia de aceptación
+/// guarda la huella del texto aceptado).
 model TermsDocument {
   id          String   @id @default(cuid())
   version     String   @unique
   title       String
   content     String
+  /// Resumen de qué cambió respecto a la versión anterior (se muestra al pedir la nueva aceptación).
+  summary     String?
   publishedAt DateTime @default(now())
   createdAt   DateTime @default(now())
 }
 
+/// Evidencia de quién aceptó qué versión de los términos y cuándo.
+/// Sobrevive a la eliminación de la cuenta (userId queda en null) durante el
+/// plazo de conservación definido en lib/retention.ts.
 model TermsAcceptance {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  version    String
-  signedName String
-  acceptedAt DateTime @default(now())
-  ip         String?
+  id            String    @id @default(cuid())
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  version       String
+  signedName    String
+  acceptedAt    DateTime  @default(now())
+  ip            String?
+  /// Correo de la cuenta al momento de aceptar.
+  email         String?
+  userAgent     String?
+  /// SHA-256 del texto aceptado: prueba qué contenido exacto se aceptó.
+  contentHash   String?
+  /// "register" | "reaccept"
+  source        String    @default("register")
+  /// Fecha en que se eliminó la cuenta; a partir de aquí corre el plazo de conservación.
+  userDeletedAt DateTime?
 
   @@unique([userId, version])
   @@index([userId])
+  @@index([acceptedAt])
+}
+
+/// Bitácora de consentimientos opcionales (hoy: correos de marketing).
+model ConsentEvent {
+  id            String    @id @default(cuid())
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email         String
+  /// "MARKETING_EMAIL"
+  kind          String
+  granted       Boolean
+  /// "register" | "account" | "unsubscribe_link"
+  source        String
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+  userDeletedAt DateTime?
+
+  @@index([userId])
+  @@index([kind, createdAt])
+}
+
+/// Configuración de plataforma editable por el SUPER_ADMIN (p. ej. rastreadores).
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+/// Reclamos de derechos de autor recibidos por el canal público.
+model CopyrightClaim {
+  id              String    @id @default(cuid())
+  claimantName    String
+  claimantEmail   String
+  claimantPhone   String?
+  /// A nombre de quién actúa (titular o representante).
+  rightsHolder    String
+  workDescription String    @db.Text
+  infringingUrl   String    @db.Text
+  details         String?   @db.Text
+  signature       String
+  /// "OPEN" | "IN_REVIEW" | "RESOLVED" | "REJECTED"
+  status          String    @default("OPEN")
+  adminNote       String?   @db.Text
+  ip              String?
+  createdAt       DateTime  @default(now())
+  resolvedAt      DateTime?
+
+  @@index([status, createdAt])
+}
+
+/// Bitácora de acciones del SUPER_ADMIN en el panel de plataforma.
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  /// Sin relación: la entrada sobrevive aunque se elimine la cuenta del administrador.
+  actorId     String?
+  actorEmail  String
+  /// p. ej. "tenant.suspend", "promo.create", "terms.publish"
+  action      String
+  targetType  String?
+  targetId    String?
+  targetLabel String?
+  details     Json?
+  ip          String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+}
+
+/// Registro de cuentas eliminadas (a petición del titular, por el SUPER_ADMIN o por retención).
+model AccountDeletionLog {
+  id         String   @id @default(cuid())
+  email      String?
+  tenantName String?
+  /// "TENANT" | "USER"
+  scope      String
+  /// "user_request" | "super_admin" | "retention_inactive" | "retention_unverified"
+  reason     String
+  ip         String?
+  deletedAt  DateTime @default(now())
+
+  @@index([deletedAt])
 }
 
 model EmailVerificationCode {
@@ -772,13 +907,26 @@ model SmsVerificationCode {
 }
 
 model PromoCode {
-  id             String   @id @default(cuid())
-  code           String   @unique
-  extraTrialDays Int      @default(15)
-  active         Boolean  @default(true)
-  maxUses        Int?
-  usedCount      Int      @default(0)
-  createdAt      DateTime @default(now())
+  id                String     @id @default(cuid())
+  code              String     @unique
+  /// Días de prueba gratis que da el código (sin código no hay prueba; 0 = solo descuento).
+  trialDays         Int        @default(0)
+  /// Descuento en porcentaje sobre la mensualidad (1-100). Excluyente con discountAmountMxn.
+  discountPercent   Int?
+  /// Descuento fijo en pesos (IVA incluido) sobre la mensualidad.
+  discountAmountMxn Int?
+  /// Cuántas mensualidades pagadas cubre el descuento.
+  discountMonths    Int?
+  /// Planes donde aplica el código (vacío = todos).
+  planTypes         PlanType[] @default([])
+  active            Boolean    @default(true)
+  maxUses           Int?
+  usedCount         Int        @default(0)
+  /// Fecha límite para canjearlo (null = sin vencimiento).
+  expiresAt         DateTime?
+  /// Nota interna (campaña, a quién se le dio).
+  note              String?
+  createdAt         DateTime   @default(now())
 }
 
 model TenantSubscription {
@@ -802,11 +950,42 @@ model TenantSubscription {
   /// true si el cliente canceló y la cuenta sigue activa hasta currentPeriodEndsAt.
   cancelAtPeriodEnd      Boolean            @default(false)
   lastPaymentAt          DateTime?
+  /// Fecha de cobro para la que ya se envió el aviso de renovación automática.
+  renewalNoticeFor       DateTime?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
   @@index([externalCustomerId])
   @@index([externalSubscriptionId])
+}
+
+enum ReferralStatus {
+  /// El negocio recomendado se registró con el código; aún no paga.
+  PENDING
+  /// El recomendado pagó su primer mes; el premio espera a que quien recomendó tenga cliente en Stripe.
+  QUALIFIED
+  /// Crédito de un mes aplicado al saldo de Stripe de quien recomendó.
+  REWARDED
+  /// Superó el tope de premios o se anuló.
+  VOID
+}
+
+/// Programa de referidos: un negocio recomienda a otro con su código.
+model Referral {
+  id                 String         @id @default(cuid())
+  referrerTenantId   String
+  referrer           Tenant         @relation("ReferralReferrer", fields: [referrerTenantId], references: [id], onDelete: Cascade)
+  referredTenantId   String         @unique
+  referred           Tenant         @relation("ReferralReferred", fields: [referredTenantId], references: [id], onDelete: Cascade)
+  status             ReferralStatus @default(PENDING)
+  /// Crédito otorgado en centavos MXN.
+  rewardAmountCents  Int?
+  stripeBalanceTxnId String?
+  qualifiedAt        DateTime?
+  rewardedAt         DateTime?
+  createdAt          DateTime       @default(now())
+
+  @@index([referrerTenantId])
 }
 
 /// Idempotencia de webhooks de cobro: un evento del proveedor se procesa una sola vez.

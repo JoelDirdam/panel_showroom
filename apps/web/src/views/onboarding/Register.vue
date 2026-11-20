@@ -21,7 +21,7 @@
                 Crea tu cuenta
               </h1>
               <p class="text-sm text-gray-500 dark:text-gray-400">
-                Registra tu negocio y comienza tu prueba gratuita.
+                Registra tu negocio y activa tu plan en minutos.
               </p>
             </div>
 
@@ -55,13 +55,12 @@
 
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Teléfono<span class="text-error-500">*</span>
+                    Teléfono <span class="font-normal text-gray-500">(opcional)</span>
                   </label>
                   <input
                     v-model="phone"
                     type="tel"
-                    required
-                    minlength="7"
+                    autocomplete="tel"
                     placeholder="10 dígitos"
                     class="dark:bg-dark-900 h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                   />
@@ -96,12 +95,21 @@
                   </div>
                 </div>
 
-                <div>
+                <!-- Casillas SIN marcar por defecto: la aceptación debe ser un acto expreso. -->
+                <div class="space-y-3">
                   <FormCheckbox v-model="agreeToTerms" required align="start">
-                    Acepto los
-                    <router-link to="/terms" target="_blank" class="text-brand-500 hover:text-brand-600">
-                      Términos y Condiciones{{ terms ? ` (v${terms.version})` : '' }}
-                    </router-link>
+                    He leído y acepto los
+                    <router-link to="/terminos" target="_blank" class="text-brand-500 underline hover:text-brand-600">
+                      Términos y Condiciones{{ terms ? ` (v${terms.version})` : '' }}</router-link
+                    >, incluida la renovación automática de los planes de pago, y el
+                    <router-link to="/privacidad" target="_blank" class="text-brand-500 underline hover:text-brand-600">
+                      Aviso de Privacidad</router-link
+                    >.<span class="text-error-500">*</span>
+                  </FormCheckbox>
+                  <!-- Consentimiento de marketing: aparte, opcional y desmarcado. -->
+                  <FormCheckbox v-model="marketingOptIn" align="start">
+                    Quiero recibir novedades y promociones de COSDI por correo. (Opcional; puedes darte de baja cuando
+                    quieras.)
                   </FormCheckbox>
                 </div>
 
@@ -138,8 +146,8 @@
               <span class="text-2xl font-semibold tracking-tight text-white">COSDI</span>
             </router-link>
             <p class="text-center text-gray-400 dark:text-white/60">
-              Prueba nuestras funciones por 15 días gratis. Marcas, productos, stock, ventas, caja y
-              agenda en un solo panel.
+              Agenda en línea con recordatorios por WhatsApp, y si vendes productos: inventario, ventas, caja y
+              cortes en un solo panel.
             </p>
             <p class="mt-3 text-center text-sm italic text-gray-400 dark:text-white/50">
               Te ofrecemos una solución tecnológica a tu negocio, si no la tenemos te la creamos.
@@ -159,6 +167,7 @@ import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import CommonGridShape from '@/components/common/CommonGridShape.vue'
 import FormCheckbox from '@/components/forms/FormCheckbox.vue'
 import { useAuthStore } from '@/stores/auth'
+import { trackSignup } from '@/lib/trackers'
 
 const router = useRouter()
 const route = useRoute()
@@ -169,19 +178,23 @@ const email = ref('')
 const phone = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+// Ambas casillas inician desmarcadas; nunca se premarcan.
 const agreeToTerms = ref(false)
+const marketingOptIn = ref(false)
 const validationError = ref<string | null>(null)
 
 const terms = computed(() => auth.terms)
 
 onMounted(async () => {
   const plan = typeof route.query.plan === 'string' ? route.query.plan : null
-  if (plan) {
-    try {
-      sessionStorage.setItem('pendingPlanType', plan)
-    } catch {
-      /* ignore */
-    }
+  // Link de recomendación (?ref=CODIGO) o de campaña (?codigo=CODIGO): se precarga al elegir plan.
+  const rawCode = route.query.ref ?? route.query.codigo
+  const code = typeof rawCode === 'string' && /^[A-Za-z0-9_-]{3,30}$/.test(rawCode) ? rawCode.toUpperCase() : null
+  try {
+    if (plan) sessionStorage.setItem('pendingPlanType', plan)
+    if (code) sessionStorage.setItem('pendingPromoCode', code)
+  } catch {
+    /* ignore */
   }
   try {
     await auth.fetchTerms()
@@ -199,8 +212,9 @@ async function handleSubmit() {
     validationError.value = 'El nombre completo es obligatorio'
     return
   }
-  if (!phone.value.trim() || phone.value.trim().length < 7) {
-    validationError.value = 'El teléfono es obligatorio'
+  const phoneValue = phone.value.trim()
+  if (phoneValue && phoneValue.length < 7) {
+    validationError.value = 'Revisa el teléfono (o déjalo vacío: es opcional)'
     return
   }
   if (password.value !== confirmPassword.value) {
@@ -215,13 +229,16 @@ async function handleSubmit() {
   const ok = await auth.register({
     name: fullName,
     email: email.value.trim(),
-    phone: phone.value.trim(),
+    phone: phoneValue || null,
     password: password.value,
     signedName: fullName,
     termsVersion: auth.terms?.version ?? '',
+    acceptTerms: agreeToTerms.value,
+    marketingOptIn: marketingOptIn.value,
   })
 
   if (ok) {
+    trackSignup()
     router.push('/onboarding/verify-email')
   }
 }

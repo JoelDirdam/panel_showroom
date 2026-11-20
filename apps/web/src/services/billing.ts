@@ -3,6 +3,8 @@ import type { PlanType } from '@/lib/entitlements'
 
 export interface BillingStatus {
   stripeConfigured: boolean
+  /** Descuento pendiente de aplicar en el primer pago (código promocional o de recomendación). */
+  discountLabel?: string | null
   taxPercent: number
   subscription: {
     planType: PlanType
@@ -13,6 +15,21 @@ export interface BillingStatus {
     paymentProvider: string | null
     hasPaymentMethod: boolean
   } | null
+}
+
+export interface ReferralSummary {
+  code: string
+  registered: number
+  pending: number
+  earned: number
+  rewarded: number
+  maxRewards: number
+  referredPercentOff: number
+}
+
+export async function fetchReferralSummary(): Promise<ReferralSummary> {
+  const { data } = await api.get<ReferralSummary>('/billing/referrals')
+  return data
 }
 
 export async function fetchBillingStatus(): Promise<BillingStatus> {

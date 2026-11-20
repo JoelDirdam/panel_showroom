@@ -44,7 +44,7 @@ def test_withdrawal_request_is_accepted_and_decrements_stock():
     accept = requests.post(
         f"{API}/auth/accept-terms",
         headers=brand_headers,
-        json={"signedName": f"Brand {stamp}", "termsVersion": terms_current.json()["version"]},
+        json={"signedName": f"Brand {stamp}", "termsVersion": terms_current.json()["version"], "acceptTerms": True},
         timeout=30,
     )
     assert accept.status_code == 200, accept.text

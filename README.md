@@ -174,3 +174,20 @@ cosdi/
 | GET/PATCH | `/api/stock` | Inventario |
 | GET | `/api/dashboard` | KPIs |
 | GET | `/health` | Health check |
+
+## Cumplimiento legal y seguridad
+
+| Qué | Dónde |
+|-----|-------|
+| Términos versionados (lo que se acepta al registrarse y lo que muestra `/terminos`) | Borrador en `apps/api/src/legal/terms-content.ts`. Publicar desde Panel de plataforma → Términos (queda en la bitácora). Una versión publicada no se edita |
+| Plazos de conservación de datos | `apps/api/src/lib/retention.ts` (servidor) y `apps/web/src/lib/legal.ts` (texto público): deben coincidir |
+| Proveedores que tratan datos (`/proveedores`) | `apps/web/src/lib/legal.ts` |
+| Rastreadores (GA4, Pixel de Meta, Hotjar) | Panel de plataforma → Integraciones. Solo cargan tras aceptar el banner de cookies |
+| Restablecer el 2FA de una cuenta | `RESET_2FA_EMAIL=correo npm run db:reset-2fa --prefix apps/api` |
+| Avisos de licencias de terceros | `npm run licenses --prefix apps/web` (regenera `public/licencias-terceros.txt`) |
+| Prueba de punta a punta (solo local) | `npx tsx scripts/compliance-e2e.ts` dentro de `apps/api`, con la API corriendo |
+| Prueba del panel de plataforma (local o dev, nunca prod) | `E2E_API_URL=… E2E_SA_EMAIL=… E2E_SA_PASSWORD=… node scripts/platform-ops-e2e.mjs` en `apps/api` |
+| Estado de correo, Stripe, WhatsApp y tareas automáticas | Panel de plataforma → Estado |
+
+Publicar una versión nueva de los términos obliga a todos los usuarios a aceptarla al entrar.
+El SUPER_ADMIN no puede usar `/platform` sin verificación en dos pasos activa.

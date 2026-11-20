@@ -17,9 +17,18 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const data = error?.response?.data as { code?: string } | undefined
+    if (error?.response?.status === 403 && data?.code === 'ACCOUNT_SUSPENDED') {
+      const { default: router } = await import('@/router')
+      const { useAuthStore } = await import('@/stores/auth')
+      await useAuthStore().fetchMe()
+      const current = router.currentRoute.value.path
+      if (current !== '/cuenta-suspendida' && current !== '/cuenta') void router.replace('/cuenta-suspendida')
+    }
     if (error?.response?.status === 402 && data?.code === 'SUBSCRIPTION_EXPIRED') {
       const { default: router } = await import('@/router')
-      if (router.currentRoute.value.path !== '/suscripcion-vencida') {
+      const current = router.currentRoute.value.path
+      // En "Mi cuenta" se puede descargar o eliminar los datos aunque la cuenta esté pausada.
+      if (current !== '/suscripcion-vencida' && current !== '/cuenta') {
         void router.replace('/suscripcion-vencida')
       }
     }
@@ -37,6 +46,12 @@ export interface User {
   tenantId?: string | null
   brandId: string | null
   mustChangePassword?: boolean
+  /** Verificación en dos pasos activa. */
+  twoFactorEnabled?: boolean
+  /** true para SUPER_ADMIN: sin 2FA no puede usar el panel de plataforma. */
+  twoFactorRequired?: boolean
+  /** Consentimiento (aparte de los términos) para correos de marketing. */
+  marketingOptIn?: boolean
   brand?: { id: string; name: string } | null
   /**
    * `GET /auth/me` ya los devuelve (ver `apps/api/src/lib/meShape.ts`).
@@ -88,6 +103,9 @@ export interface User {
     address: string | null
     logoUrl: string | null
     onboardingComplete: boolean
+    /** Suspendido desde el panel de plataforma. */
+    suspended?: boolean
+    suspendedReason?: string | null
   } | null
   preferences?: BusinessPreferences | null
 }
@@ -106,6 +124,8 @@ export interface TermsDocument {
   version: string
   title: string
   content: string
+  /** Qué cambió respecto a la versión anterior. */
+  summary?: string | null
   publishedAt: string
 }
 
@@ -117,10 +137,15 @@ export async function fetchCurrentTerms(): Promise<TermsDocument> {
 export interface RegisterPayload {
   name: string
   email: string
-  phone: string
+  /** Opcional: no es necesario para abrir la cuenta. */
+  phone?: string | null
   password: string
   signedName: string
   termsVersion: string
+  /** Debe ser `true`: el usuario marcó la casilla de aceptación. */
+  acceptTerms: boolean
+  /** Consentimiento aparte y opcional para correos de marketing. */
+  marketingOptIn: boolean
 }
 
 export interface AuthResult {
@@ -148,7 +173,12 @@ export async function acceptTerms(
   signedName: string,
   termsVersion: string,
 ): Promise<{ ok: boolean; user: User }> {
-  const { data } = await api.post<{ ok: boolean; user: User }>('/auth/accept-terms', { signedName, termsVersion })
+  const { data } = await api.post<{ ok: boolean; user: User }>('/auth/accept-terms', {
+    signedName,
+    termsVersion,
+    // Solo se llama después de que el usuario marcó la casilla.
+    acceptTerms: true,
+  })
   return data
 }
 
@@ -856,6 +886,9 @@ export interface PlatformTenantRow {
   rfc: string | null
   onboardingComplete: boolean
   createdAt: string
+  suspendedAt?: string | null
+  /** Cuenta de prueba interna: sin correos masivos ni automáticos. */
+  isTest?: boolean
   subscription: {
     planType: string
     status: string

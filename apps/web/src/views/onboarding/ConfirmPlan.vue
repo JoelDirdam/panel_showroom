@@ -15,9 +15,9 @@
         <div class="mt-6 space-y-2 rounded-xl bg-gray-50 p-4 text-left text-sm dark:bg-white/[0.03]">
           <div class="flex justify-between">
             <span class="text-gray-500 dark:text-gray-400">Estado</span>
-            <span class="font-medium text-gray-800 dark:text-white">Prueba gratuita</span>
+            <span class="font-medium text-gray-800 dark:text-white">{{ hasTrial ? 'Prueba gratuita' : 'Pago pendiente' }}</span>
           </div>
-          <div class="flex justify-between">
+          <div v-if="hasTrial" class="flex justify-between">
             <span class="text-gray-500 dark:text-gray-400">Vence</span>
             <span class="font-medium text-gray-800 dark:text-white">{{ trialEndsLabel }}</span>
           </div>
@@ -32,7 +32,7 @@
           class="mt-6 flex w-full items-center justify-center rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white shadow-theme-xs hover:bg-brand-600"
           @click="router.push('/onboarding/payment')"
         >
-          Continuar al pago / prueba
+          {{ hasTrial ? 'Continuar' : 'Continuar al pago' }}
         </button>
         <button
           type="button"
@@ -60,6 +60,10 @@ const auth = useAuthStore()
 const planType = computed(() => auth.user?.subscription?.planType)
 const plan = computed(() => planInfo(planType.value))
 const promoCodeUsed = computed(() => auth.user?.subscription?.promoCodeUsed)
+const hasTrial = computed(() => {
+  const iso = auth.user?.subscription?.trialEndsAt
+  return Boolean(iso && new Date(iso).getTime() > Date.now())
+})
 
 const trialEndsLabel = computed(() => {
   const iso = auth.user?.subscription?.trialEndsAt

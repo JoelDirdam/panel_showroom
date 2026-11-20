@@ -20,23 +20,80 @@
             <p class="mt-2 text-xs italic text-gray-400 dark:text-gray-500">Te ofrecemos una solución tecnológica a tu negocio, si no la tenemos te la creamos.</p>
           </div>
 
-          <form class="space-y-4" @submit.prevent="handleSubmit">
+          <p
+            v-if="accountDeleted"
+            role="status"
+            class="mb-4 rounded-lg bg-gray-50 p-3 text-sm text-gray-700 dark:bg-white/[0.04] dark:text-gray-300"
+          >
+            Tu cuenta y tus datos fueron eliminados. Te enviamos una confirmación por correo.
+          </p>
+
+          <!-- Segundo paso: código de la app de autenticación -->
+          <form v-if="auth.twoFactorChallenge" class="space-y-4" @submit.prevent="handleTwoFactor">
             <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Email</label>
+              <h2 class="text-base font-semibold text-gray-800 dark:text-white">Verificación en dos pasos</h2>
+              <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                {{
+                  useRecovery
+                    ? 'Escribe uno de tus códigos de recuperación.'
+                    : 'Escribe el código de 6 dígitos de tu app de autenticación.'
+                }}
+              </p>
+            </div>
+            <div>
+              <label for="login-2fa" class="mb-1 block text-sm text-gray-600 dark:text-gray-300">
+                {{ useRecovery ? 'Código de recuperación' : 'Código de 6 dígitos' }}
+              </label>
               <input
+                id="login-2fa"
+                ref="twoFactorInput"
+                v-model="twoFactorCode"
+                type="text"
+                :inputmode="useRecovery ? 'text' : 'numeric'"
+                autocomplete="one-time-code"
+                required
+                class="w-full rounded-lg border border-gray-300 px-4 py-2.5 tracking-widest dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <p v-if="auth.error" role="alert" class="text-sm text-error-500">{{ auth.error }}</p>
+            <button
+              type="submit"
+              :disabled="auth.loading"
+              class="w-full rounded-lg bg-brand-500 py-2.5 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-60"
+            >
+              {{ auth.loading ? 'Verificando...' : 'Verificar y entrar' }}
+            </button>
+            <div class="flex flex-wrap justify-between gap-2 text-sm">
+              <button type="button" class="text-brand-500 underline" @click="toggleRecovery">
+                {{ useRecovery ? 'Usar el código de mi app' : 'No tengo mi teléfono: usar código de recuperación' }}
+              </button>
+              <button type="button" class="text-gray-500 underline dark:text-gray-400" @click="backToPassword">
+                Volver
+              </button>
+            </div>
+          </form>
+
+          <form v-else class="space-y-4" @submit.prevent="handleSubmit">
+            <div>
+              <label for="login-email" class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Email</label>
+              <input
+                id="login-email"
                 v-model="email"
                 type="email"
+                autocomplete="username"
                 required
                 class="w-full rounded-lg border border-gray-300 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 placeholder="Ingresa tu email"
               />
             </div>
             <div>
-              <label class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Contraseña</label>
+              <label for="login-password" class="mb-1 block text-sm text-gray-600 dark:text-gray-300">Contraseña</label>
               <div class="relative">
                 <input
+                  id="login-password"
                   v-model="password"
                   :type="showPassword ? 'text' : 'password'"
+                  autocomplete="current-password"
                   required
                   class="w-full rounded-lg border border-gray-300 py-2.5 pl-4 pr-11 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                   placeholder="Ingresa tu contraseña"
@@ -82,7 +139,7 @@
                 </button>
               </div>
             </div>
-            <p v-if="auth.error" class="text-sm text-error-500">{{ auth.error }}</p>
+            <p v-if="auth.error" role="alert" class="text-sm text-error-500">{{ auth.error }}</p>
             <button
               type="submit"
               :disabled="auth.loading"
@@ -98,22 +155,62 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from 'lucide-vue-next'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
+const twoFactorCode = ref('')
+const useRecovery = ref(false)
+const twoFactorInput = ref<HTMLInputElement | null>(null)
+const accountDeleted = route.query.cuenta === 'eliminada'
+
+function goToPanel() {
+  router.push(auth.mustChangePassword ? '/change-password' : auth.isSuperAdmin ? '/platform' : '/home')
+}
 
 async function handleSubmit() {
   const ok = await auth.login(email.value, password.value)
   if (ok) {
-    router.push(auth.mustChangePassword ? '/change-password' : auth.isSuperAdmin ? '/platform' : '/home')
+    goToPanel()
+  } else if (auth.twoFactorChallenge) {
+    password.value = ''
+    twoFactorCode.value = ''
+    useRecovery.value = false
+    await nextTick()
+    twoFactorInput.value?.focus()
   }
 }
+
+async function handleTwoFactor() {
+  const ok = await auth.verifyTwoFactor(twoFactorCode.value.trim())
+  if (ok) {
+    goToPanel()
+  } else {
+    twoFactorCode.value = ''
+    twoFactorInput.value?.focus()
+  }
+}
+
+async function toggleRecovery() {
+  useRecovery.value = !useRecovery.value
+  twoFactorCode.value = ''
+  auth.error = null
+  await nextTick()
+  twoFactorInput.value?.focus()
+}
+
+function backToPassword() {
+  auth.cancelTwoFactor()
+  twoFactorCode.value = ''
+}
+
+onBeforeUnmount(() => auth.cancelTwoFactor())
 </script>

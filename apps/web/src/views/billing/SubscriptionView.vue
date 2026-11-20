@@ -41,7 +41,24 @@
         </dl>
 
         <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">{{ explanation }}</p>
-        <p v-if="error" class="mt-3 text-sm text-error-500">{{ error }}</p>
+        <p
+          v-if="status?.discountLabel"
+          class="mt-3 rounded-lg border border-success-200 bg-success-50 p-3 text-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400"
+        >
+          {{ status.discountLabel }}. Se aplica al registrar tu tarjeta.
+        </p>
+
+        <!-- Aviso de renovación automática: visible antes de pagar y mientras el plan esté activo. -->
+        <p
+          v-if="renewalNotice"
+          class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
+        >
+          <strong class="text-gray-800 dark:text-white">Renovación automática.</strong>
+          {{ renewalNotice }}
+          <router-link to="/reembolsos" class="text-brand-500 underline">Política de reembolsos</router-link>.
+        </p>
+
+        <p v-if="error" role="alert" class="mt-3 text-sm text-error-500">{{ error }}</p>
 
         <div class="mt-5 flex flex-col gap-2 sm:flex-row">
           <button
@@ -60,15 +77,75 @@
             :disabled="busy"
             @click="portal"
           >
-            Cambiar tarjeta, ver recibos o cancelar
+            Cambiar tarjeta o ver recibos
+          </button>
+          <button
+            v-if="canResume"
+            type="button"
+            class="rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+            :disabled="busy"
+            @click="resume"
+          >
+            Reanudar mi suscripción
+          </button>
+          <!-- Cancelar: mismo lugar y mismo esfuerzo que suscribirse (un botón + confirmar). -->
+          <button
+            v-if="canCancel && !confirmingCancel"
+            type="button"
+            class="rounded-lg border border-error-300 px-4 py-3 text-sm font-medium text-error-600 hover:bg-error-50 disabled:opacity-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10"
+            :disabled="busy"
+            @click="confirmingCancel = true"
+          >
+            Cancelar suscripción
           </button>
         </div>
+
+        <div
+          v-if="confirmingCancel"
+          role="alertdialog"
+          aria-labelledby="cancel-title"
+          aria-describedby="cancel-text"
+          class="mt-4 rounded-xl border border-error-200 p-4 dark:border-error-500/30"
+        >
+          <p id="cancel-title" class="text-sm font-semibold text-gray-800 dark:text-white">
+            ¿Cancelar la renovación de tu plan?
+          </p>
+          <p id="cancel-text" class="mt-1 text-sm text-gray-600 dark:text-gray-300">
+            No se te volverá a cobrar. Conservas el acceso hasta el <strong>{{ dateValue }}</strong> y puedes reanudar
+            antes de esa fecha. Tus datos no se borran.
+          </p>
+          <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              class="rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-50"
+              :disabled="busy"
+              @click="cancel"
+            >
+              {{ busy ? 'Cancelando…' : 'Sí, cancelar' }}
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
+              :disabled="busy"
+              @click="confirmingCancel = false"
+            >
+              No, conservar mi plan
+            </button>
+          </div>
+        </div>
+
+        <p v-if="sub.status === 'TRIALING' && !sub.hasPaymentMethod" class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          Estás en prueba sin tarjeta: no hay nada que cancelar y no se te cobrará nada. Si no agregas una tarjeta, la
+          cuenta simplemente se pausa al terminar la prueba.
+        </p>
         <p v-if="showPay && !stripeConfigured" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
           El pago con tarjeta aún no está disponible. Escríbenos por WhatsApp para activar tu plan.
         </p>
       </template>
       <p v-else class="text-sm text-gray-500">Tu cuenta no tiene un plan asignado.</p>
     </component-card>
+
+    <referral-card v-if="sub" class="mt-6" />
   </admin-layout>
 </template>
 
@@ -78,6 +155,7 @@ import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import ReferralCard from '@/components/billing/ReferralCard.vue'
 import { extractApiError } from '@/services/api'
 import { planInfo, shownPrice } from '@/lib/plans'
 import { useAuthStore } from '@/stores/auth'
@@ -89,6 +167,7 @@ import {
   startCheckout,
   type BillingStatus,
 } from '@/services/billing'
+import { cancelSubscription, resumeSubscription } from '@/services/compliance'
 
 const route = useRoute()
 const router = useRouter()
@@ -99,6 +178,7 @@ const busy = ref(false)
 const error = ref<string | null>(null)
 const status = ref<BillingStatus | null>(null)
 const notice = ref<{ kind: 'ok' | 'info'; text: string } | null>(null)
+const confirmingCancel = ref(false)
 
 const sub = computed(() => status.value?.subscription ?? null)
 const stripeConfigured = computed(() => Boolean(status.value?.stripeConfigured))
@@ -148,6 +228,28 @@ const showPay = computed(() => {
   return !s.hasPaymentMethod
 })
 
+const isLive = computed(() => sub.value?.status === 'ACTIVE' || sub.value?.status === 'TRIALING')
+/** Hay cobro recurrente vigente que se puede cancelar. */
+const canCancel = computed(
+  () => Boolean(sub.value?.hasPaymentMethod) && isLive.value && !sub.value?.cancelAtPeriodEnd,
+)
+const canResume = computed(
+  () => Boolean(sub.value?.hasPaymentMethod) && isLive.value && Boolean(sub.value?.cancelAtPeriodEnd),
+)
+
+const renewalNotice = computed(() => {
+  const s = sub.value
+  if (!s || s.cancelAtPeriodEnd) return ''
+  const amount = price.value ? `${formatMxn(price.value)} (IVA incluido)` : 'el precio de tu plan'
+  if (s.hasPaymentMethod && s.status === 'TRIALING')
+    return `El ${formatDate(s.trialEndsAt)} se hará el primer cobro de ${amount} y después el plan se renueva solo cada mes, hasta que canceles. Te avisamos por correo antes de cada cobro y puedes cancelar aquí mismo cuando quieras.`
+  if (s.hasPaymentMethod && s.status === 'ACTIVE')
+    return `Tu plan se renueva solo cada mes por ${amount}; el próximo cobro es el ${formatDate(s.currentPeriodEndsAt)}. Te avisamos por correo antes de cada cobro y puedes cancelar aquí mismo cuando quieras.`
+  if (showPay.value)
+    return `Al registrar tu tarjeta, el plan se cobra cada mes de forma automática (${amount}) hasta que canceles. Te avisamos por correo antes de cada cobro y puedes cancelar aquí mismo, en dos clics.`
+  return ''
+})
+
 const payLabel = computed(() =>
   sub.value?.status === 'TRIALING' ? 'Agregar tarjeta' : 'Pagar y reactivar mi cuenta',
 )
@@ -188,6 +290,40 @@ async function pay() {
     window.location.href = await startCheckout('/suscripcion')
   } catch (e) {
     error.value = extractApiError(e, 'No se pudo abrir el pago. Intenta de nuevo.')
+    busy.value = false
+  }
+}
+
+async function cancel() {
+  error.value = null
+  busy.value = true
+  try {
+    await cancelSubscription()
+    await load()
+    await auth.fetchMe()
+    confirmingCancel.value = false
+    notice.value = {
+      kind: 'ok',
+      text: 'Listo: cancelaste la renovación. No se te volverá a cobrar y te enviamos la confirmación por correo.',
+    }
+  } catch (e) {
+    error.value = extractApiError(e, 'No se pudo cancelar. Intenta de nuevo o escríbenos.')
+  } finally {
+    busy.value = false
+  }
+}
+
+async function resume() {
+  error.value = null
+  busy.value = true
+  try {
+    await resumeSubscription()
+    await load()
+    await auth.fetchMe()
+    notice.value = { kind: 'ok', text: 'Tu suscripción quedó reanudada.' }
+  } catch (e) {
+    error.value = extractApiError(e, 'No se pudo reanudar la suscripción.')
+  } finally {
     busy.value = false
   }
 }

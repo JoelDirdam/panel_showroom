@@ -90,5 +90,5 @@ export function shownPrice(plan: PlanInfo | undefined, payable: boolean): number
   return plan.priceOnlyIfPayable && !payable ? undefined : plan.priceMxn
 }
 
-export const TRIAL_BASE_DAYS = 15
-export const PROMO_EXTRA_DAYS_CODE = 'COSDI30'
+/** La prueba gratis ya no es automática: la da un código (p. ej. PRUEBA15). */
+export const TRIAL_CODE_EXAMPLE = 'PRUEBA15'
