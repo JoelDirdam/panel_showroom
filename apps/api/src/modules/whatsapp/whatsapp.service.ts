@@ -158,6 +158,8 @@ export interface TemplateMessageInput {
   bodyParams: ReadonlyArray<string>
   /** Payload de cada botón de respuesta rápida de la plantilla, en orden (índice 0, 1, ...). */
   quickReplyPayloads?: ReadonlyArray<string>
+  /** Parámetro de cada botón tipo URL (las plantillas de autenticación lo usan para el código). */
+  urlButtonParams?: ReadonlyArray<string>
 }
 
 /**
@@ -190,6 +192,12 @@ export async function sendTemplateMessage(
           sub_type: 'quick_reply',
           index: String(index),
           parameters: [{ type: 'payload', payload }],
+        })),
+        ...(input.urlButtonParams ?? []).map((text, index) => ({
+          type: 'button',
+          sub_type: 'url',
+          index: String(index),
+          parameters: [{ type: 'text', text }],
         })),
       ],
     },

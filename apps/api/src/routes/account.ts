@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { superAdminTwoFactorRequired } from '../lib/environment.js'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
@@ -54,7 +55,7 @@ router.get('/security', async (req, res) => {
     return res.json({
       twoFactorEnabled: Boolean(user.totpEnabledAt),
       twoFactorEnabledAt: user.totpEnabledAt,
-      twoFactorRequired: user.role === 'SUPER_ADMIN',
+      twoFactorRequired: user.role === 'SUPER_ADMIN' && superAdminTwoFactorRequired(),
       recoveryCodesLeft: user.totpEnabledAt ? user.totpRecoveryCodes.length : 0,
     })
   } catch (e) {

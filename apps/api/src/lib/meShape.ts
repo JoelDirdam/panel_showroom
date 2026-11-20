@@ -1,6 +1,7 @@
 import { prisma } from './prisma.js'
 import { getEntitlements, getFeatureFlags } from './entitlements.js'
 import { assertSubscriptionActive } from './subscription.js'
+import { superAdminTwoFactorRequired } from './environment.js'
 
 /**
  * Shape compartido usado por `GET /me`, `/register` y las respuestas de
@@ -19,8 +20,8 @@ export async function buildMeResponse(userId: string) {
 
   const security = {
     twoFactorEnabled: Boolean(user.totpEnabledAt),
-    // El SUPER_ADMIN no puede usar el panel de plataforma sin 2FA.
-    twoFactorRequired: user.role === 'SUPER_ADMIN',
+    // El SUPER_ADMIN no puede usar el panel de plataforma sin 2FA (en dev no se exige).
+    twoFactorRequired: user.role === 'SUPER_ADMIN' && superAdminTwoFactorRequired(),
     marketingOptIn: user.marketingOptIn,
   }
 
@@ -95,7 +96,8 @@ export async function buildMeResponse(userId: string) {
     brand: user.brand ?? null,
     terms: {
       currentVersion: currentTerms?.version ?? null,
-      accepted: Boolean(acceptance),
+      // Las cuentas de prueba internas no necesitan aceptar los términos.
+      accepted: Boolean(acceptance) || tenant.isTest,
       acceptedVersion: acceptance?.version ?? null,
       acceptedAt: acceptance?.acceptedAt ?? null,
     },

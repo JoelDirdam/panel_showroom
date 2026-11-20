@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import type { Prisma, Role } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
+import { superAdminTwoFactorRequired } from '../lib/environment.js'
 
 export interface AuthUser {
   id: string
@@ -11,6 +12,14 @@ export interface AuthUser {
   /** Vacío (`''`) solo para SUPER_ADMIN; rutas de tenant usan `requireTenantId`. */
   tenantId: string
   brandId: string | null
+  /** Emisión del JWT (segundos). Sirve para invalidar sesiones al cambiar la contraseña. */
+  iat?: number
+}
+
+/** true si la sesión se emitió antes del último cambio de contraseña (ya no vale). */
+export function sessionRevoked(user: AuthUser, passwordChangedAt: Date | null | undefined): boolean {
+  if (!passwordChangedAt || typeof user.iat !== 'number') return false
+  return user.iat < Math.floor(passwordChangedAt.getTime() / 1000)
 }
 
 declare global {
@@ -66,7 +75,7 @@ export function serverSecret(): string {
  * Tokens de un solo propósito (reto de 2FA, baja de correos). Llevan `purpose`
  * y por eso NUNCA sirven como sesión: `verifyToken` los rechaza.
  */
-export type TokenPurpose = '2fa-login' | 'unsubscribe'
+export type TokenPurpose = '2fa-login' | 'unsubscribe' | 'password-reset'
 
 export function signPurposeToken(
   purpose: TokenPurpose,
@@ -195,6 +204,13 @@ export async function requireTerms(req: Request, res: Response, next: NextFuncti
   const current = await prisma.termsDocument.findFirst({ orderBy: { publishedAt: 'desc' } })
   if (!current) return next()
 
+  // Cuentas de prueba internas (Tenant.isTest): las usa el propio equipo de COSDI,
+  // que es quien redacta los términos; no se les pide aceptarlos.
+  if (user.tenantId) {
+    const tenant = await prisma.tenant.findUnique({ where: { id: user.tenantId }, select: { isTest: true } })
+    if (tenant?.isTest) return next()
+  }
+
   const accepted = await prisma.termsAcceptance.findUnique({
     where: { userId_version: { userId: user.id, version: current.version } },
   })
@@ -228,11 +244,12 @@ export async function requireOnboarding(req: Request, res: Response, next: NextF
     select: {
       onboardingStep: true,
       deletedAt: true,
+      passwordChangedAt: true,
       tenant: { select: { id: true, onboardingComplete: true, active: true, suspendedReason: true } },
     },
   })
   // Cuenta eliminada: su token deja de servir aunque no haya expirado.
-  if (!dbUser || dbUser.deletedAt) {
+  if (!dbUser || dbUser.deletedAt || sessionRevoked(user, dbUser.passwordChangedAt)) {
     return res.status(401).json({ error: 'No autorizado' })
   }
 
@@ -278,12 +295,16 @@ export async function requireSuperAdminTwoFactor(req: Request, res: Response, ne
   if (!req.user) return res.status(401).json({ error: 'No autorizado' })
   const dbUser = await prisma.user.findUnique({
     where: { id: req.user.id },
-    select: { role: true, totpEnabledAt: true, deletedAt: true },
+    select: { role: true, totpEnabledAt: true, deletedAt: true, passwordChangedAt: true },
   })
+  if (sessionRevoked(req.user, dbUser?.passwordChangedAt)) {
+    return res.status(401).json({ error: 'No autorizado' })
+  }
   if (!dbUser || dbUser.deletedAt || dbUser.role !== 'SUPER_ADMIN') {
     return res.status(403).json({ error: 'Acceso denegado' })
   }
-  if (!dbUser.totpEnabledAt) {
+  // En dev (Railway "dev") no se exige; en producción siempre.
+  if (!dbUser.totpEnabledAt && superAdminTwoFactorRequired()) {
     return res.status(403).json({
       error: 'Activa la verificación en dos pasos para usar el panel de plataforma',
       code: 'TWO_FACTOR_SETUP_REQUIRED',

@@ -4,7 +4,16 @@ import { z } from 'zod'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { createHash } from 'node:crypto'
-import { authenticate, signPurposeToken, signToken, verifyPurposeToken } from '../middleware/auth.js'
+import {
+  authenticate,
+  sessionRevoked,
+  signPurposeToken,
+  signToken,
+  verifyPurposeToken,
+} from '../middleware/auth.js'
+import { superAdminTwoFactorRequired } from '../lib/environment.js'
+import { sendPasswordChangedNotice, sendPasswordResetCode } from '../lib/email.js'
+import { RESET_MAX_PER_HOUR, passwordProblem, sameHash, sendResetCodeByWhatsapp } from '../lib/passwordReset.js'
 import { clientIp, clientUserAgent } from '../lib/clientIp.js'
 import { verifySecondFactor } from '../lib/twoFactor.js'
 import { audit } from '../lib/audit.js'
@@ -113,7 +122,9 @@ router.post('/login', authRateLimit, async (req, res) => {
 
   // Con 2FA activo la contraseña sola no abre sesión: se entrega un reto de
   // 5 minutos que solo sirve para /login/2fa.
-  if (user.totpEnabledAt && user.totpSecret) {
+  // En dev el SUPER_ADMIN entra sin el segundo paso (en producción siempre se pide).
+  const skipSecondFactor = user.role === 'SUPER_ADMIN' && !superAdminTwoFactorRequired()
+  if (user.totpEnabledAt && user.totpSecret && !skipSecondFactor) {
     return res.json({
       twoFactorRequired: true,
       challengeToken: signPurposeToken('2fa-login', { uid: user.id }, '5m'),
@@ -127,6 +138,13 @@ router.post('/login', authRateLimit, async (req, res) => {
     role: user.role,
     tenantId: user.tenantId ?? '',
     brandId: user.brandId,
+  }
+
+  if (user.role === 'SUPER_ADMIN') {
+    req.user = { ...authUser, tenantId: '' }
+    await audit(req, 'auth.login', { type: 'account', id: user.id, label: user.email }, {
+      secondFactorSkipped: skipSecondFactor,
+    })
   }
 
   const me = await buildMeResponse(user.id)
@@ -561,6 +579,14 @@ router.post('/resend-phone-code', authenticate, async (req, res) => {
 })
 
 router.get('/me', authenticate, async (req, res) => {
+  const account = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { passwordChangedAt: true },
+  })
+  // La contraseña cambió después de abrir esta sesión: hay que volver a entrar.
+  if (account && sessionRevoked(req.user!, account.passwordChangedAt)) {
+    return res.status(401).json({ error: 'Tu contraseña cambió. Vuelve a iniciar sesión.' })
+  }
   const me = await buildMeResponse(req.user!.id)
   if (!me) {
     // Cuenta eliminada o inexistente: el token ya no es válido.
@@ -658,6 +684,178 @@ router.post('/change-password', authenticate, async (req, res) => {
     data: { password: hash, mustChangePassword: false },
   })
 
+  return res.json({ ok: true })
+})
+
+// --- Recuperar contraseña ------------------------------------------------------
+
+/** Por IP: limita el envío de códigos (evita usar el formulario para mandar spam). */
+const forgotRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyPrefix: 'pwd-forgot' })
+/** Por IP: limita los intentos de adivinar el código. */
+const resetRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, keyPrefix: 'pwd-reset' })
+
+const forgotSchema = z.object({
+  email: z.string().trim().email(),
+  channel: z.enum(['EMAIL', 'WHATSAPP']).default('EMAIL'),
+})
+
+const resetVerifySchema = z.object({
+  email: z.string().trim().email(),
+  code: z.string().regex(/^\d{6}$/, 'El código debe tener 6 dígitos'),
+})
+
+const resetSchema = z.object({
+  resetToken: z.string().min(10).max(2000),
+  newPassword: z.string().min(1).max(200),
+})
+
+/** Misma respuesta exista o no la cuenta: no revela qué correos están registrados. */
+const FORGOT_RESPONSE = {
+  ok: true,
+  message:
+    'Si hay una cuenta con ese correo, te enviamos un código. Revisa tu bandeja de entrada, spam o WhatsApp.',
+}
+
+const CODE_INVALID = 'El código es incorrecto o ya venció. Revísalo o pide uno nuevo.'
+
+async function deliverResetCode(
+  user: { email: string; name: string; phone: string | null; phoneVerifiedAt: Date | null },
+  code: string,
+  channel: 'EMAIL' | 'WHATSAPP',
+): Promise<void> {
+  // WhatsApp solo al número que el titular ya verificó; si no se puede, va por correo.
+  if (channel === 'WHATSAPP' && user.phone && user.phoneVerifiedAt) {
+    if (await sendResetCodeByWhatsapp(user.phone, code)) return
+  }
+  await sendPasswordResetCode({ to: user.email, name: user.name, code })
+}
+
+router.post('/password/forgot', forgotRateLimit, async (req, res) => {
+  const parsed = forgotSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'Escribe un correo válido' })
+  const email = parsed.data.email.toLowerCase()
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true, name: true, phone: true, phoneVerifiedAt: true, deletedAt: true },
+  })
+  if (!user || user.deletedAt) return res.json(FORGOT_RESPONSE)
+
+  // Por cuenta: un código por minuto y máximo 5 por hora (sin revelarlo en la respuesta).
+  const recent = await prisma.passwordResetCode.findMany({
+    where: { userId: user.id, createdAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
+    orderBy: { createdAt: 'desc' },
+    select: { createdAt: true },
+  })
+  if (recent.length >= RESET_MAX_PER_HOUR || (recent[0] && msUntilResendAllowed(recent[0].createdAt) > 0)) {
+    return res.json(FORGOT_RESPONSE)
+  }
+
+  const code = generateCode()
+  await prisma.$transaction([
+    // Un código nuevo anula los anteriores.
+    prisma.passwordResetCode.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+    prisma.passwordResetCode.create({
+      data: {
+        userId: user.id,
+        codeHash: hashCode(code),
+        channel: parsed.data.channel,
+        expiresAt: codeExpiresAt(),
+        ip: clientIp(req),
+      },
+    }),
+  ])
+
+  // Se envía sin esperar: así la respuesta tarda lo mismo exista o no la cuenta.
+  void deliverResetCode(user, code, parsed.data.channel).catch((err) =>
+    console.error('[password-reset] no se pudo enviar el código:', err instanceof Error ? err.message : err),
+  )
+
+  return res.json({ ...FORGOT_RESPONSE, ...(isDev ? { devCode: code } : {}) })
+})
+
+/** Paso 2: valida el código y entrega un permiso de 10 minutos para elegir la contraseña nueva. */
+router.post('/password/verify', resetRateLimit, async (req, res) => {
+  const parsed = resetVerifySchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'Escribe el código de 6 dígitos' })
+  const email = parsed.data.email.toLowerCase()
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, deletedAt: true, passwordChangedAt: true },
+  })
+  if (!user || user.deletedAt) return res.status(400).json({ error: CODE_INVALID })
+
+  const record = await prisma.passwordResetCode.findFirst({
+    where: { userId: user.id, usedAt: null },
+    orderBy: { createdAt: 'desc' },
+  })
+  if (!record || record.expiresAt < new Date()) return res.status(400).json({ error: CODE_INVALID })
+  if (record.attempts >= MAX_ATTEMPTS) {
+    return res.status(429).json({ error: 'Demasiados intentos. Pide un código nuevo.' })
+  }
+  if (!sameHash(hashCode(parsed.data.code), record.codeHash)) {
+    await prisma.passwordResetCode.update({ where: { id: record.id }, data: { attempts: { increment: 1 } } })
+    return res.status(400).json({ error: CODE_INVALID })
+  }
+
+  return res.json({
+    ok: true,
+    resetToken: signPurposeToken(
+      'password-reset',
+      { uid: user.id, rid: record.id, pc: user.passwordChangedAt?.getTime() ?? 0 },
+      '10m',
+    ),
+  })
+})
+
+/** Paso 3: guarda la contraseña nueva, cierra las demás sesiones y avisa por correo. */
+router.post('/password/reset', resetRateLimit, async (req, res) => {
+  const parsed = resetSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: 'Datos inválidos' })
+
+  const grant = verifyPurposeToken<{ uid?: string; rid?: string; pc?: number }>(
+    'password-reset',
+    parsed.data.resetToken,
+  )
+  const expired = {
+    error: 'El permiso para cambiar la contraseña venció. Vuelve a pedir un código.',
+    code: 'RESET_EXPIRED',
+  }
+  if (!grant?.uid || !grant.rid) return res.status(400).json(expired)
+
+  const user = await prisma.user.findUnique({ where: { id: grant.uid } })
+  if (!user || user.deletedAt) return res.status(400).json(expired)
+  // Un solo uso: si la contraseña ya cambió desde que se emitió el permiso, no vale.
+  if ((user.passwordChangedAt?.getTime() ?? 0) !== (grant.pc ?? 0)) return res.status(400).json(expired)
+
+  const record = await prisma.passwordResetCode.findFirst({
+    where: { id: grant.rid, userId: user.id, usedAt: null },
+  })
+  if (!record) return res.status(400).json(expired)
+
+  const problem = passwordProblem(parsed.data.newPassword, user.email)
+  if (problem) return res.status(400).json({ error: problem, field: 'newPassword' })
+
+  const now = new Date()
+  const hash = await bcrypt.hash(parsed.data.newPassword, 10)
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { password: hash, passwordChangedAt: now, mustChangePassword: false },
+    }),
+    prisma.passwordResetCode.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: now } }),
+  ])
+
+  if (user.role === 'SUPER_ADMIN') {
+    req.user = { id: user.id, email: user.email, name: user.name, role: user.role, tenantId: '', brandId: null }
+    await audit(req, 'auth.password_reset', { type: 'account', id: user.id, label: user.email })
+  }
+
+  void sendPasswordChangedNotice({ to: user.email, name: user.name, when: now })
   return res.json({ ok: true })
 })
 

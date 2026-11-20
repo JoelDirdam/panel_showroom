@@ -325,3 +325,36 @@ export async function sendMarketingEmail(
   })
   return ok ? 'sent' : 'failed'
 }
+
+/** Código para recuperar la contraseña (transaccional: lo pidió el titular). */
+export async function sendPasswordResetCode(params: { to: string; name: string; code: string }): Promise<boolean> {
+  return sendEmail({
+    to: params.to,
+    subject: `${params.code} es tu código para recuperar tu contraseña de COSDI`,
+    html: layout(
+      `<p>Hola ${escapeHtml(params.name)},</p>
+<p>Recibimos una solicitud para cambiar la contraseña de tu cuenta de COSDI. Escribe este código en la pantalla de recuperación:</p>
+<p style="font-size:30px;font-weight:700;letter-spacing:6px;margin:18px 0">${escapeHtml(params.code)}</p>
+<p>Vence en 15 minutos y solo sirve una vez. Nadie de COSDI te lo va a pedir: no lo compartas.</p>
+<p>Si no fuiste tú, ignora este correo. Tu contraseña no cambia mientras nadie use el código.</p>`,
+    ),
+  })
+}
+
+/** Aviso de seguridad después de cambiar la contraseña. */
+export async function sendPasswordChangedNotice(params: { to: string; name: string; when: Date }): Promise<boolean> {
+  const when = new Intl.DateTimeFormat('es-MX', {
+    timeZone: 'America/Mexico_City',
+    dateStyle: 'long',
+    timeStyle: 'short',
+  }).format(params.when)
+  return sendEmail({
+    to: params.to,
+    subject: 'Tu contraseña de COSDI cambió',
+    html: layout(
+      `<p>Hola ${escapeHtml(params.name)},</p>
+<p>La contraseña de tu cuenta de COSDI se cambió el ${escapeHtml(when)} (hora del centro de México). Por seguridad cerramos las sesiones abiertas en otros dispositivos.</p>
+<p>Si no fuiste tú, escríbenos de inmediato a contacto@cosdi.mx.</p>`,
+    ),
+  })
+}
