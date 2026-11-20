@@ -23,6 +23,9 @@ export interface BusinessHourItem {
   openTime: string
   closeTime: string
   isClosed: boolean
+  /** Descanso opcional (ej. comida): el día queda en dos bloques. */
+  breakStart?: string | null
+  breakEnd?: string | null
 }
 
 export interface AppointmentItem {
@@ -79,11 +82,13 @@ export async function getBusinessHours(): Promise<BusinessHourItem[]> {
   return data
 }
 export async function saveBusinessHours(days: BusinessHourItem[]): Promise<BusinessHourItem[]> {
-  const body = days.map(({ dayOfWeek, openTime, closeTime, isClosed }) => ({
+  const body = days.map(({ dayOfWeek, openTime, closeTime, isClosed, breakStart, breakEnd }) => ({
     dayOfWeek,
     openTime,
     closeTime,
     isClosed,
+    breakStart: breakStart || null,
+    breakEnd: breakStart && breakEnd ? breakEnd : null,
   }))
   const { data } = await api.put<BusinessHourItem[]>('/v1/business-hours', body)
   return data
