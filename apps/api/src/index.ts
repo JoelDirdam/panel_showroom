@@ -30,6 +30,8 @@ import { sendError } from './lib/httpError.js'
 import rentPaymentsRoutes from './routes/rentPayments.js'
 import chatRoutes from './routes/chat.js'
 import publicRoutes from './routes/public.js'
+import bookingSettingsRoutes from './routes/bookingSettings.js'
+import { businessTestimonials, platformTestimonials } from './routes/testimonials.js'
 import accountRoutes from './routes/account.js'
 import siteRoutes from './routes/site.js'
 import { startComplianceScheduler } from './services/compliance.service.js'
@@ -132,7 +134,10 @@ app.use('/api/layaways', layawaysRoutes)
 app.use('/api/preferences', preferencesRoutes)
 app.use('/api/categories', categoriesRoutes)
 app.use('/api/employees', employeesRoutes)
+app.use('/api/platform/testimonials', platformTestimonials)
 app.use('/api/platform', platformRoutes)
+app.use('/api/testimonials', businessTestimonials)
+app.use('/api/v1/booking-settings', bookingSettingsRoutes)
 app.use('/api/v1/services', servicesRoutes)
 app.use('/api/v1/business-hours', businessHoursRoutes)
 app.use('/api/v1/appointments', appointmentsRoutes)

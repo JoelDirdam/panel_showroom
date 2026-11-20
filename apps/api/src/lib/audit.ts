@@ -8,7 +8,7 @@ import { clientIp } from './clientIp.js'
  * la entrada, la acción principal no se revierte (se reporta en los logs).
  */
 export interface AuditTarget {
-  type: 'tenant' | 'user' | 'promo' | 'settings' | 'copyright_claim' | 'terms' | 'account'
+  type: 'tenant' | 'user' | 'promo' | 'settings' | 'copyright_claim' | 'terms' | 'account' | 'testimonial'
   id?: string | null
   label?: string | null
 }

@@ -7,6 +7,7 @@ import { clientIp, clientUserAgent } from '../lib/clientIp.js'
 import { verifyPurposeToken } from '../middleware/auth.js'
 import { getPublicTrackers } from '../lib/platformSettings.js'
 import { sendCopyrightClaimAlert, sendCopyrightClaimReceipt } from '../lib/email.js'
+import { approvedTestimonials } from './testimonials.js'
 
 /**
  * Rutas públicas del sitio de COSDI (sin sesión): configuración de rastreadores,
@@ -19,6 +20,16 @@ router.get('/config', async (_req, res) => {
   try {
     res.setHeader('Cache-Control', 'public, max-age=300')
     return res.json({ trackers: await getPublicTrackers() })
+  } catch (e) {
+    return sendError(res, e)
+  }
+})
+
+/** Testimonios aprobados por la plataforma, para la landing. */
+router.get('/testimonials', async (_req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'public, max-age=300')
+    return res.json({ testimonials: await approvedTestimonials() })
   } catch (e) {
     return sendError(res, e)
   }
