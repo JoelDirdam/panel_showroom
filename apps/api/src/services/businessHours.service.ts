@@ -42,6 +42,9 @@ export async function replaceBusinessHours(tenantId: string, days: BusinessHourI
           openTime: day.openTime,
           closeTime: day.closeTime,
           isClosed: day.isClosed,
+          // Sin descanso si no se envía (clientes anteriores) o si viene vacío.
+          breakStart: day.breakStart || null,
+          breakEnd: day.breakStart && day.breakEnd ? day.breakEnd : null,
         },
       }),
     ),

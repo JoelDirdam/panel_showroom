@@ -16,6 +16,8 @@ export interface BusinessHourSummary {
   openTime: string
   closeTime: string
   isClosed: boolean
+  breakStart?: string | null
+  breakEnd?: string | null
 }
 
 export interface AiRuntimeContext {

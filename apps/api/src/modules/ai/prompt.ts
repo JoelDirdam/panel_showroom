@@ -8,6 +8,9 @@ function formatHours(hours: AiRuntimeContext['businessHours']): string {
     .map((h) => {
       const name = DAY_NAMES[h.dayOfWeek] ?? `Día ${h.dayOfWeek}`
       if (h.isClosed) return `- ${name}: cerrado`
+      if (h.breakStart && h.breakEnd) {
+        return `- ${name}: ${h.openTime}–${h.breakStart} y ${h.breakEnd}–${h.closeTime}`
+      }
       return `- ${name}: ${h.openTime}–${h.closeTime}`
     })
     .join('\n')

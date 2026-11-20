@@ -671,6 +671,9 @@ model BusinessHour {
   openTime  String
   closeTime String
   isClosed  Boolean  @default(false)
+  /// Descanso opcional (ej. comida): divide el día en dos bloques. Ambos o ninguno.
+  breakStart String?
+  breakEnd   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

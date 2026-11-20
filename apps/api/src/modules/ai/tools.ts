@@ -156,6 +156,8 @@ async function checkAvailability(ctx: AiRuntimeContext, args: Record<string, unk
   const blocks = findFreeBlocks({
     openTime: dayHours.openTime,
     closeTime: dayHours.closeTime,
+    breakStart: dayHours.breakStart,
+    breakEnd: dayHours.breakEnd,
     durationMinutes,
     appointments: atSucursal,
     year: parsedDate.year,
@@ -171,6 +173,8 @@ async function checkAvailability(ctx: AiRuntimeContext, args: Record<string, unk
     durationMinutes,
     openTime: dayHours.openTime,
     closeTime: dayHours.closeTime,
+    breakStart: dayHours.breakStart,
+    breakEnd: dayHours.breakEnd,
     blocks,
   }
 }

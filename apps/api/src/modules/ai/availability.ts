@@ -65,6 +65,9 @@ export function dayBoundsUtc(
 export function findFreeBlocks(params: {
   openTime: string
   closeTime: string
+  /** Descanso del día (ej. comida): se trata como tiempo ocupado. */
+  breakStart?: string | null
+  breakEnd?: string | null
   durationMinutes: number
   appointments: OccupiedRange[]
   year: number
@@ -84,6 +87,13 @@ export function findFreeBlocks(params: {
     const startMin = Math.round((appt.startTime.getTime() - dayStart.getTime()) / 60000)
     const endMin = Math.round((appt.endTime.getTime() - dayStart.getTime()) / 60000)
     const clipped = clipToDay(startMin, endMin, openMin, closeMin)
+    if (clipped.end > clipped.start) occupied.push(clipped)
+  }
+
+  const breakStartMin = params.breakStart ? toMinutes(params.breakStart) : null
+  const breakEndMin = params.breakEnd ? toMinutes(params.breakEnd) : null
+  if (breakStartMin !== null && breakEndMin !== null && breakEndMin > breakStartMin) {
+    const clipped = clipToDay(breakStartMin, breakEndMin, openMin, closeMin)
     if (clipped.end > clipped.start) occupied.push(clipped)
   }
 

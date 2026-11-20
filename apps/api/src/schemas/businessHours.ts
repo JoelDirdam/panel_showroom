@@ -7,10 +7,19 @@ const businessHourFields = z.object({
   openTime: hhmmSchema,
   closeTime: hhmmSchema,
   isClosed: z.boolean(),
+  /** Descanso opcional (ej. comida). Ambos o ninguno; null lo quita. */
+  breakStart: hhmmSchema.nullable().optional(),
+  breakEnd: hhmmSchema.nullable().optional(),
 })
 
 function refineHours(
-  val: { isClosed: boolean; openTime: string; closeTime: string },
+  val: {
+    isClosed: boolean
+    openTime: string
+    closeTime: string
+    breakStart?: string | null
+    breakEnd?: string | null
+  },
   ctx: z.RefinementCtx,
 ) {
   if (!val.isClosed && val.closeTime <= val.openTime) {
@@ -19,6 +28,23 @@ function refineHours(
       message: 'closeTime debe ser posterior a openTime',
       path: ['closeTime'],
     })
+  }
+  const hasStart = !!val.breakStart
+  const hasEnd = !!val.breakEnd
+  if (hasStart !== hasEnd) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'El descanso necesita hora de inicio y de fin',
+      path: ['breakEnd'],
+    })
+  } else if (!val.isClosed && hasStart && hasEnd) {
+    if (!(val.openTime < val.breakStart! && val.breakStart! < val.breakEnd! && val.breakEnd! < val.closeTime)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'El descanso debe quedar dentro del horario y terminar después de empezar',
+        path: ['breakStart'],
+      })
+    }
   }
 }
 

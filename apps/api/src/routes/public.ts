@@ -102,6 +102,8 @@ async function computeSlots(params: {
   const blocks = findFreeBlocks({
     openTime: day.openTime,
     closeTime: day.closeTime,
+    breakStart: day.breakStart,
+    breakEnd: day.breakEnd,
     durationMinutes: params.durationMinutes,
     appointments: busy,
     year: parsed.year,
@@ -163,6 +165,8 @@ router.get('/:slug', async (req, res) => {
         openTime: h.openTime,
         closeTime: h.closeTime,
         isClosed: h.isClosed,
+        breakStart: h.breakStart,
+        breakEnd: h.breakEnd,
       })),
       maxDaysAhead: MAX_DAYS_AHEAD,
     })

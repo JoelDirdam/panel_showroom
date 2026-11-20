@@ -107,6 +107,8 @@ export async function processCustomerMessage(
         openTime: h.openTime,
         closeTime: h.closeTime,
         isClosed: h.isClosed,
+        breakStart: h.breakStart,
+        breakEnd: h.breakEnd,
       })),
       timezone,
       extraBusinessPrompt: waConfig?.systemPrompt ?? '',
