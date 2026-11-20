@@ -1,12 +1,13 @@
 <template>
-  <admin-layout>
-    <page-breadcrumb page-title="Dashboard" />
+  <CitasDashboard v-if="isCitasPlan" />
+  <admin-layout v-else>
+    <page-breadcrumb page-title="Resumen" />
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Overview</h2>
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Cómo va tu negocio</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Ingresos, ventas, inventario y actividad reciente del showroom.
+          Ingresos, ventas, inventario y actividad reciente de tu negocio.
         </p>
       </div>
       <button
@@ -427,6 +428,7 @@ import { computed, onMounted, ref } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
+import CitasDashboard from '@/components/agenda/CitasDashboard.vue'
 import {
   fetchDashboardAnalytics,
   type DashboardAnalytics,
@@ -435,6 +437,10 @@ import { useAuthStore } from '@/stores/auth'
 import { formatMoney } from '@/composables/useCajaSession'
 
 const auth = useAuthStore()
+/** Planes de citas (sin Caja): el resumen muestra citas, servicios y clientes en vez de ventas. */
+const isCitasPlan = computed(
+  () => (auth.user?.subscription?.planType ?? '').startsWith('CITAS') || (!auth.canAccess('caja') && auth.canAccess('appointments')),
+)
 const data = ref<DashboardAnalytics | null>(null)
 const loading = ref(true)
 const perfTabs = ['Ventas diarias', 'Top productos'] as const
@@ -602,5 +608,7 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  if (!isCitasPlan.value) void load()
+})
 </script>
