@@ -9,8 +9,8 @@
         <strong>un mes gratis</strong> por cada uno que pague su primer mes (hasta {{ summary.maxRewards }} meses).
       </p>
 
-      <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div class="rounded-lg border border-dashed border-brand-300 bg-brand-50/50 px-4 py-2.5 dark:border-brand-500/40 dark:bg-brand-500/5">
+      <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center xl:flex-col xl:items-stretch">
+        <div class="rounded-xl border border-dashed border-brand-300 bg-brand-50/50 px-4 py-2.5 dark:border-brand-500/40 dark:bg-brand-500/5">
           <p class="text-xs text-gray-500 dark:text-gray-400">Tu código</p>
           <p class="font-mono text-lg font-bold tracking-wide text-brand-600 dark:text-brand-400">{{ summary.code }}</p>
         </div>
@@ -19,13 +19,13 @@
             :href="whatsappShare"
             target="_blank"
             rel="noopener"
-            class="rounded-lg bg-success-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-success-600"
+            class="ui-btn ui-btn-wa"
           >
             Compartir por WhatsApp
           </a>
           <button
             type="button"
-            class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
+            class="ui-btn ui-btn-secondary"
             @click="copyLink"
           >
             {{ copied ? '¡Link copiado!' : 'Copiar link' }}
@@ -33,16 +33,16 @@
         </div>
       </div>
 
-      <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-3">
-        <div class="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
+      <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-3 xl:grid-cols-1">
+        <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
           <dt class="text-gray-500 dark:text-gray-400">Negocios registrados con tu código</dt>
           <dd class="mt-0.5 text-lg font-semibold text-gray-800 dark:text-white">{{ summary.registered }}</dd>
         </div>
-        <div class="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
+        <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
           <dt class="text-gray-500 dark:text-gray-400">Por pagar su primer mes</dt>
           <dd class="mt-0.5 text-lg font-semibold text-gray-800 dark:text-white">{{ summary.pending }}</dd>
         </div>
-        <div class="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
+        <div class="rounded-xl bg-gray-50 p-3 dark:bg-white/[0.03]">
           <dt class="text-gray-500 dark:text-gray-400">Meses gratis ganados</dt>
           <dd class="mt-0.5 text-lg font-semibold text-gray-800 dark:text-white">
             {{ summary.earned }} <span class="text-sm font-normal text-gray-500">/ {{ summary.maxRewards }}</span>

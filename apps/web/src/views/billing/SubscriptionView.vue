@@ -1,151 +1,145 @@
 <template>
   <admin-layout>
-    <page-breadcrumb page-title="Mi suscripción" />
+    <PageHeader title="Mi suscripción" description="Tu plan, tu forma de pago y cuándo se hace el siguiente cobro." />
 
     <div
       v-if="notice"
       :class="[
-        'mb-4 rounded-xl border p-4 text-sm',
+        'mb-6 flex items-start gap-3 rounded-2xl border p-4 text-sm',
         notice.kind === 'ok'
-          ? 'border-success-200 bg-success-50 text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400'
-          : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300',
+          ? 'border-success-200 bg-success-50 text-success-800 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400'
+          : 'border-gray-200 bg-white text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300',
       ]"
+      role="status"
     >
+      <CheckCircle2 v-if="notice.kind === 'ok'" class="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+      <Info v-else class="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
       {{ notice.text }}
     </div>
 
-    <component-card title="Tu plan">
-      <p v-if="loading" class="text-sm text-gray-500">Cargando…</p>
-      <template v-else-if="sub">
-        <div class="flex flex-wrap items-start justify-between gap-3">
-          <div class="min-w-0">
-            <p class="text-lg font-semibold text-gray-800 dark:text-white">Plan {{ plan?.name ?? sub.planType }}</p>
-            <p v-if="price" class="text-sm text-gray-500 dark:text-gray-400">
-              {{ formatMxn(price) }} al mes, IVA incluido
+    <div class="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] xl:items-start">
+      <section class="ui-card overflow-hidden" aria-labelledby="plan-title">
+        <div v-if="loading" class="space-y-3 p-6" aria-busy="true">
+          <div class="h-8 w-48 animate-pulse rounded-lg bg-gray-100 dark:bg-white/5" />
+          <div class="h-20 animate-pulse rounded-xl bg-gray-100 dark:bg-white/5" />
+        </div>
+
+        <template v-else-if="sub">
+          <!-- Encabezado del plan -->
+          <div class="border-b border-gray-100 bg-brand-50/60 px-5 py-6 dark:border-gray-800 dark:bg-brand-500/10 sm:px-6">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-brand-600 dark:text-brand-300">Tu plan</p>
+                <h2 id="plan-title" class="mt-0.5 text-2xl font-semibold text-gray-900 dark:text-white">
+                  Plan {{ plan?.name ?? sub.planType }}
+                </h2>
+                <p v-if="price" class="mt-1 text-[15px] text-gray-600 dark:text-gray-300">
+                  <span class="font-display text-xl font-semibold text-gray-900 dark:text-white">{{ formatMxn(price) }}</span>
+                  al mes, IVA incluido
+                </p>
+              </div>
+              <Badge :color="badge.color">{{ badge.label }}</Badge>
+            </div>
+          </div>
+
+          <div class="p-5 sm:p-6">
+            <dl class="grid gap-3 sm:grid-cols-2">
+              <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+                <dt class="flex items-center gap-2 text-[13px] text-gray-500">
+                  <CalendarClock class="h-4 w-4" aria-hidden="true" />
+                  {{ dateLabel }}
+                </dt>
+                <dd class="mt-1 font-semibold text-gray-900 dark:text-white">{{ dateValue }}</dd>
+              </div>
+              <div class="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+                <dt class="flex items-center gap-2 text-[13px] text-gray-500">
+                  <CreditCard class="h-4 w-4" aria-hidden="true" />
+                  Forma de pago
+                </dt>
+                <dd class="mt-1 font-semibold text-gray-900 dark:text-white">
+                  {{ sub.hasPaymentMethod ? 'Tarjeta registrada' : 'Sin tarjeta registrada' }}
+                </dd>
+              </div>
+            </dl>
+
+            <p class="mt-5 text-[15px] text-gray-700 dark:text-gray-300">{{ explanation }}</p>
+            <p
+              v-if="status?.discountLabel"
+              class="mt-3 flex items-start gap-2 rounded-xl border border-success-200 bg-success-50 p-3 text-sm text-success-800 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400"
+            >
+              <BadgePercent class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <span>{{ status.discountLabel }}. Se aplica al registrar tu tarjeta.</span>
+            </p>
+
+            <!-- Aviso de renovación automática: visible antes de pagar y mientras el plan esté activo. -->
+            <p
+              v-if="renewalNotice"
+              class="mt-3 rounded-xl bg-gray-50 p-4 text-sm leading-relaxed text-gray-700 dark:bg-white/[0.03] dark:text-gray-300"
+            >
+              <strong class="text-gray-900 dark:text-white">Renovación automática.</strong>
+              {{ renewalNotice }}
+              <router-link to="/reembolsos" class="font-medium text-brand-600 underline">Política de reembolsos</router-link>.
+            </p>
+
+            <p v-if="error" role="alert" class="ui-error mt-3">{{ error }}</p>
+
+            <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <UiButton v-if="showPay" :loading="busy" loading-text="Abriendo…" @click="pay">
+                <template #icon><CreditCard class="h-4 w-4" aria-hidden="true" /></template>
+                {{ payLabel }}
+              </UiButton>
+              <UiButton v-if="sub.hasPaymentMethod" variant="secondary" :disabled="busy" @click="portal">
+                Cambiar tarjeta o ver recibos
+              </UiButton>
+              <UiButton v-if="canResume" :disabled="busy" @click="resume">Reanudar mi suscripción</UiButton>
+              <!-- Cancelar: mismo lugar y mismo esfuerzo que suscribirse (un botón + confirmar). -->
+              <UiButton v-if="canCancel && !confirmingCancel" variant="danger" :disabled="busy" @click="confirmingCancel = true">
+                Cancelar suscripción
+              </UiButton>
+            </div>
+
+            <div
+              v-if="confirmingCancel"
+              role="alertdialog"
+              aria-labelledby="cancel-title"
+              aria-describedby="cancel-text"
+              class="mt-4 rounded-xl border border-error-200 bg-error-50/50 p-4 dark:border-error-500/30 dark:bg-error-500/5"
+            >
+              <p id="cancel-title" class="text-[15px] font-semibold text-gray-900 dark:text-white">
+                ¿Cancelar la renovación de tu plan?
+              </p>
+              <p id="cancel-text" class="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                No se te volverá a cobrar. Conservas el acceso hasta el <strong>{{ dateValue }}</strong> y puedes reanudar
+                antes de esa fecha. Tus datos no se borran.
+              </p>
+              <div class="mt-3 flex flex-col gap-2 sm:flex-row">
+                <UiButton variant="destructive" :loading="busy" loading-text="Cancelando…" @click="cancel">Sí, cancelar</UiButton>
+                <UiButton variant="secondary" :disabled="busy" @click="confirmingCancel = false">No, conservar mi plan</UiButton>
+              </div>
+            </div>
+
+            <p v-if="sub.status === 'TRIALING' && !sub.hasPaymentMethod" class="ui-help mt-4">
+              Estás en prueba sin tarjeta: no hay nada que cancelar y no se te cobrará nada. Si no agregas una tarjeta, la
+              cuenta simplemente se pausa al terminar la prueba.
+            </p>
+            <p v-if="showPay && !stripeConfigured" class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+              El pago con tarjeta aún no está disponible. Escríbenos por WhatsApp para activar tu plan.
             </p>
           </div>
-          <span :class="['shrink-0 rounded-full px-3 py-1 text-xs font-medium', badge.cls]">{{ badge.label }}</span>
+        </template>
+
+        <div v-else class="p-6">
+          <UiEmptyState
+            :title="error ? 'No se pudo cargar tu suscripción' : 'Tu cuenta no tiene un plan asignado'"
+            :description="error ?? 'Escríbenos por WhatsApp y te ayudamos a activarlo.'"
+          >
+            <template #icon><CreditCard class="h-5 w-5" /></template>
+          </UiEmptyState>
         </div>
+      </section>
 
-        <dl class="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-          <div class="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
-            <dt class="text-gray-500 dark:text-gray-400">{{ dateLabel }}</dt>
-            <dd class="mt-0.5 font-medium text-gray-800 dark:text-white">{{ dateValue }}</dd>
-          </div>
-          <div class="rounded-lg bg-gray-50 p-3 dark:bg-white/[0.03]">
-            <dt class="text-gray-500 dark:text-gray-400">Forma de pago</dt>
-            <dd class="mt-0.5 font-medium text-gray-800 dark:text-white">
-              {{ sub.hasPaymentMethod ? 'Tarjeta registrada' : 'Sin tarjeta registrada' }}
-            </dd>
-          </div>
-        </dl>
-
-        <p class="mt-4 text-sm text-gray-600 dark:text-gray-300">{{ explanation }}</p>
-        <p
-          v-if="status?.discountLabel"
-          class="mt-3 rounded-lg border border-success-200 bg-success-50 p-3 text-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400"
-        >
-          {{ status.discountLabel }}. Se aplica al registrar tu tarjeta.
-        </p>
-
-        <!-- Aviso de renovación automática: visible antes de pagar y mientras el plan esté activo. -->
-        <p
-          v-if="renewalNotice"
-          class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-300"
-        >
-          <strong class="text-gray-800 dark:text-white">Renovación automática.</strong>
-          {{ renewalNotice }}
-          <router-link to="/reembolsos" class="text-brand-500 underline">Política de reembolsos</router-link>.
-        </p>
-
-        <p v-if="error" role="alert" class="mt-3 text-sm text-error-500">{{ error }}</p>
-
-        <div class="mt-5 flex flex-col gap-2 sm:flex-row">
-          <button
-            v-if="showPay"
-            type="button"
-            class="rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-            :disabled="busy"
-            @click="pay"
-          >
-            {{ busy ? 'Abriendo…' : payLabel }}
-          </button>
-          <button
-            v-if="sub.hasPaymentMethod"
-            type="button"
-            class="rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
-            :disabled="busy"
-            @click="portal"
-          >
-            Cambiar tarjeta o ver recibos
-          </button>
-          <button
-            v-if="canResume"
-            type="button"
-            class="rounded-lg bg-brand-500 px-4 py-3 text-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-            :disabled="busy"
-            @click="resume"
-          >
-            Reanudar mi suscripción
-          </button>
-          <!-- Cancelar: mismo lugar y mismo esfuerzo que suscribirse (un botón + confirmar). -->
-          <button
-            v-if="canCancel && !confirmingCancel"
-            type="button"
-            class="rounded-lg border border-error-300 px-4 py-3 text-sm font-medium text-error-600 hover:bg-error-50 disabled:opacity-50 dark:border-error-500/40 dark:text-error-400 dark:hover:bg-error-500/10"
-            :disabled="busy"
-            @click="confirmingCancel = true"
-          >
-            Cancelar suscripción
-          </button>
-        </div>
-
-        <div
-          v-if="confirmingCancel"
-          role="alertdialog"
-          aria-labelledby="cancel-title"
-          aria-describedby="cancel-text"
-          class="mt-4 rounded-xl border border-error-200 p-4 dark:border-error-500/30"
-        >
-          <p id="cancel-title" class="text-sm font-semibold text-gray-800 dark:text-white">
-            ¿Cancelar la renovación de tu plan?
-          </p>
-          <p id="cancel-text" class="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            No se te volverá a cobrar. Conservas el acceso hasta el <strong>{{ dateValue }}</strong> y puedes reanudar
-            antes de esa fecha. Tus datos no se borran.
-          </p>
-          <div class="mt-3 flex flex-col gap-2 sm:flex-row">
-            <button
-              type="button"
-              class="rounded-lg bg-error-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-error-600 disabled:opacity-50"
-              :disabled="busy"
-              @click="cancel"
-            >
-              {{ busy ? 'Cancelando…' : 'Sí, cancelar' }}
-            </button>
-            <button
-              type="button"
-              class="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-white/5"
-              :disabled="busy"
-              @click="confirmingCancel = false"
-            >
-              No, conservar mi plan
-            </button>
-          </div>
-        </div>
-
-        <p v-if="sub.status === 'TRIALING' && !sub.hasPaymentMethod" class="mt-3 text-xs text-gray-500 dark:text-gray-400">
-          Estás en prueba sin tarjeta: no hay nada que cancelar y no se te cobrará nada. Si no agregas una tarjeta, la
-          cuenta simplemente se pausa al terminar la prueba.
-        </p>
-        <p v-if="showPay && !stripeConfigured" class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-          El pago con tarjeta aún no está disponible. Escríbenos por WhatsApp para activar tu plan.
-        </p>
-      </template>
-      <p v-else class="text-sm text-gray-500">Tu cuenta no tiene un plan asignado.</p>
-    </component-card>
-
-    <referral-card v-if="sub" class="mt-6" />
+      <referral-card v-if="sub" />
+    </div>
   </admin-layout>
 </template>
 
@@ -153,8 +147,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
-import ComponentCard from '@/components/common/ComponentCard.vue'
+import { BadgePercent, CalendarClock, CheckCircle2, CreditCard, Info } from 'lucide-vue-next'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import UiButton from '@/components/ui/UiButton.vue'
+import UiEmptyState from '@/components/ui/UiEmptyState.vue'
+import Badge from '@/components/ui/Badge.vue'
 import ReferralCard from '@/components/billing/ReferralCard.vue'
 import { extractApiError } from '@/services/api'
 import { planInfo, shownPrice } from '@/lib/plans'
@@ -187,10 +184,10 @@ const price = computed(() => shownPrice(plan.value, stripeConfigured.value))
 
 const badge = computed(() => {
   const s = sub.value?.status
-  if (s === 'ACTIVE') return { label: 'Activa', cls: 'bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400' }
-  if (s === 'TRIALING') return { label: 'Prueba gratis', cls: 'bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400' }
-  if (s === 'CANCELED') return { label: 'Cancelada', cls: 'bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-400' }
-  return { label: 'Pausada', cls: 'bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400' }
+  if (s === 'ACTIVE') return { label: 'Activa', color: 'success' as const }
+  if (s === 'TRIALING') return { label: 'Prueba gratis', color: 'primary' as const }
+  if (s === 'CANCELED') return { label: 'Cancelada', color: 'error' as const }
+  return { label: 'Pausada', color: 'warning' as const }
 })
 
 const dateLabel = computed(() => {
