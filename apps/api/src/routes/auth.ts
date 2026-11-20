@@ -774,7 +774,8 @@ router.post('/password/forgot', forgotRateLimit, async (req, res) => {
     console.error('[password-reset] no se pudo enviar el código:', err instanceof Error ? err.message : err),
   )
 
-  return res.json({ ...FORGOT_RESPONSE, ...(isDev ? { devCode: code } : {}) })
+  // Nunca se devuelve el código (ni en dev): permitiría tomar cualquier cuenta con solo saber el correo.
+  return res.json(FORGOT_RESPONSE)
 })
 
 /** Paso 2: valida el código y entrega un permiso de 10 minutos para elegir la contraseña nueva. */

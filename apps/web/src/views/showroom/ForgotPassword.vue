@@ -94,7 +94,6 @@
           @input="code = code.replace(/\D/g, '').slice(0, 6)"
         />
       </UiField>
-      <p v-if="devCode" class="ui-help">Código de desarrollo: {{ devCode }}</p>
       <p v-if="error" role="alert" class="ui-error">{{ error }}</p>
       <UiButton type="submit" block :loading="loading" loading-text="Revisando…" :disabled="code.length !== 6">
         Continuar
@@ -222,7 +221,6 @@ const emailError = ref<string | null>(null)
 const passwordError = ref<string | null>(null)
 const confirmError = ref<string | null>(null)
 const sentMessage = ref('')
-const devCode = ref<string | null>(null)
 const cooldown = ref(0)
 const codeInput = ref<HTMLInputElement | null>(null)
 const passwordInput = ref<HTMLInputElement | null>(null)
@@ -246,7 +244,6 @@ async function sendCode() {
   try {
     const res = await requestResetCode(email.value, channel.value)
     sentMessage.value = res.message
-    devCode.value = res.devCode ?? null
     step.value = 'code'
     code.value = ''
     startCooldown()

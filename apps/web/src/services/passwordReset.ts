@@ -9,7 +9,7 @@ const publicApi = axios.create({
 export type ResetChannel = 'EMAIL' | 'WHATSAPP'
 
 export async function requestResetCode(email: string, channel: ResetChannel) {
-  const { data } = await publicApi.post<{ ok: true; message: string; devCode?: string }>(
+  const { data } = await publicApi.post<{ ok: true; message: string }>(
     '/auth/password/forgot',
     { email, channel },
   )
