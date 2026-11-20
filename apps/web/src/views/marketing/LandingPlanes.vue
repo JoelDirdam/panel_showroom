@@ -192,6 +192,52 @@
         </div>
       </section>
 
+      <!-- Testimonios (solo los aprobados en el panel de plataforma) -->
+      <section v-if="testimonios.length" id="testimonios" class="scroll-mt-20 pb-20 lg:pb-28" aria-labelledby="testimonios-titulo">
+        <div class="mx-auto max-w-7xl px-5 sm:px-6">
+          <h2 id="testimonios-titulo" class="text-3xl font-semibold leading-tight text-gray-900 sm:text-[40px] dark:text-white">
+            Lo que dicen otros negocios
+          </h2>
+          <ul class="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <li
+              v-for="t in testimonios"
+              :key="t.id"
+              class="flex flex-col rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]"
+            >
+              <div v-if="t.rating" class="flex gap-0.5" :aria-label="`${t.rating} de 5 estrellas`">
+                <StarIcon
+                  v-for="n in 5"
+                  :key="n"
+                  :class="['h-4 w-4', n <= t.rating ? 'fill-warning-400 text-warning-500' : 'text-gray-300']"
+                  aria-hidden="true"
+                />
+              </div>
+              <blockquote class="mt-4 flex-1 text-[16px] leading-relaxed text-gray-800 dark:text-gray-200">“{{ t.quote }}”</blockquote>
+              <footer class="mt-5 flex items-center gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 font-display text-sm font-semibold text-brand-700" aria-hidden="true">
+                  {{ t.authorName.charAt(0).toUpperCase() }}
+                </span>
+                <span class="min-w-0 text-sm">
+                  <span class="block font-semibold text-gray-900 dark:text-white">{{ t.authorName }}</span>
+                  <span class="block text-gray-600 dark:text-gray-400">
+                    {{ t.businessName }}<template v-if="t.authorRole"> · {{ t.authorRole }}</template>
+                  </span>
+                </span>
+                <a
+                  v-if="t.sourceUrl"
+                  :href="t.sourceUrl"
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  class="ml-auto inline-flex min-h-11 items-center text-xs font-medium text-gray-500 underline hover:text-gray-800"
+                >
+                  Ver en {{ SOURCE_LABEL[t.source] }}
+                </a>
+              </footer>
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <!-- Planes -->
       <section id="planes" class="scroll-mt-20 bg-white py-20 lg:py-28 dark:bg-white/[0.02]">
         <div class="mx-auto max-w-7xl px-5 sm:px-6">
@@ -301,7 +347,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   CheckIcon,
   ChevronDownIcon,
@@ -324,6 +370,18 @@ import Badge from '@/components/ui/Badge.vue'
 import { planInfo, shownPrice } from '@/lib/plans'
 import type { PlanType } from '@/lib/entitlements'
 import { BUSINESS } from '@/lib/business'
+import { listPublicTestimonials, SOURCE_LABEL, type PublicTestimonial } from '@/services/testimonials'
+import { StarIcon } from 'lucide-vue-next'
+
+/** Testimonios aprobados en /platform/testimonios. Si falla la carga, la sección no aparece. */
+const testimonios = ref<PublicTestimonial[]>([])
+onMounted(async () => {
+  try {
+    testimonios.value = await listPublicTestimonials()
+  } catch {
+    testimonios.value = []
+  }
+})
 
 /** Home pública: el plan Citas va primero porque es la oferta de entrada (sin plan Marca). */
 const PLAN_ORDER: PlanType[] = ['CITAS_PANEL', 'CITAS_IA', 'NEGOCIO', 'CITAS_RECORDATORIOS']
