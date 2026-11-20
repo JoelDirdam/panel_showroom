@@ -125,6 +125,12 @@ export interface PublicBusiness {
   sucursales: Array<{ id: string; name: string; address: string | null }>
   hours: BusinessHourItem[]
   maxDaysAhead: number
+  /** Fecha de hoy (YYYY-MM-DD) en la zona del negocio. */
+  today?: string
+  /** Reservas en línea en pausa. */
+  bookingStatus?: { paused: boolean; message: string | null; until: string | null }
+  /** Vacaciones y días festivos próximos (fechas inclusivas). */
+  closures?: Array<{ startDate: string; endDate: string; label: string; publicMessage: string | null }>
 }
 
 export async function getPublicBusiness(slug: string): Promise<PublicBusiness> {

@@ -294,6 +294,11 @@
           </UiButton>
         </template>
       </UiCard>
+
+      <!-- Vacaciones y pausa -->
+      <div id="vacaciones" class="scroll-mt-24">
+        <BookingAvailabilityCard />
+      </div>
     </div>
   </admin-layout>
 </template>
@@ -311,6 +316,7 @@ import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { useToast } from '@/composables/useToast'
 import { confirm } from '@/composables/useConfirm'
+import BookingAvailabilityCard from '@/components/agenda/BookingAvailabilityCard.vue'
 import { extractApiError } from '@/services/api'
 import {
   createService,

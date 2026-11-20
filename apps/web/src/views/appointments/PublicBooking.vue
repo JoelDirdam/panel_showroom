@@ -50,6 +50,21 @@
           <UiButton variant="secondary" class="mt-6" @click="reset">Agendar otra cita</UiButton>
         </div>
 
+        <!-- Reservas en pausa -->
+        <div v-else-if="pause?.paused" class="ui-card mx-auto max-w-lg p-6 text-center sm:p-8" role="status">
+          <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-300" aria-hidden="true">
+            <PauseCircle class="h-7 w-7" />
+          </span>
+          <h2 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">Por ahora no estamos tomando citas en línea</h2>
+          <p v-if="pause.message" class="mt-3 text-[15px] text-gray-700 dark:text-gray-300">{{ pause.message }}</p>
+          <p v-if="pause.until" class="mt-3 text-[15px] text-gray-600 dark:text-gray-400">
+            Vuelve a partir del <strong class="text-gray-900 dark:text-white">{{ longIso(pause.until) }}</strong>.
+          </p>
+          <UiButton v-if="data.business.socialUrl" :href="data.business.socialUrl" target="_blank" variant="secondary" class="mt-6">
+            Contactar al negocio
+          </UiButton>
+        </div>
+
         <div v-else class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <form class="min-w-0 space-y-4" @submit.prevent="submit">
             <!-- 1. Servicio -->
@@ -107,6 +122,19 @@
                 <StepDot :n="2" :done="!!date" />
                 Elige el día
               </h2>
+              <ul v-if="closureNotices.length" class="mt-3 space-y-2">
+                <li
+                  v-for="c in closureNotices"
+                  :key="c.startDate"
+                  class="flex items-start gap-2 rounded-xl bg-warning-50 px-3 py-2.5 text-sm text-warning-900 dark:bg-warning-500/10 dark:text-warning-100"
+                >
+                  <CalendarX class="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    <strong>{{ c.label }}:</strong> {{ rangeIso(c.startDate, c.endDate) }} no atendemos.
+                    <template v-if="c.publicMessage"> {{ c.publicMessage }}</template>
+                  </span>
+                </li>
+              </ul>
               <div class="-mx-5 mt-4 overflow-x-auto px-5 pb-1 sm:-mx-6 sm:px-6">
                 <div class="flex gap-2" role="group" aria-label="Próximos días">
                   <button
@@ -115,7 +143,7 @@
                     type="button"
                     :disabled="d.closed"
                     :aria-pressed="date === d.iso"
-                    :aria-label="`${d.long}${d.closed ? ', cerrado' : ''}`"
+                    :aria-label="`${d.long}${d.closed ? `, ${d.closedLabel}` : ''}`"
                     :class="[
                       'flex min-h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl border text-center transition-colors',
                       date === d.iso
@@ -128,7 +156,7 @@
                   >
                     <span class="text-[12px] font-medium capitalize">{{ d.weekday }}</span>
                     <span class="font-display text-xl font-semibold leading-tight tabular-nums">{{ d.day }}</span>
-                    <span v-if="d.closed" class="text-[10px]">Cerrado</span>
+                    <span v-if="d.closed" class="max-w-full truncate px-1 text-[10px]">{{ d.closedLabel }}</span>
                   </button>
                 </div>
               </div>
@@ -156,7 +184,10 @@
                 <div v-for="n in 6" :key="n" class="h-11 animate-pulse rounded-xl bg-gray-100 dark:bg-white/5" />
               </div>
               <p v-else-if="slots.length === 0" class="mt-3 text-[15px] text-gray-600 dark:text-gray-400">
-                No hay horarios disponibles ese día. Prueba con otra fecha.
+                <template v-if="closureFor(date)">
+                  Ese día no atendemos ({{ closureFor(date)!.label.toLowerCase() }}). Prueba con otra fecha.
+                </template>
+                <template v-else>No hay horarios disponibles ese día. Prueba con otra fecha.</template>
               </p>
               <div v-else class="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5" role="group" aria-label="Horarios disponibles">
                 <button
@@ -259,7 +290,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { CalendarCheck, Check, ChevronDown, SearchX } from 'lucide-vue-next'
+import { CalendarCheck, CalendarX, Check, ChevronDown, PauseCircle, SearchX } from 'lucide-vue-next'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiField from '@/components/ui/UiField.vue'
 import {
@@ -340,6 +371,23 @@ const dateLabel = computed(() =>
     : '',
 )
 
+const pause = computed(() => data.value?.bookingStatus ?? null)
+function closureFor(iso: string) {
+  return data.value?.closures?.find((c) => c.startDate <= iso && iso <= c.endDate) ?? null
+}
+/** Cierres que empiezan en las próximas 4 semanas (o ya están en curso). */
+const closureNotices = computed(() => {
+  const horizon = isoLocal(new Date(Date.now() + 28 * 86_400_000))
+  return (data.value?.closures ?? []).filter((c) => c.startDate <= horizon).slice(0, 3)
+})
+function longIso(iso: string) {
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+function rangeIso(a: string, b: string) {
+  const short = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
+  return a === b ? `El ${longIso(a)}` : `Del ${short(a)} al ${short(b)}`
+}
+
 const closedDays = computed(() => new Set((data.value?.hours ?? []).filter((h) => h.isClosed).map((h) => h.dayOfWeek)))
 const nextDays = computed(() => {
   const out = []
@@ -353,7 +401,8 @@ const nextDays = computed(() => {
       weekday: i === 0 ? 'Hoy' : d.toLocaleDateString('es-MX', { weekday: 'short' }).replace('.', ''),
       day: d.getDate(),
       long: d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }),
-      closed: closedDays.value.has(d.getDay()),
+      closed: closedDays.value.has(d.getDay()) || !!closureFor(isoLocal(d)),
+      closedLabel: closureFor(isoLocal(d))?.label ?? 'Cerrado',
     })
   }
   return out

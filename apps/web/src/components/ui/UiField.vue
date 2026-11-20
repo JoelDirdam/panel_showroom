@@ -28,8 +28,8 @@ import { computed, useId } from 'vue'
 defineOptions({ inheritAttrs: false })
 const props = defineProps<{
   label?: string
-  help?: string
-  error?: string
+  help?: string | null
+  error?: string | null
   id?: string
   required?: boolean
   optional?: boolean
