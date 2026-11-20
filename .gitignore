@@ -49,3 +49,6 @@ graphify-out/
 
 # Contraseñas de cuentas de prueba (solo locales)
 *.local.md
+
+# Claude MD
+CLAUDE.md
